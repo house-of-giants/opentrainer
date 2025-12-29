@@ -137,7 +137,9 @@ export default function ActiveWorkoutPage() {
   }, [workout, router]);
 
   useEffect(() => {
-    if (routineExercises && routineExercises.length > 0 && pendingExercises.length === 0 && entries?.length === 0) {
+    // Initialize pendingExercises from routineExercises if available and pendingExercises is empty
+    // This ensures exercises persist after page reloads, even when entries exist
+    if (routineExercises && routineExercises.length > 0 && pendingExercises.length === 0) {
       const pending: PendingExercise[] = routineExercises.map((ex) => {
         const exerciseWithEquipment = ex as typeof ex & { equipment?: string[] };
         return {
@@ -152,7 +154,7 @@ export default function ActiveWorkoutPage() {
       });
       setPendingExercises(pending);
     }
-  }, [routineExercises, entries, pendingExercises.length]);
+  }, [routineExercises, pendingExercises.length]);
 
   if (workout === undefined || workout === null) {
     return (
