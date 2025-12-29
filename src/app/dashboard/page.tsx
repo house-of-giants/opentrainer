@@ -221,10 +221,11 @@ export default function DashboardPage() {
 			</main>
 
 			<BottomNav onStartWorkout={() => setShowStartSheet(true)} />
-			<StartWorkoutSheet
-				open={showStartSheet}
-				onOpenChange={setShowStartSheet}
-			/>
+		<StartWorkoutSheet
+			open={showStartSheet}
+			onOpenChange={setShowStartSheet}
+			activeWorkout={activeWorkout}
+		/>
 			<GoalSettingDialog
 				open={showGoalDialog}
 				onOpenChange={setShowGoalDialog}

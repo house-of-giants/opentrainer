@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { Id, Doc } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -15,13 +15,14 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronRight, Dumbbell, Play, Zap } from "lucide-react";
+import { AlertTriangle, ChevronRight, Dumbbell, Play, Zap, X } from "lucide-react";
 import { toast } from "sonner";
 import { useHaptic } from "@/hooks/use-haptic";
 
 interface StartWorkoutSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  activeWorkout?: Doc<"workouts"> | null;
 }
 
 type Routine = {
@@ -33,14 +34,58 @@ type Routine = {
   }>;
 };
 
-export function StartWorkoutSheet({ open, onOpenChange }: StartWorkoutSheetProps) {
+export function StartWorkoutSheet({ open, onOpenChange, activeWorkout }: StartWorkoutSheetProps) {
   const router = useRouter();
   const { vibrate } = useHaptic();
   const routines = useQuery(api.routines.getRoutines, { activeOnly: true });
   const createWorkout = useMutation(api.workouts.createWorkout);
+  const cancelWorkout = useMutation(api.workouts.cancelWorkout);
 
   const [expandedRoutine, setExpandedRoutine] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleActiveWorkoutError = (error: unknown) => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    if (errorMessage.includes("already have an active workout")) {
+      toast.error("Active workout exists", {
+        description: "Complete or cancel your current workout first.",
+        action: {
+          label: "Go to workout",
+          onClick: () => {
+            onOpenChange(false);
+            router.push("/workout/active");
+          },
+        },
+      });
+    } else {
+      toast.error("Failed to start workout");
+    }
+    console.error(error);
+  };
+
+  const handleContinueWorkout = () => {
+    vibrate("medium");
+    onOpenChange(false);
+    router.push("/workout/active");
+  };
+
+  const handleCancelCurrentWorkout = async () => {
+    if (!activeWorkout) return;
+    
+    setIsCancelling(true);
+    try {
+      vibrate("warning");
+      await cancelWorkout({ workoutId: activeWorkout._id });
+      toast.success("Previous workout cancelled");
+    } catch (error) {
+      toast.error("Failed to cancel workout");
+      console.error(error);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   const handleStartEmpty = async () => {
     setIsStarting(true);
@@ -50,8 +95,7 @@ export function StartWorkoutSheet({ open, onOpenChange }: StartWorkoutSheetProps
       onOpenChange(false);
       router.push("/workout/active");
     } catch (error) {
-      toast.error("Failed to start workout");
-      console.error(error);
+      handleActiveWorkoutError(error);
     } finally {
       setIsStarting(false);
     }
@@ -70,8 +114,7 @@ export function StartWorkoutSheet({ open, onOpenChange }: StartWorkoutSheetProps
       onOpenChange(false);
       router.push("/workout/active");
     } catch (error) {
-      toast.error("Failed to start workout");
-      console.error(error);
+      handleActiveWorkoutError(error);
     } finally {
       setIsStarting(false);
     }
@@ -81,6 +124,83 @@ export function StartWorkoutSheet({ open, onOpenChange }: StartWorkoutSheetProps
     vibrate("light");
     setExpandedRoutine(expandedRoutine === routineId ? null : routineId);
   };
+
+  const formatWorkoutTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    if (isToday) {
+      return `Today at ${date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+    }
+    return date.toLocaleDateString("en-US", { 
+      weekday: "short", 
+      month: "short", 
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  };
+
+  if (activeWorkout) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="h-auto flex flex-col">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Workout In Progress
+            </SheetTitle>
+            <SheetDescription>
+              You already have an active workout. What would you like to do?
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-4 px-4 py-4 pb-8">
+            <Card className="border-primary/50 bg-primary/5 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Dumbbell className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">{activeWorkout.title ?? "Workout"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Started {formatWorkoutTime(activeWorkout.startedAt)}
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <div className="space-y-2">
+              <Button
+                size="lg"
+                className="h-14 w-full text-lg"
+                onClick={handleContinueWorkout}
+              >
+                <Play className="mr-2 h-5 w-5" />
+                Continue Workout
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-14 w-full text-lg text-destructive hover:text-destructive"
+                onClick={handleCancelCurrentWorkout}
+                disabled={isCancelling || isStarting}
+              >
+                <X className="mr-2 h-5 w-5" />
+                {isCancelling ? "Cancelling..." : "Cancel & Start New"}
+              </Button>
+            </div>
+
+            <p className="text-xs text-center text-muted-foreground">
+              Cancelling will discard all progress from your current workout.
+            </p>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

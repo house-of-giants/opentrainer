@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SetStepper } from "./set-stepper";
+import { NoteSheet } from "./note-sheet";
 import { useHaptic } from "@/hooks/use-haptic";
 import { ChevronDown, ChevronUp, Dumbbell, MessageSquare, Shuffle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -78,7 +79,7 @@ export function ExerciseCard({
     (sets.length > 0 && sets[sets.length - 1].isBodyweight === true)
   );
   const [showAddedWeight, setShowAddedWeight] = useState(false);
-  const [showNoteInput, setShowNoteInput] = useState(!!note);
+  const [showNoteSheet, setShowNoteSheet] = useState(false);
   const { vibrate } = useHaptic();
 
   const handleAddSet = () => {
@@ -109,6 +110,25 @@ export function ExerciseCard({
             >
               <Shuffle className="h-4 w-4 text-muted-foreground" />
               <span className="sr-only">Swap exercise</span>
+            </Button>
+          )}
+          {onNoteChange && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 shrink-0 p-0"
+              onClick={() => {
+                vibrate("light");
+                setShowNoteSheet(true);
+              }}
+            >
+              <MessageSquare
+                className={cn(
+                  "h-4 w-4",
+                  note ? "fill-primary text-primary" : "text-muted-foreground"
+                )}
+              />
+              <span className="sr-only">Add note</span>
             </Button>
           )}
         </div>
@@ -270,49 +290,6 @@ export function ExerciseCard({
         </div>
       )}
 
-      {onNoteChange && (
-        <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => {
-              vibrate("light");
-              setShowNoteInput(!showNoteInput);
-            }}
-            className={cn(
-              "flex w-full items-center justify-between rounded-md px-3 py-2",
-              "text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
-            )}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <MessageSquare className="h-4 w-4 shrink-0" />
-              {note ? (
-                <span className="truncate text-foreground">{note}</span>
-              ) : (
-                <span>Note</span>
-              )}
-            </div>
-            {showNoteInput ? (
-              <ChevronUp className="h-4 w-4 shrink-0" />
-            ) : (
-              <ChevronDown className="h-4 w-4 shrink-0" />
-            )}
-          </button>
-
-          {showNoteInput && (
-            <div className="mt-3 rounded-md bg-muted/30 p-3">
-              <textarea
-                value={note ?? ""}
-                onChange={(e) => onNoteChange(e.target.value)}
-                placeholder="Add a note about this exercise..."
-                className="w-full rounded-md border-0 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                rows={2}
-                autoFocus
-              />
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="flex flex-wrap items-end justify-center gap-4">
         {(weightMode === "weighted-only" || 
           (weightMode === "bodyweight-optional" && !isBodyweight) ||
@@ -343,6 +320,16 @@ export function ExerciseCard({
       >
         Log Set {targetSets !== undefined ? `${sets.length + 1} of ${targetSets}` : sets.length + 1}
       </Button>
+
+      {onNoteChange && (
+        <NoteSheet
+          open={showNoteSheet}
+          onOpenChange={setShowNoteSheet}
+          exerciseName={exerciseName}
+          note={note ?? ""}
+          onSave={onNoteChange}
+        />
+      )}
     </Card>
   );
 }

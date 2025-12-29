@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RpeSlider } from "./rpe-slider";
+import { NoteSheet } from "./note-sheet";
 import { useHaptic } from "@/hooks/use-haptic";
 import { Check, ChevronDown, ChevronUp, Dumbbell, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -196,7 +197,7 @@ export function CardioExerciseCard({
   const [useVest, setUseVest] = useState(false);
   const [vestWeight, setVestWeight] = useState(20);
   const [isLogged, setIsLogged] = useState(false);
-  const [showNoteInput, setShowNoteInput] = useState(!!note);
+  const [showNoteSheet, setShowNoteSheet] = useState(false);
 
   const totalSeconds = minutes * 60 + seconds;
   const canLog = primaryMetric === "duration" ? totalSeconds > 0 : distance > 0;
@@ -290,16 +291,38 @@ export function CardioExerciseCard({
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3
-              className={cn(
-                "font-semibold truncate transition-all duration-200",
-                displayStatus === "current" && "text-lg",
-                displayStatus === "completed" && "text-sm text-muted-foreground",
-                displayStatus === "upcoming" && "text-base"
+            <div className="flex items-center gap-2">
+              <h3
+                className={cn(
+                  "font-semibold truncate transition-all duration-200",
+                  displayStatus === "current" && "text-lg",
+                  displayStatus === "completed" && "text-sm text-muted-foreground",
+                  displayStatus === "upcoming" && "text-base"
+                )}
+              >
+                {exerciseName}
+              </h3>
+              {displayStatus === "current" && onNoteChange && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 shrink-0 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    vibrate("light");
+                    setShowNoteSheet(true);
+                  }}
+                >
+                  <MessageSquare
+                    className={cn(
+                      "h-3.5 w-3.5",
+                      note ? "fill-primary text-primary" : "text-muted-foreground"
+                    )}
+                  />
+                  <span className="sr-only">Add note</span>
+                </Button>
               )}
-            >
-              {exerciseName}
-            </h3>
+            </div>
 
             {displayStatus === "completed" && isLogged && (
               <span className="font-mono text-xs text-muted-foreground tabular-nums">
@@ -491,52 +514,6 @@ export function CardioExerciseCard({
               </div>
             )}
 
-            {onNoteChange && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    vibrate("light");
-                    setShowNoteInput(!showNoteInput);
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-between rounded-md px-3 py-2",
-                    "text-xs text-muted-foreground hover:bg-muted/30 transition-colors"
-                  )}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                    {note ? (
-                      <span className="truncate text-foreground">{note}</span>
-                    ) : (
-                      <span className="uppercase tracking-wide">Note</span>
-                    )}
-                  </div>
-                  {showNoteInput ? (
-                    <ChevronUp className="h-3.5 w-3.5 shrink-0" />
-                  ) : (
-                    <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-                  )}
-                </button>
-
-                {showNoteInput && (
-                  <div className="rounded-md bg-muted/20 p-3">
-                    <textarea
-                      value={note ?? ""}
-                      onChange={(e) => onNoteChange(e.target.value)}
-                      placeholder="Add a note..."
-                      className={cn(
-                        "w-full rounded border-0 bg-background px-3 py-2",
-                        "font-mono text-sm placeholder:text-muted-foreground",
-                        "focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-                      )}
-                      rows={2}
-                    />
-                  </div>
-                )}
-              </>
-            )}
-
             <Button
               size="lg"
               className={cn(
@@ -552,6 +529,16 @@ export function CardioExerciseCard({
           )}
         </div>
       </div>
+
+      {onNoteChange && (
+        <NoteSheet
+          open={showNoteSheet}
+          onOpenChange={setShowNoteSheet}
+          exerciseName={exerciseName}
+          note={note ?? ""}
+          onSave={onNoteChange}
+        />
+      )}
     </div>
   );
 }
