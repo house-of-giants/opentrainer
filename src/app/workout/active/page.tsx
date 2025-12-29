@@ -102,12 +102,19 @@ export default function ActiveWorkoutPage() {
   const exerciseGroups = useMemo(() => {
     const groups = new Map<string, { entries: EntryData[]; meta: PendingExercise }>();
 
+    // First, add all pending exercises to establish the meta (targetSets, targetReps, etc.)
+    for (const pending of pendingExercises) {
+      groups.set(pending.name, { entries: [], meta: pending });
+    }
+
+    // Then, add entries and merge with existing meta
     if (entries) {
       for (const entry of entries) {
         const existing = groups.get(entry.exerciseName);
         if (existing) {
           existing.entries.push(entry as EntryData);
         } else {
+          // Create new group with basic meta if no pending exercise exists
           groups.set(entry.exerciseName, {
             entries: [entry as EntryData],
             meta: {
@@ -117,12 +124,6 @@ export default function ActiveWorkoutPage() {
             },
           });
         }
-      }
-    }
-
-    for (const pending of pendingExercises) {
-      if (!groups.has(pending.name)) {
-        groups.set(pending.name, { entries: [], meta: pending });
       }
     }
 
