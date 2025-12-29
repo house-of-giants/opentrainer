@@ -41,6 +41,7 @@ interface ExerciseCardProps {
   defaultWeight?: number;
   defaultReps?: number;
   unit?: "lb" | "kg";
+  targetSets?: number;
   onAddSet: (set: Omit<SetData, "setNumber">) => void;
   onSwap?: () => void;
 }
@@ -52,6 +53,7 @@ export function ExerciseCard({
   defaultWeight = 45,
   defaultReps = 8,
   unit = "lb",
+  targetSets,
   onAddSet,
   onSwap,
 }: ExerciseCardProps) {
@@ -101,7 +103,9 @@ export function ExerciseCard({
           )}
         </div>
         <span className="shrink-0 text-sm text-muted-foreground font-mono tabular-nums whitespace-nowrap">
-          {sets.length} {sets.length === 1 ? "set" : "sets"}
+          {targetSets !== undefined
+            ? `${targetSets} ${targetSets === 1 ? "set" : "sets"}`
+            : `${sets.length} ${sets.length === 1 ? "set" : "sets"}`}
         </span>
       </div>
 
