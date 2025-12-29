@@ -1,42 +1,89 @@
 {
-  "name": "OpenFit",
-  "short_name": "OpenFit",
-  "description": "AI-powered workout tracking. Log lifts and cardio, get personalized coaching.",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
-  "orientation": "portrait-primary",
-  "scope": "/",
-  "icons": [
-    {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["health", "fitness", "lifestyle"],
-  "shortcuts": [
-    {
-      "name": "Start Workout",
-      "short_name": "Workout",
-      "description": "Begin a new workout session",
-      "url": "/workout/new",
-      "icons": [{ "src": "/icons/workout-shortcut.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "View History",
-      "short_name": "History",
-      "description": "See your workout history",
-      "url": "/history",
-      "icons": [{ "src": "/icons/history-shortcut.png", "sizes": "96x96" }]
-    }
-  ]
+	"id": "/",
+	"name": "OpenTrainer",
+	"short_name": "OpenTrainer",
+	"description": "AI-powered workout tracking. Log lifts and cardio, get personalized coaching that adapts to you.",
+	"start_url": "/",
+	"display": "standalone",
+	"display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+	"background_color": "#1c1a22",
+	"theme_color": "#1c1a22",
+	"orientation": "portrait-primary",
+	"scope": "/",
+	"lang": "en",
+	"dir": "ltr",
+	"prefer_related_applications": false,
+	"launch_handler": {
+		"client_mode": "navigate-existing"
+	},
+	"handle_links": "preferred",
+	"icons": [
+		{
+			"src": "/icons/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/icons/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "maskable"
+		},
+		{
+			"src": "/icons/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/icons/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		}
+	],
+	"categories": ["health", "fitness", "lifestyle", "sports"],
+	"shortcuts": [
+		{
+			"name": "Start Workout",
+			"short_name": "Workout",
+			"description": "Begin a new workout session",
+			"url": "/workout/active",
+			"icons": [{ "src": "/icons/workout-shortcut.png", "sizes": "96x96" }]
+		},
+		{
+			"name": "View History",
+			"short_name": "History",
+			"description": "See your workout history",
+			"url": "/history",
+			"icons": [{ "src": "/icons/history-shortcut.png", "sizes": "96x96" }]
+		},
+		{
+			"name": "Training Lab",
+			"short_name": "Lab",
+			"description": "AI-powered training insights",
+			"url": "/training-lab",
+			"icons": [{ "src": "/icons/lab-shortcut.png", "sizes": "96x96" }]
+		}
+	],
+	"screenshots": [
+		{
+			"src": "/screenshots/dashboard.png",
+			"sizes": "1170x2532",
+			"type": "image/png",
+			"form_factor": "narrow",
+			"label": "Dashboard with weekly stats"
+		},
+		{
+			"src": "/screenshots/workout.png",
+			"sizes": "1170x2532",
+			"type": "image/png",
+			"form_factor": "narrow",
+			"label": "Active workout tracking"
+		}
+	],
+	"edge_side_panel": {
+		"preferred_width": 400
+	}
 }

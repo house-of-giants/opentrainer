@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, Download, Dumbbell, Weight } from "lucide-react";
+import { ArrowLeft, Clock, Download, Dumbbell, MessageSquare, Weight } from "lucide-react";
 import Link from "next/link";
 import { ExportWorkoutDialog } from "@/components/workout/export-workout-dialog";
 
@@ -218,71 +218,83 @@ export default function WorkoutDetailsPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {groupedExercises.map((exercise) => (
-              <Card key={exercise.name} className="p-4">
-                <h3 className="mb-3 font-semibold">{exercise.name}</h3>
-                <div className="space-y-2">
-                  {exercise.entries.map((entry) => {
-                    if (entry.kind === "lifting" && entry.lifting) {
-                      return (
-                        <div
-                          key={entry._id}
-                          className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm"
-                        >
-                          <span className="text-muted-foreground">
-                            Set {entry.lifting.setNumber}
-                            {entry.lifting.isWarmup && (
-                              <Badge variant="outline" className="ml-2 text-xs">
-                                Warmup
-                              </Badge>
-                            )}
-                          </span>
-                          <div className="flex items-center gap-3">
-                            <span className="font-medium font-mono tabular-nums">
-                              {entry.lifting.weight ?? 0} {entry.lifting.unit}
-                            </span>
-                            <span className="text-muted-foreground">x</span>
-                            <span className="font-medium font-mono tabular-nums">
-                              {entry.lifting.reps ?? 0} reps
-                            </span>
-                            {entry.lifting.rpe && (
-                              <Badge variant="secondary" className="text-xs">
-                                RPE {entry.lifting.rpe}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
+            {groupedExercises.map((exercise) => {
+              const exerciseNote = workout.exerciseNotes?.find(
+                (n) => n.exerciseName === exercise.name
+              )?.note;
 
-                    if (entry.kind === "cardio" && entry.cardio) {
-                      return (
-                        <div
-                          key={entry._id}
-                          className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm"
-                        >
-                          <span className="text-muted-foreground capitalize">
-                            {entry.cardio.mode}
-                          </span>
-                          <div className="flex items-center gap-3">
-                            <span className="font-medium font-mono tabular-nums">
-                              {formatCardioDuration(entry.cardio.durationSeconds)}
+              return (
+                <Card key={exercise.name} className="p-4">
+                  <h3 className="mb-3 font-semibold">{exercise.name}</h3>
+                  <div className="space-y-2">
+                    {exercise.entries.map((entry) => {
+                      if (entry.kind === "lifting" && entry.lifting) {
+                        return (
+                          <div
+                            key={entry._id}
+                            className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm"
+                          >
+                            <span className="text-muted-foreground">
+                              Set {entry.lifting.setNumber}
+                              {entry.lifting.isWarmup && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  Warmup
+                                </Badge>
+                              )}
                             </span>
-                            {entry.cardio.intensity && (
-                              <Badge variant="secondary" className="text-xs">
-                                Level {entry.cardio.intensity}
-                              </Badge>
-                            )}
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium font-mono tabular-nums">
+                                {entry.lifting.weight ?? 0} {entry.lifting.unit}
+                              </span>
+                              <span className="text-muted-foreground">x</span>
+                              <span className="font-medium font-mono tabular-nums">
+                                {entry.lifting.reps ?? 0} reps
+                              </span>
+                              {entry.lifting.rpe && (
+                                <Badge variant="secondary" className="text-xs">
+                                  RPE {entry.lifting.rpe}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    }
+                        );
+                      }
 
-                    return null;
-                  })}
-                </div>
-              </Card>
-            ))}
+                      if (entry.kind === "cardio" && entry.cardio) {
+                        return (
+                          <div
+                            key={entry._id}
+                            className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm"
+                          >
+                            <span className="text-muted-foreground capitalize">
+                              {entry.cardio.mode}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium font-mono tabular-nums">
+                                {formatCardioDuration(entry.cardio.durationSeconds)}
+                              </span>
+                              {entry.cardio.intensity && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Level {entry.cardio.intensity}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })}
+                  </div>
+                  {exerciseNote && (
+                    <div className="mt-3 flex items-start gap-2 rounded-md bg-muted/30 px-3 py-2 text-sm">
+                      <MessageSquare className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                      <span className="text-muted-foreground">{exerciseNote}</span>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

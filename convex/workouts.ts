@@ -284,6 +284,51 @@ export const updateWorkoutTitle = mutation({
   },
 });
 
+export const updateExerciseNote = mutation({
+  args: {
+    workoutId: v.id("workouts"),
+    exerciseName: v.string(),
+    note: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const workout = await ctx.db.get(args.workoutId);
+    if (!workout) {
+      throw new Error("Workout not found");
+    }
+
+    if (workout.userId !== user._id) {
+      throw new Error("Not authorized");
+    }
+
+    const existingNotes = workout.exerciseNotes ?? [];
+    const noteIndex = existingNotes.findIndex(
+      (n) => n.exerciseName === args.exerciseName
+    );
+
+    let updatedNotes;
+    if (args.note.trim() === "") {
+      updatedNotes = existingNotes.filter(
+        (n) => n.exerciseName !== args.exerciseName
+      );
+    } else if (noteIndex >= 0) {
+      updatedNotes = existingNotes.map((n, i) =>
+        i === noteIndex ? { exerciseName: args.exerciseName, note: args.note } : n
+      );
+    } else {
+      updatedNotes = [...existingNotes, { exerciseName: args.exerciseName, note: args.note }];
+    }
+
+    await ctx.db.patch(args.workoutId, {
+      exerciseNotes: updatedNotes,
+    });
+
+    return args.workoutId;
+  },
+});
+
 export const getDashboardStats = query({
   args: {},
   handler: async (ctx) => {

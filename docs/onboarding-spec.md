@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-OpenFit collects user profile data to personalize AI-powered features (Smart Swap, Training Lab, future Routine Builder). This spec defines how we gather this information through onboarding and in-context collection.
+OpenTrainer collects user profile data to personalize AI-powered features (Smart Swap, Training Lab, future Routine Builder). This spec defines how we gather this information through onboarding and in-context collection.
 
 ### Design Principles
 
@@ -20,34 +20,40 @@ OpenFit collects user profile data to personalize AI-powered features (Smart Swa
 ```typescript
 // convex/schema.ts - users table
 users: defineTable({
-  // ... existing fields
-  
-  // Onboarding data
-  goals: v.optional(v.array(v.union(
-    v.literal("strength"),
-    v.literal("hypertrophy"),
-    v.literal("endurance"),
-    v.literal("weight_loss"),
-    v.literal("general_fitness")
-  ))),
-  
-  experienceLevel: v.optional(v.union(
-    v.literal("beginner"),
-    v.literal("intermediate"),
-    v.literal("advanced")
-  )),
-  
-  // Equipment - dual storage
-  equipmentDescription: v.optional(v.string()),  // Raw: "Planet Fitness"
-  equipment: v.optional(v.array(v.string())),    // Parsed: ["smith_machine", "cables"]
-  
-  // Availability
-  weeklyAvailability: v.optional(v.number()),    // Days per week (1-7)
-  sessionDuration: v.optional(v.number()),       // Minutes (30-120)
-  
-  // Tracking
-  onboardingCompletedAt: v.optional(v.number()), // Timestamp when completed
-})
+	// ... existing fields
+
+	// Onboarding data
+	goals: v.optional(
+		v.array(
+			v.union(
+				v.literal("strength"),
+				v.literal("hypertrophy"),
+				v.literal("endurance"),
+				v.literal("weight_loss"),
+				v.literal("general_fitness")
+			)
+		)
+	),
+
+	experienceLevel: v.optional(
+		v.union(
+			v.literal("beginner"),
+			v.literal("intermediate"),
+			v.literal("advanced")
+		)
+	),
+
+	// Equipment - dual storage
+	equipmentDescription: v.optional(v.string()), // Raw: "Planet Fitness"
+	equipment: v.optional(v.array(v.string())), // Parsed: ["smith_machine", "cables"]
+
+	// Availability
+	weeklyAvailability: v.optional(v.number()), // Days per week (1-7)
+	sessionDuration: v.optional(v.number()), // Minutes (30-120)
+
+	// Tracking
+	onboardingCompletedAt: v.optional(v.number()), // Timestamp when completed
+});
 ```
 
 ### Equipment IDs
@@ -58,55 +64,26 @@ Canonical equipment identifiers used across the system:
 // convex/lib/equipment.ts
 
 export const EQUIPMENT_CATEGORIES = {
-  freeWeights: [
-    "barbell",
-    "dumbbells", 
-    "kettlebells",
-    "ez_curl_bar",
-  ],
-  racksAndBenches: [
-    "power_rack",
-    "squat_rack", 
-    "smith_machine",
-    "flat_bench",
-    "incline_bench",
-    "adjustable_bench",
-  ],
-  cableMachines: [
-    "cable_machine",
-    "lat_pulldown",
-    "cable_crossover",
-  ],
-  legMachines: [
-    "leg_press",
-    "hack_squat",
-    "leg_curl",
-    "leg_extension",
-  ],
-  otherMachines: [
-    "chest_press_machine",
-    "shoulder_press_machine",
-    "row_machine",
-    "pec_deck",
-  ],
-  bodyweight: [
-    "pull_up_bar",
-    "dip_station",
-    "rings",
-  ],
-  accessories: [
-    "resistance_bands",
-    "trx",
-    "landmine",
-    "cable_attachments",
-  ],
-  cardio: [
-    "treadmill",
-    "rower",
-    "bike",
-    "stairmaster",
-    "elliptical",
-  ],
+	freeWeights: ["barbell", "dumbbells", "kettlebells", "ez_curl_bar"],
+	racksAndBenches: [
+		"power_rack",
+		"squat_rack",
+		"smith_machine",
+		"flat_bench",
+		"incline_bench",
+		"adjustable_bench",
+	],
+	cableMachines: ["cable_machine", "lat_pulldown", "cable_crossover"],
+	legMachines: ["leg_press", "hack_squat", "leg_curl", "leg_extension"],
+	otherMachines: [
+		"chest_press_machine",
+		"shoulder_press_machine",
+		"row_machine",
+		"pec_deck",
+	],
+	bodyweight: ["pull_up_bar", "dip_station", "rings"],
+	accessories: ["resistance_bands", "trx", "landmine", "cable_attachments"],
+	cardio: ["treadmill", "rower", "bike", "stairmaster", "elliptical"],
 } as const;
 
 export const ALL_EQUIPMENT_IDS = Object.values(EQUIPMENT_CATEGORIES).flat();
@@ -227,16 +204,19 @@ user.onboardingCompletedAt === null?
 // convex/ai/equipmentParser.ts
 
 export const parseEquipment = action({
-  args: {
-    description: v.string(),
-  },
-  handler: async (ctx, args): Promise<{
-    equipment: string[];
-    note?: string;
-  }> => {
-    // Calls Gemini with EQUIPMENT_PARSER_PROMPT
-    // Returns structured equipment list
-  },
+	args: {
+		description: v.string(),
+	},
+	handler: async (
+		ctx,
+		args
+	): Promise<{
+		equipment: string[];
+		note?: string;
+	}> => {
+		// Calls Gemini with EQUIPMENT_PARSER_PROMPT
+		// Returns structured equipment list
+	},
 });
 ```
 
@@ -326,6 +306,7 @@ Users can edit all onboarding data from their profile:
 ### Equipment Editor
 
 When editing equipment, users see:
+
 1. Their original description (editable)
 2. The parsed equipment checkboxes (editable)
 3. "Re-analyze" button to re-run AI parser on updated description
@@ -365,6 +346,7 @@ When editing equipment, users see:
 ### Future: Routine Builder
 
 Will use all profile data to generate personalized training programs that:
+
 - Match user's goals (strength vs hypertrophy rep ranges)
 - Fit their schedule (weeklyAvailability, sessionDuration)
 - Only include exercises possible with their equipment
@@ -375,26 +357,31 @@ Will use all profile data to generate personalized training programs that:
 ## 7. Implementation Phases
 
 ### Phase 1: Schema & Backend (2 hours) ✅
+
 - [x] Add schema fields: `equipmentDescription`, `onboardingCompletedAt`
 - [x] Create `convex/lib/equipment.ts` with equipment constants
 - [x] Create `convex/ai/equipmentParser.ts` action
 - [x] Add `completeOnboarding` mutation to `users.ts`
 
 ### Phase 2: Onboarding UI (4 hours) ✅
+
 - [x] Create `/onboarding` page with wizard shell
 - [x] Build step components: goals, experience, equipment, availability
 - [x] Implement equipment confirmation with checkbox grid
 
 ### Phase 3: Routing (1 hour) ✅
+
 - [x] Add redirect logic to dashboard
 - [x] Protect onboarding route for completed users
 
 ### Phase 4: Profile Integration (2 hours) ✅
+
 - [x] Add Training Profile section to profile page
 - [x] Build edit dialogs for each field
 - [x] Implement equipment re-parser
 
 ### Phase 5: Testing (1 hour)
+
 - [ ] Test complete flow
 - [ ] Verify AI features use new data correctly
 
@@ -424,5 +411,5 @@ convex/
 
 ---
 
-*Last Updated: December 28, 2025*
-*Version: 1.0*
+_Last Updated: December 28, 2025_
+_Version: 1.0_

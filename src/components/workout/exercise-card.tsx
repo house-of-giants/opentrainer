@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SetStepper } from "./set-stepper";
 import { useHaptic } from "@/hooks/use-haptic";
-import { ChevronDown, ChevronUp, Dumbbell, Shuffle, User } from "lucide-react";
+import { ChevronDown, ChevronUp, Dumbbell, MessageSquare, Shuffle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SetData {
+  entryId?: string;
   setNumber: number;
   reps: number;
   weight: number;
@@ -43,8 +44,11 @@ interface ExerciseCardProps {
   unit?: "lb" | "kg";
   targetSets?: number;
   targetReps?: string;
-  onAddSet: (set: Omit<SetData, "setNumber">) => void;
+  note?: string;
+  onAddSet: (set: Omit<SetData, "setNumber" | "entryId">) => void;
+  onEditSet?: (set: SetData) => void;
   onSwap?: () => void;
+  onNoteChange?: (note: string) => void;
 }
 
 export function ExerciseCard({
@@ -56,8 +60,11 @@ export function ExerciseCard({
   unit = "lb",
   targetSets,
   targetReps,
+  note,
   onAddSet,
+  onEditSet,
   onSwap,
+  onNoteChange,
 }: ExerciseCardProps) {
   const weightMode = getWeightMode(equipment);
   const [weight, setWeight] = useState(
@@ -71,6 +78,7 @@ export function ExerciseCard({
     (sets.length > 0 && sets[sets.length - 1].isBodyweight === true)
   );
   const [showAddedWeight, setShowAddedWeight] = useState(false);
+  const [showNoteInput, setShowNoteInput] = useState(!!note);
   const { vibrate } = useHaptic();
 
   const handleAddSet = () => {
@@ -117,11 +125,23 @@ export function ExerciseCard({
           {Array.from({ length: targetSets }, (_, i) => i + 1).map((setNumber) => {
                 const loggedSet = sets.find((s) => s.setNumber === setNumber);
                 if (loggedSet) {
-                  // Show logged set
+                  // Show logged set - tappable for editing
+                  const handleSetClick = () => {
+                    if (onEditSet && loggedSet.entryId) {
+                      vibrate("light");
+                      onEditSet(loggedSet);
+                    }
+                  };
                   return (
-                    <div
+                    <button
                       key={setNumber}
-                      className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm"
+                      type="button"
+                      onClick={handleSetClick}
+                      disabled={!onEditSet || !loggedSet.entryId}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm transition-colors",
+                        onEditSet && loggedSet.entryId && "hover:bg-muted active:bg-muted/70 cursor-pointer"
+                      )}
                     >
                       <span className="font-medium">Set {setNumber}</span>
                       <span className="font-mono tabular-nums">
@@ -131,7 +151,7 @@ export function ExerciseCard({
                             ? `BW+${loggedSet.weight} ${loggedSet.unit} × ${loggedSet.reps}`
                             : `${loggedSet.weight} ${loggedSet.unit} × ${loggedSet.reps}`}
                       </span>
-                    </div>
+                    </button>
                   );
                 } else {
                   // Show placeholder set
@@ -153,22 +173,36 @@ export function ExerciseCard({
         </div>
       ) : sets.length > 0 ? (
         <div className="mb-4 space-y-1">
-          {/* Show only logged sets when no target */}
-          {sets.map((set) => (
-            <div
-              key={set.setNumber}
-              className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm"
-            >
-              <span className="font-medium">Set {set.setNumber}</span>
-              <span className="font-mono tabular-nums">
-                {set.isBodyweight && set.weight === 0
-                  ? `BW × ${set.reps}`
-                  : set.isBodyweight && set.weight > 0
-                    ? `BW+${set.weight} ${set.unit} × ${set.reps}`
-                    : `${set.weight} ${set.unit} × ${set.reps}`}
-              </span>
-            </div>
-          ))}
+          {/* Show only logged sets when no target - tappable for editing */}
+          {sets.map((set) => {
+            const handleSetClick = () => {
+              if (onEditSet && set.entryId) {
+                vibrate("light");
+                onEditSet(set);
+              }
+            };
+            return (
+              <button
+                key={set.setNumber}
+                type="button"
+                onClick={handleSetClick}
+                disabled={!onEditSet || !set.entryId}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm transition-colors",
+                  onEditSet && set.entryId && "hover:bg-muted active:bg-muted/70 cursor-pointer"
+                )}
+              >
+                <span className="font-medium">Set {set.setNumber}</span>
+                <span className="font-mono tabular-nums">
+                  {set.isBodyweight && set.weight === 0
+                    ? `BW × ${set.reps}`
+                    : set.isBodyweight && set.weight > 0
+                      ? `BW+${set.weight} ${set.unit} × ${set.reps}`
+                      : `${set.weight} ${set.unit} × ${set.reps}`}
+                </span>
+              </button>
+            );
+          })}
         </div>
       ) : null}
 
@@ -233,6 +267,49 @@ export function ExerciseCard({
               <ChevronDown className="h-4 w-4 ml-auto" />
             )}
           </button>
+        </div>
+      )}
+
+      {onNoteChange && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => {
+              vibrate("light");
+              setShowNoteInput(!showNoteInput);
+            }}
+            className={cn(
+              "flex w-full items-center justify-between rounded-md px-3 py-2",
+              "text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
+            )}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <MessageSquare className="h-4 w-4 shrink-0" />
+              {note ? (
+                <span className="truncate text-foreground">{note}</span>
+              ) : (
+                <span>Note</span>
+              )}
+            </div>
+            {showNoteInput ? (
+              <ChevronUp className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronDown className="h-4 w-4 shrink-0" />
+            )}
+          </button>
+
+          {showNoteInput && (
+            <div className="mt-3 rounded-md bg-muted/30 p-3">
+              <textarea
+                value={note ?? ""}
+                onChange={(e) => onNoteChange(e.target.value)}
+                placeholder="Add a note about this exercise..."
+                className="w-full rounded-md border-0 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                rows={2}
+                autoFocus
+              />
+            </div>
+          )}
         </div>
       )}
 

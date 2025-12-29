@@ -91,6 +91,12 @@ export interface HistoricalContext {
   }>;
 }
 
+export interface ExerciseNote {
+  exercise: string;
+  note: string;
+  date: string;
+}
+
 export interface AggregatedWorkoutData {
   period: {
     start: string;
@@ -126,6 +132,7 @@ export interface AggregatedWorkoutData {
     reason: string;
     count: number;
   }>;
+  exerciseNotes: ExerciseNote[];
   cardioSummary?: CardioSummary;
   historicalContext?: HistoricalContext;
 }
@@ -192,6 +199,20 @@ export const aggregateWorkoutData = internalQuery({
     
     const cardioSummary = aggregateCardioSummary(entries, exerciseMap, userBodyweightKg);
 
+    const exerciseNotes: ExerciseNote[] = [];
+    for (const workout of workouts) {
+      if (workout.exerciseNotes) {
+        const workoutDate = new Date(workout.startedAt).toISOString().split("T")[0];
+        for (const note of workout.exerciseNotes) {
+          exerciseNotes.push({
+            exercise: note.exerciseName,
+            note: note.note,
+            date: workoutDate,
+          });
+        }
+      }
+    }
+
     let historicalContext: HistoricalContext | undefined;
     if (args.includeHistoricalContext) {
       const allWorkouts = await ctx.db
@@ -257,6 +278,7 @@ export const aggregateWorkoutData = internalQuery({
       exerciseTrends,
       rpeByWorkout,
       swapSummary,
+      exerciseNotes,
       cardioSummary,
       historicalContext,
     };

@@ -2,9 +2,9 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // ============================================================================
-// OpenFit Convex Schema
+// OpenTrainer Convex Schema
 // ============================================================================
-// This schema defines the data model for OpenFit, a minimalist AI-first
+// This schema defines the data model for OpenTrainer, a minimalist AI-first
 // workout tracking application. It supports both lifting and cardio workouts
 // with a discriminated union pattern for flexibility.
 // ============================================================================
@@ -127,6 +127,12 @@ export default defineSchema({
       totalDurationMinutes: v.optional(v.number()),
       exerciseCount: v.optional(v.number()),
     })),
+    
+    // Per-exercise notes within this workout
+    exerciseNotes: v.optional(v.array(v.object({
+      exerciseName: v.string(),
+      note: v.string(),
+    }))),
     
     notes: v.optional(v.string()),
   })

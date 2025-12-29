@@ -51,6 +51,13 @@ function buildTrainingLabPayload(
           n: s.count,
         }))
       : undefined,
+    notes: aggregated.exerciseNotes.length > 0
+      ? aggregated.exerciseNotes.map((n) => ({
+          ex: n.exercise,
+          txt: n.note,
+          date: n.date,
+        }))
+      : undefined,
     hist: hist ? {
       age: hist.trainingAgeDays,
       total: hist.totalWorkouts,

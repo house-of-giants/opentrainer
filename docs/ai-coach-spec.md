@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-AI Coach is OpenFit's Pro-tier AI integration that provides intelligent workout guidance through two complementary features:
+AI Coach is OpenTrainer's Pro-tier AI integration that provides intelligent workout guidance through two complementary features:
 
 1. **Training Lab** — Weekly retrospective analysis of training data with actionable insights
 2. **Smart Swap** — Real-time, context-aware exercise substitutions during active workouts
@@ -16,8 +16,8 @@ AI Coach is OpenFit's Pro-tier AI integration that provides intelligent workout 
 
 ### AI Model
 
-| Model | Provider | Use Case |
-|-------|----------|----------|
+| Model            | Provider  | Use Case              |
+| ---------------- | --------- | --------------------- |
 | Gemini 2.5 Flash | Google AI | All AI Coach features |
 
 **Why Gemini 2.5 Flash**: High validity in health/science domains, fast inference, cost-effective, supports structured JSON output.
@@ -32,23 +32,24 @@ AI Coach is OpenFit's Pro-tier AI integration that provides intelligent workout 
 
 #### Trigger Mechanisms
 
-| Trigger | Behavior |
-|---------|----------|
-| Dashboard CTA | Tiered messaging based on workout count (see below) |
-| Manual Request | User navigates to Training Lab and taps "Generate Report" |
-| Deep Link | From weekly notification (future: push notification integration) |
+| Trigger        | Behavior                                                         |
+| -------------- | ---------------------------------------------------------------- |
+| Dashboard CTA  | Tiered messaging based on workout count (see below)              |
+| Manual Request | User navigates to Training Lab and taps "Generate Report"        |
+| Deep Link      | From weekly notification (future: push notification integration) |
 
 #### Tiered Report System
 
 The report depth scales with available data:
 
-| Workouts | Report Type | What's Included |
-|----------|-------------|-----------------|
-| 0-2 | No CTA | Progress indicator only |
-| 3-4 | **Training Snapshot** | Volume distribution, basic observations, muscle group breakdown |
-| 5+ | **Full Training Lab** | Trends, progression analysis, fatigue signals, actionable insights |
+| Workouts | Report Type           | What's Included                                                    |
+| -------- | --------------------- | ------------------------------------------------------------------ |
+| 0-2      | No CTA                | Progress indicator only                                            |
+| 3-4      | **Training Snapshot** | Volume distribution, basic observations, muscle group breakdown    |
+| 5+       | **Full Training Lab** | Trends, progression analysis, fatigue signals, actionable insights |
 
-**Why tiered?** 
+**Why tiered?**
+
 - 3-4 workouts: Enough for volume analysis, but likely lacks repeat exercises for trend detection
 - 5+ workouts: Almost certainly has repeat exercises, enabling real progression insights
 
@@ -58,11 +59,11 @@ The report depth scales with available data:
 // Tiered CTA state based on workout count
 
 interface TrainingLabCTAState {
-  show: boolean;
-  isPro: boolean;
-  workoutsSinceLastReport: number;
-  reportType: "none" | "snapshot" | "full";
-  message: string;
+	show: boolean;
+	isPro: boolean;
+	workoutsSinceLastReport: number;
+	reportType: "none" | "snapshot" | "full";
+	message: string;
 }
 
 // CTA Messages:
@@ -73,15 +74,15 @@ interface TrainingLabCTAState {
 
 #### Report Contents
 
-| Section | Description | Data Source |
-|---------|-------------|-------------|
-| Summary | 2-3 sentence key takeaway | AI-generated |
-| Scores | 4 metrics (0-100): Volume, Intensity, Balance, Recovery | AI-generated |
-| Insights | 3-5 prioritized observations with recommendations | AI-generated |
-| Alerts | Flagged issues (plateaus, overtraining, swap patterns) | AI-generated |
-| Volume Chart | Sets per muscle group over time | Client-rendered from aggregated data |
-| RPE Trend | Average RPE per workout over time | Client-rendered from aggregated data |
-| Exercise Trends | Top exercises with progression indicators | Client-rendered from aggregated data |
+| Section         | Description                                             | Data Source                          |
+| --------------- | ------------------------------------------------------- | ------------------------------------ |
+| Summary         | 2-3 sentence key takeaway                               | AI-generated                         |
+| Scores          | 4 metrics (0-100): Volume, Intensity, Balance, Recovery | AI-generated                         |
+| Insights        | 3-5 prioritized observations with recommendations       | AI-generated                         |
+| Alerts          | Flagged issues (plateaus, overtraining, swap patterns)  | AI-generated                         |
+| Volume Chart    | Sets per muscle group over time                         | Client-rendered from aggregated data |
+| RPE Trend       | Average RPE per workout over time                       | Client-rendered from aggregated data |
+| Exercise Trends | Top exercises with progression indicators               | Client-rendered from aggregated data |
 
 #### Output Schemas
 
@@ -89,37 +90,48 @@ interface TrainingLabCTAState {
 
 ```typescript
 interface TrainingLabReport {
-  type: "full";
-  summary: string;
-  scores: {
-    volumeAdherence: number;      // 0-100: Are they hitting target volume?
-    intensityManagement: number;  // 0-100: RPE consistency and progression
-    muscleBalance: number;        // 0-100: Push/pull/legs distribution
-    recoverySignals: number;      // 0-100: Signs of adequate recovery
-  };
-  insights: Array<{
-    category: "volume" | "intensity" | "balance" | "recovery" | "progression" | "technique";
-    observation: string;          // What the data shows
-    recommendation: string;       // Actionable next step
-    priority: "high" | "medium" | "low";
-  }>;
-  alerts: Array<{
-    type: "plateau" | "overtraining" | "imbalance" | "swap_pattern" | "insufficient_data";
-    exercise?: string;            // Specific exercise if applicable
-    message: string;
-  }>;
-  // Pre-aggregated chart data (NOT generated by AI, computed server-side)
-  chartData: {
-    volumeByMuscle: Array<{ muscle: string; week: string; sets: number }>;
-    rpeByWorkout: Array<{ date: string; avgRpe: number }>;
-    exerciseTrends: Array<{ 
-      exercise: string; 
-      sessions: number; 
-      trend: "up" | "down" | "flat";
-      topWeight: number;
-      avgRpe: number;
-    }>;
-  };
+	type: "full";
+	summary: string;
+	scores: {
+		volumeAdherence: number; // 0-100: Are they hitting target volume?
+		intensityManagement: number; // 0-100: RPE consistency and progression
+		muscleBalance: number; // 0-100: Push/pull/legs distribution
+		recoverySignals: number; // 0-100: Signs of adequate recovery
+	};
+	insights: Array<{
+		category:
+			| "volume"
+			| "intensity"
+			| "balance"
+			| "recovery"
+			| "progression"
+			| "technique";
+		observation: string; // What the data shows
+		recommendation: string; // Actionable next step
+		priority: "high" | "medium" | "low";
+	}>;
+	alerts: Array<{
+		type:
+			| "plateau"
+			| "overtraining"
+			| "imbalance"
+			| "swap_pattern"
+			| "insufficient_data";
+		exercise?: string; // Specific exercise if applicable
+		message: string;
+	}>;
+	// Pre-aggregated chart data (NOT generated by AI, computed server-side)
+	chartData: {
+		volumeByMuscle: Array<{ muscle: string; week: string; sets: number }>;
+		rpeByWorkout: Array<{ date: string; avgRpe: number }>;
+		exerciseTrends: Array<{
+			exercise: string;
+			sessions: number;
+			trend: "up" | "down" | "flat";
+			topWeight: number;
+			avgRpe: number;
+		}>;
+	};
 }
 ```
 
@@ -127,22 +139,22 @@ interface TrainingLabReport {
 
 ```typescript
 interface TrainingSnapshot {
-  type: "snapshot";
-  summary: string;                // Brief, encouraging summary
-  volumeBreakdown: {
-    strongestArea: string;        // Muscle group with most volume
-    totalSets: number;
-    avgSetsPerWorkout: number;
-  };
-  observations: Array<{
-    type: "positive" | "neutral" | "suggestion";
-    message: string;
-  }>;
-  nextMilestone: string;          // "Log 1 more workout for full insights"
-  // Simpler chart data for snapshot
-  chartData: {
-    volumeByMuscle: Array<{ muscle: string; sets: number }>;
-  };
+	type: "snapshot";
+	summary: string; // Brief, encouraging summary
+	volumeBreakdown: {
+		strongestArea: string; // Muscle group with most volume
+		totalSets: number;
+		avgSetsPerWorkout: number;
+	};
+	observations: Array<{
+		type: "positive" | "neutral" | "suggestion";
+		message: string;
+	}>;
+	nextMilestone: string; // "Log 1 more workout for full insights"
+	// Simpler chart data for snapshot
+	chartData: {
+		volumeByMuscle: Array<{ muscle: string; sets: number }>;
+	};
 }
 ```
 
@@ -159,59 +171,61 @@ interface TrainingSnapshot {
 
 #### Swap Reasons
 
-| Reason | Code | Follow-up Behavior |
-|--------|------|-------------------|
-| Equipment is busy | `equipment_busy` | Session-only swap, no follow-up |
-| I don't have this equipment | `equipment_unavailable` | Prompt to update equipment profile |
-| Causing discomfort/pain | `discomfort` | End-of-workout prompt + weekly summary flag |
-| Want variety | `variety` | No immediate follow-up, may note in weekly summary |
+| Reason                      | Code                    | Follow-up Behavior                                 |
+| --------------------------- | ----------------------- | -------------------------------------------------- |
+| Equipment is busy           | `equipment_busy`        | Session-only swap, no follow-up                    |
+| I don't have this equipment | `equipment_unavailable` | Prompt to update equipment profile                 |
+| Causing discomfort/pain     | `discomfort`            | End-of-workout prompt + weekly summary flag        |
+| Want variety                | `variety`               | No immediate follow-up, may note in weekly summary |
 
 #### Conditional Follow-up Logic
 
 ```typescript
 interface SwapFollowUp {
-  // Show at end of workout?
-  endOfWorkoutPrompt: boolean;
-  promptMessage?: string;
-  
-  // Include in weekly Training Lab?
-  flagForWeeklySummary: boolean;
-  
-  // Suggest profile update?
-  suggestProfileUpdate: boolean;
-  profileUpdateType?: "equipment";
+	// Show at end of workout?
+	endOfWorkoutPrompt: boolean;
+	promptMessage?: string;
+
+	// Include in weekly Training Lab?
+	flagForWeeklySummary: boolean;
+
+	// Suggest profile update?
+	suggestProfileUpdate: boolean;
+	profileUpdateType?: "equipment";
 }
 
 function getSwapFollowUp(reason: SwapReason): SwapFollowUp {
-  switch (reason) {
-    case "equipment_busy":
-      return { 
-        endOfWorkoutPrompt: false, 
-        flagForWeeklySummary: false,
-        suggestProfileUpdate: false 
-      };
-    case "equipment_unavailable":
-      return { 
-        endOfWorkoutPrompt: true,
-        promptMessage: "You mentioned you don't have [equipment]. Update your equipment profile?",
-        flagForWeeklySummary: false,
-        suggestProfileUpdate: true,
-        profileUpdateType: "equipment"
-      };
-    case "discomfort":
-      return { 
-        endOfWorkoutPrompt: true,
-        promptMessage: "You swapped [exercise] due to discomfort. Would you like to permanently replace it in your routine?",
-        flagForWeeklySummary: true,
-        suggestProfileUpdate: false
-      };
-    case "variety":
-      return { 
-        endOfWorkoutPrompt: false, 
-        flagForWeeklySummary: true, // May suggest rotation slot
-        suggestProfileUpdate: false 
-      };
-  }
+	switch (reason) {
+		case "equipment_busy":
+			return {
+				endOfWorkoutPrompt: false,
+				flagForWeeklySummary: false,
+				suggestProfileUpdate: false,
+			};
+		case "equipment_unavailable":
+			return {
+				endOfWorkoutPrompt: true,
+				promptMessage:
+					"You mentioned you don't have [equipment]. Update your equipment profile?",
+				flagForWeeklySummary: false,
+				suggestProfileUpdate: true,
+				profileUpdateType: "equipment",
+			};
+		case "discomfort":
+			return {
+				endOfWorkoutPrompt: true,
+				promptMessage:
+					"You swapped [exercise] due to discomfort. Would you like to permanently replace it in your routine?",
+				flagForWeeklySummary: true,
+				suggestProfileUpdate: false,
+			};
+		case "variety":
+			return {
+				endOfWorkoutPrompt: false,
+				flagForWeeklySummary: true, // May suggest rotation slot
+				suggestProfileUpdate: false,
+			};
+	}
 }
 ```
 
@@ -219,14 +233,14 @@ function getSwapFollowUp(reason: SwapReason): SwapFollowUp {
 
 ```typescript
 interface SmartSwapResponse {
-  alternatives: Array<{
-    exercise: string;
-    reasoning: string;           // Biomechanical rationale (1-2 sentences)
-    equipmentNeeded: string[];
-    muscleEmphasis: string;      // How it compares to original
-    difficultyAdjustment?: "easier" | "similar" | "harder";
-  }>;
-  note?: string;                 // Optional insight (e.g., "This is your 3rd swap for rows due to discomfort")
+	alternatives: Array<{
+		exercise: string;
+		reasoning: string; // Biomechanical rationale (1-2 sentences)
+		equipmentNeeded: string[];
+		muscleEmphasis: string; // How it compares to original
+		difficultyAdjustment?: "easier" | "similar" | "harder";
+	}>;
+	note?: string; // Optional insight (e.g., "This is your 3rd swap for rows due to discomfort")
 }
 ```
 
@@ -244,11 +258,11 @@ Track swap events for Training Lab analysis and follow-up prompts.
 exerciseSwaps: defineTable({
   userId: v.id("users"),
   workoutId: v.id("workouts"),
-  
+
   // What was swapped
   originalExercise: v.string(),
   substitutedExercise: v.string(),
-  
+
   // Why
   reason: v.union(
     v.literal("equipment_busy"),
@@ -256,15 +270,15 @@ exerciseSwaps: defineTable({
     v.literal("discomfort"),
     v.literal("variety")
   ),
-  
+
   // Context for AI
   originalMuscleGroups: v.optional(v.array(v.string())),
   originalEquipment: v.optional(v.string()),
-  
+
   // Follow-up tracking
   permanentSwapPromptShown: v.optional(v.boolean()),
   permanentSwapAccepted: v.optional(v.boolean()),
-  
+
   createdAt: v.number(),
 })
   .index("by_user", ["userId"])
@@ -277,14 +291,14 @@ exerciseSwaps: defineTable({
 
 The existing `assessments` table already supports our needs. We'll use it with:
 
-| Field | Training Lab Usage |
-|-------|-------------------|
-| `subjectType` | `"weekly_review"` |
-| `model` | `"gemini-2.5-flash"` |
-| `summary` | AI-generated summary |
-| `insights` | Structured insights array |
-| `scores` | Volume/Intensity/Balance/Recovery scores |
-| `tokenUsage` | Track input/output tokens for cost management |
+| Field         | Training Lab Usage                            |
+| ------------- | --------------------------------------------- |
+| `subjectType` | `"weekly_review"`                             |
+| `model`       | `"gemini-2.5-flash"`                          |
+| `summary`     | AI-generated summary                          |
+| `insights`    | Structured insights array                     |
+| `scores`      | Volume/Intensity/Balance/Recovery scores      |
+| `tokenUsage`  | Track input/output tokens for cost management |
 
 ### 3.3 Assessment Details for Chart Data
 
@@ -292,23 +306,23 @@ Store pre-computed chart data in `assessmentDetails.contentMarkdown` as JSON:
 
 ```typescript
 interface AssessmentDetailsContent {
-  // Full report for display
-  report: TrainingLabReport;
-  
-  // Raw aggregated data (for re-rendering charts without AI call)
-  rawAggregates: {
-    periodStart: string;
-    periodEnd: string;
-    totalWorkouts: number;
-    volumeByMuscle: Record<string, number>;
-    exerciseStats: Array<{
-      name: string;
-      totalSets: number;
-      avgWeight: number;
-      avgRpe: number;
-      sessions: number;
-    }>;
-  };
+	// Full report for display
+	report: TrainingLabReport;
+
+	// Raw aggregated data (for re-rendering charts without AI call)
+	rawAggregates: {
+		periodStart: string;
+		periodEnd: string;
+		totalWorkouts: number;
+		volumeByMuscle: Record<string, number>;
+		exerciseStats: Array<{
+			name: string;
+			totalSets: number;
+			avgWeight: number;
+			avgRpe: number;
+			sessions: number;
+		}>;
+	};
 }
 ```
 
@@ -324,40 +338,40 @@ interface AssessmentDetailsContent {
 // convex/ai/aggregators.ts
 
 interface AggregatedWorkoutData {
-  period: {
-    start: string;      // ISO date
-    end: string;        // ISO date
-    workouts: number;
-    totalSets: number;
-  };
-  
-  // Volume by muscle group
-  volumeByMuscle: Array<{
-    muscle: string;
-    sets: number;
-    avgRpe: number;
-  }>;
-  
-  // Exercise-level trends
-  exerciseTrends: Array<{
-    exercise: string;
-    kind: "lifting" | "cardio";
-    sessions: number;
-    totalSets: number;
-    topWeight?: number;
-    avgRpe?: number;
-    progression: "up" | "down" | "flat";
-  }>;
-  
-  // Swap patterns
-  swapSummary: Array<{
-    exercise: string;
-    reason: string;
-    count: number;
-  }>;
-  
-  // Previous context
-  lastAssessmentSummary?: string;
+	period: {
+		start: string; // ISO date
+		end: string; // ISO date
+		workouts: number;
+		totalSets: number;
+	};
+
+	// Volume by muscle group
+	volumeByMuscle: Array<{
+		muscle: string;
+		sets: number;
+		avgRpe: number;
+	}>;
+
+	// Exercise-level trends
+	exerciseTrends: Array<{
+		exercise: string;
+		kind: "lifting" | "cardio";
+		sessions: number;
+		totalSets: number;
+		topWeight?: number;
+		avgRpe?: number;
+		progression: "up" | "down" | "flat";
+	}>;
+
+	// Swap patterns
+	swapSummary: Array<{
+		exercise: string;
+		reason: string;
+		count: number;
+	}>;
+
+	// Previous context
+	lastAssessmentSummary?: string;
 }
 ```
 
@@ -387,10 +401,10 @@ Use short keys to minimize tokens:
 
 ### 4.3 Context Tiers
 
-| Feature | User Profile | Workout Data | Additional | Est. Tokens |
-|---------|--------------|--------------|------------|-------------|
-| Training Lab | Full (goals, experience, equipment) | 7-30 day aggregates | Swap history, previous summary | 400-600 |
-| Smart Swap | Equipment only | Current exercise + last 3 sessions | Reason, recent muscle volume | 150-250 |
+| Feature      | User Profile                        | Workout Data                       | Additional                     | Est. Tokens |
+| ------------ | ----------------------------------- | ---------------------------------- | ------------------------------ | ----------- |
+| Training Lab | Full (goals, experience, equipment) | 7-30 day aggregates                | Swap history, previous summary | 400-600     |
+| Smart Swap   | Equipment only                      | Current exercise + last 3 sessions | Reason, recent muscle volume   | 150-250     |
 
 ### 4.4 Input Payload Schemas
 
@@ -398,45 +412,48 @@ Use short keys to minimize tokens:
 
 ```typescript
 interface TrainingLabPayload {
-  // User context (compact)
-  user: {
-    g: string[];        // goals
-    xp: string;         // experience level
-    eq: string[];       // equipment
-    days: number;       // weekly availability
-  };
-  
-  // Period info
-  period: {
-    start: string;
-    end: string;
-    n: number;          // workout count
-  };
-  
-  // Aggregated data
-  vol: Array<{          // volume by muscle
-    m: string;          // muscle
-    s: number;          // sets
-    r: number;          // avg rpe
-  }>;
-  
-  trends: Array<{       // exercise trends
-    ex: string;
-    k: "l" | "c";       // kind: lifting/cardio
-    n: number;          // sessions
-    s: number;          // total sets
-    w?: number;         // top weight
-    r?: number;         // avg rpe
-    d: "u" | "d" | "f"; // direction: up/down/flat
-  }>;
-  
-  swaps?: Array<{       // swap history
-    ex: string;
-    reason: string;
-    n: number;          // count
-  }>;
-  
-  prev?: string;        // previous assessment summary (1-2 sentences)
+	// User context (compact)
+	user: {
+		g: string[]; // goals
+		xp: string; // experience level
+		eq: string[]; // equipment
+		days: number; // weekly availability
+	};
+
+	// Period info
+	period: {
+		start: string;
+		end: string;
+		n: number; // workout count
+	};
+
+	// Aggregated data
+	vol: Array<{
+		// volume by muscle
+		m: string; // muscle
+		s: number; // sets
+		r: number; // avg rpe
+	}>;
+
+	trends: Array<{
+		// exercise trends
+		ex: string;
+		k: "l" | "c"; // kind: lifting/cardio
+		n: number; // sessions
+		s: number; // total sets
+		w?: number; // top weight
+		r?: number; // avg rpe
+		d: "u" | "d" | "f"; // direction: up/down/flat
+	}>;
+
+	swaps?: Array<{
+		// swap history
+		ex: string;
+		reason: string;
+		n: number; // count
+	}>;
+
+	prev?: string; // previous assessment summary (1-2 sentences)
 }
 ```
 
@@ -444,29 +461,30 @@ interface TrainingLabPayload {
 
 ```typescript
 interface SmartSwapPayload {
-  // User equipment only
-  eq: string[];
-  
-  // Current exercise context
-  curr: {
-    ex: string;                // exercise name
-    muscles: string[];         // target muscles
-    equip: string;             // equipment used
-    recent: Array<{            // last 3 sessions
-      wt: number;
-      reps: number;
-      rpe: number;
-    }>;
-  };
-  
-  // Swap context
-  reason: "busy" | "unavail" | "pain" | "variety";
-  
-  // Recent training context (for imbalance awareness)
-  recentVol?: Array<{
-    m: string;                 // muscle
-    s: number;                 // sets (last 7 days)
-  }>;
+	// User equipment only
+	eq: string[];
+
+	// Current exercise context
+	curr: {
+		ex: string; // exercise name
+		muscles: string[]; // target muscles
+		equip: string; // equipment used
+		recent: Array<{
+			// last 3 sessions
+			wt: number;
+			reps: number;
+			rpe: number;
+		}>;
+	};
+
+	// Swap context
+	reason: "busy" | "unavail" | "pain" | "variety";
+
+	// Recent training context (for imbalance awareness)
+	recentVol?: Array<{
+		m: string; // muscle
+		s: number; // sets (last 7 days)
+	}>;
 }
 ```
 
@@ -624,117 +642,121 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 
 export const generateReport = action({
-  args: {
-    periodDays: v.optional(v.number()), // Default 7
-    reportType: v.union(v.literal("snapshot"), v.literal("full")),
-  },
-  handler: async (ctx, args): Promise<TrainingLabReport | TrainingSnapshot> => {
-    // 1. Get authenticated user
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-    
-    // 2. Get user record and check Pro status
-    const user = await ctx.runQuery(internal.users.getByClerkId, { 
-      clerkId: identity.subject 
-    });
-    if (!user) throw new Error("User not found");
-    if (user.tier !== "pro") throw new Error("Pro feature");
-    
-    // 3. Aggregate workout data (internal query)
-    const aggregated = await ctx.runQuery(internal.ai.aggregateWorkoutData, {
-      userId: user._id,
-      days: args.periodDays ?? 7,
-    });
-    
-    // 4. Validate workout count matches report type
-    const workoutCount = aggregated.period.workouts;
-    if (args.reportType === "full" && workoutCount < 5) {
-      throw new Error("Full report requires 5+ workouts");
-    }
-    if (args.reportType === "snapshot" && workoutCount < 3) {
-      throw new Error("Snapshot requires 3+ workouts");
-    }
-    
-    // 5. Select appropriate prompt based on report type
-    const systemPrompt = args.reportType === "full" 
-      ? TRAINING_LAB_FULL_PROMPT 
-      : TRAINING_LAB_SNAPSHOT_PROMPT;
-    
-    // 6. Get previous assessment summary for continuity (full report only)
-    const previousSummary = args.reportType === "full"
-      ? await ctx.runQuery(internal.ai.getLastAssessmentSummary, { userId: user._id })
-      : undefined;
-    
-    // 7. Build compact payload
-    const payload = buildTrainingLabPayload(user, aggregated, previousSummary);
-    
-    // 8. Call Gemini
-    const startTime = Date.now();
-    const response = await callGemini({
-      systemPrompt,
-      userMessage: JSON.stringify(payload),
-      responseFormat: "json",
-    });
-    const latencyMs = Date.now() - startTime;
-    
-    // 9. Parse response based on report type
-    if (args.reportType === "snapshot") {
-      const result = JSON.parse(response.text) as TrainingSnapshotAIResponse;
-      
-      const snapshot: TrainingSnapshot = {
-        type: "snapshot",
-        ...result,
-        chartData: {
-          volumeByMuscle: aggregated.volumeByMuscle,
-        },
-      };
-      
-      // Store snapshot assessment
-      await ctx.runMutation(internal.ai.storeAssessment, {
-        userId: user._id,
-        subjectType: "weekly_review",
-        subjectSubtype: "snapshot",
-        model: "gemini-2.5-flash",
-        report: snapshot,
-        tokenUsage: {
-          input: response.usageMetadata.promptTokenCount,
-          output: response.usageMetadata.candidatesTokenCount,
-        },
-        latencyMs,
-      });
-      
-      return snapshot;
-    }
-    
-    // Full report
-    const result = JSON.parse(response.text) as TrainingLabAIResponse;
-    
-    const report: TrainingLabReport = {
-      type: "full",
-      ...result,
-      chartData: {
-        volumeByMuscle: aggregated.volumeByMuscleOverTime,
-        rpeByWorkout: aggregated.rpeByWorkout,
-        exerciseTrends: aggregated.exerciseTrends,
-      },
-    };
-    
-    // Store full assessment
-    await ctx.runMutation(internal.ai.storeAssessment, {
-      userId: user._id,
-      subjectType: "weekly_review",
-      subjectSubtype: "full",
-      model: "gemini-2.5-flash",
-      report,
-      tokenUsage: {
-        input: response.usageMetadata.promptTokenCount,
-        output: response.usageMetadata.candidatesTokenCount,
-      },
-      latencyMs,
-    });
-    
-    return report;
-  },
+	args: {
+		periodDays: v.optional(v.number()), // Default 7
+		reportType: v.union(v.literal("snapshot"), v.literal("full")),
+	},
+	handler: async (ctx, args): Promise<TrainingLabReport | TrainingSnapshot> => {
+		// 1. Get authenticated user
+		const identity = await ctx.auth.getUserIdentity();
+		if (!identity) throw new Error("Unauthorized");
+
+		// 2. Get user record and check Pro status
+		const user = await ctx.runQuery(internal.users.getByClerkId, {
+			clerkId: identity.subject,
+		});
+		if (!user) throw new Error("User not found");
+		if (user.tier !== "pro") throw new Error("Pro feature");
+
+		// 3. Aggregate workout data (internal query)
+		const aggregated = await ctx.runQuery(internal.ai.aggregateWorkoutData, {
+			userId: user._id,
+			days: args.periodDays ?? 7,
+		});
+
+		// 4. Validate workout count matches report type
+		const workoutCount = aggregated.period.workouts;
+		if (args.reportType === "full" && workoutCount < 5) {
+			throw new Error("Full report requires 5+ workouts");
+		}
+		if (args.reportType === "snapshot" && workoutCount < 3) {
+			throw new Error("Snapshot requires 3+ workouts");
+		}
+
+		// 5. Select appropriate prompt based on report type
+		const systemPrompt =
+			args.reportType === "full"
+				? TRAINING_LAB_FULL_PROMPT
+				: TRAINING_LAB_SNAPSHOT_PROMPT;
+
+		// 6. Get previous assessment summary for continuity (full report only)
+		const previousSummary =
+			args.reportType === "full"
+				? await ctx.runQuery(internal.ai.getLastAssessmentSummary, {
+						userId: user._id,
+					})
+				: undefined;
+
+		// 7. Build compact payload
+		const payload = buildTrainingLabPayload(user, aggregated, previousSummary);
+
+		// 8. Call Gemini
+		const startTime = Date.now();
+		const response = await callGemini({
+			systemPrompt,
+			userMessage: JSON.stringify(payload),
+			responseFormat: "json",
+		});
+		const latencyMs = Date.now() - startTime;
+
+		// 9. Parse response based on report type
+		if (args.reportType === "snapshot") {
+			const result = JSON.parse(response.text) as TrainingSnapshotAIResponse;
+
+			const snapshot: TrainingSnapshot = {
+				type: "snapshot",
+				...result,
+				chartData: {
+					volumeByMuscle: aggregated.volumeByMuscle,
+				},
+			};
+
+			// Store snapshot assessment
+			await ctx.runMutation(internal.ai.storeAssessment, {
+				userId: user._id,
+				subjectType: "weekly_review",
+				subjectSubtype: "snapshot",
+				model: "gemini-2.5-flash",
+				report: snapshot,
+				tokenUsage: {
+					input: response.usageMetadata.promptTokenCount,
+					output: response.usageMetadata.candidatesTokenCount,
+				},
+				latencyMs,
+			});
+
+			return snapshot;
+		}
+
+		// Full report
+		const result = JSON.parse(response.text) as TrainingLabAIResponse;
+
+		const report: TrainingLabReport = {
+			type: "full",
+			...result,
+			chartData: {
+				volumeByMuscle: aggregated.volumeByMuscleOverTime,
+				rpeByWorkout: aggregated.rpeByWorkout,
+				exerciseTrends: aggregated.exerciseTrends,
+			},
+		};
+
+		// Store full assessment
+		await ctx.runMutation(internal.ai.storeAssessment, {
+			userId: user._id,
+			subjectType: "weekly_review",
+			subjectSubtype: "full",
+			model: "gemini-2.5-flash",
+			report,
+			tokenUsage: {
+				input: response.usageMetadata.promptTokenCount,
+				output: response.usageMetadata.candidatesTokenCount,
+			},
+			latencyMs,
+		});
+
+		return report;
+	},
 });
 ```
 
@@ -747,104 +769,108 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 
 export const getAlternatives = action({
-  args: {
-    workoutId: v.id("workouts"),
-    exerciseName: v.string(),
-    reason: v.union(
-      v.literal("equipment_busy"),
-      v.literal("equipment_unavailable"),
-      v.literal("discomfort"),
-      v.literal("variety")
-    ),
-  },
-  handler: async (ctx, args): Promise<SmartSwapResponse> => {
-    // 1. Auth + Pro check
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-    
-    const user = await ctx.runQuery(internal.users.getByClerkId, { 
-      clerkId: identity.subject 
-    });
-    if (!user) throw new Error("User not found");
-    if (user.tier !== "pro") throw new Error("Pro feature");
-    
-    // 2. Get exercise context
-    const exerciseContext = await ctx.runQuery(internal.ai.getExerciseContext, {
-      userId: user._id,
-      exerciseName: args.exerciseName,
-    });
-    
-    // 3. Get recent volume for imbalance awareness
-    const recentVolume = await ctx.runQuery(internal.ai.getRecentMuscleVolume, {
-      userId: user._id,
-      days: 7,
-    });
-    
-    // 4. Check for recurring swap pattern
-    const swapHistory = await ctx.runQuery(internal.ai.getSwapHistory, {
-      userId: user._id,
-      exerciseName: args.exerciseName,
-    });
-    
-    // 5. Build compact payload
-    const payload: SmartSwapPayload = {
-      eq: user.equipment ?? [],
-      curr: {
-        ex: args.exerciseName,
-        muscles: exerciseContext.muscleGroups,
-        equip: exerciseContext.equipment,
-        recent: exerciseContext.recentSessions,
-      },
-      reason: args.reason === "equipment_busy" ? "busy" 
-            : args.reason === "equipment_unavailable" ? "unavail"
-            : args.reason === "discomfort" ? "pain" 
-            : "variety",
-      recentVol: recentVolume,
-    };
-    
-    // Add swap history context if relevant
-    if (swapHistory.length > 0 && args.reason === "discomfort") {
-      payload.swapCount = swapHistory.length;
-    }
-    
-    // 6. Call Gemini
-    const response = await callGemini({
-      systemPrompt: SMART_SWAP_SYSTEM_PROMPT,
-      userMessage: JSON.stringify(payload),
-      responseFormat: "json",
-    });
-    
-    const result = JSON.parse(response.text) as SmartSwapResponse;
-    
-    // 7. Record swap event (for Training Lab analysis)
-    await ctx.runMutation(internal.ai.recordSwap, {
-      userId: user._id,
-      workoutId: args.workoutId,
-      originalExercise: args.exerciseName,
-      // Will be updated when user selects an alternative
-      substitutedExercise: null,
-      reason: args.reason,
-      originalMuscleGroups: exerciseContext.muscleGroups,
-      originalEquipment: exerciseContext.equipment,
-    });
-    
-    return result;
-  },
+	args: {
+		workoutId: v.id("workouts"),
+		exerciseName: v.string(),
+		reason: v.union(
+			v.literal("equipment_busy"),
+			v.literal("equipment_unavailable"),
+			v.literal("discomfort"),
+			v.literal("variety")
+		),
+	},
+	handler: async (ctx, args): Promise<SmartSwapResponse> => {
+		// 1. Auth + Pro check
+		const identity = await ctx.auth.getUserIdentity();
+		if (!identity) throw new Error("Unauthorized");
+
+		const user = await ctx.runQuery(internal.users.getByClerkId, {
+			clerkId: identity.subject,
+		});
+		if (!user) throw new Error("User not found");
+		if (user.tier !== "pro") throw new Error("Pro feature");
+
+		// 2. Get exercise context
+		const exerciseContext = await ctx.runQuery(internal.ai.getExerciseContext, {
+			userId: user._id,
+			exerciseName: args.exerciseName,
+		});
+
+		// 3. Get recent volume for imbalance awareness
+		const recentVolume = await ctx.runQuery(internal.ai.getRecentMuscleVolume, {
+			userId: user._id,
+			days: 7,
+		});
+
+		// 4. Check for recurring swap pattern
+		const swapHistory = await ctx.runQuery(internal.ai.getSwapHistory, {
+			userId: user._id,
+			exerciseName: args.exerciseName,
+		});
+
+		// 5. Build compact payload
+		const payload: SmartSwapPayload = {
+			eq: user.equipment ?? [],
+			curr: {
+				ex: args.exerciseName,
+				muscles: exerciseContext.muscleGroups,
+				equip: exerciseContext.equipment,
+				recent: exerciseContext.recentSessions,
+			},
+			reason:
+				args.reason === "equipment_busy"
+					? "busy"
+					: args.reason === "equipment_unavailable"
+						? "unavail"
+						: args.reason === "discomfort"
+							? "pain"
+							: "variety",
+			recentVol: recentVolume,
+		};
+
+		// Add swap history context if relevant
+		if (swapHistory.length > 0 && args.reason === "discomfort") {
+			payload.swapCount = swapHistory.length;
+		}
+
+		// 6. Call Gemini
+		const response = await callGemini({
+			systemPrompt: SMART_SWAP_SYSTEM_PROMPT,
+			userMessage: JSON.stringify(payload),
+			responseFormat: "json",
+		});
+
+		const result = JSON.parse(response.text) as SmartSwapResponse;
+
+		// 7. Record swap event (for Training Lab analysis)
+		await ctx.runMutation(internal.ai.recordSwap, {
+			userId: user._id,
+			workoutId: args.workoutId,
+			originalExercise: args.exerciseName,
+			// Will be updated when user selects an alternative
+			substitutedExercise: null,
+			reason: args.reason,
+			originalMuscleGroups: exerciseContext.muscleGroups,
+			originalEquipment: exerciseContext.equipment,
+		});
+
+		return result;
+	},
 });
 
 // Called when user selects an alternative
 export const confirmSwap = action({
-  args: {
-    swapId: v.id("exerciseSwaps"),
-    selectedExercise: v.string(),
-  },
-  handler: async (ctx, args) => {
-    // Update the swap record with the chosen alternative
-    await ctx.runMutation(internal.ai.updateSwapSelection, {
-      swapId: args.swapId,
-      substitutedExercise: args.selectedExercise,
-    });
-  },
+	args: {
+		swapId: v.id("exerciseSwaps"),
+		selectedExercise: v.string(),
+	},
+	handler: async (ctx, args) => {
+		// Update the swap record with the chosen alternative
+		await ctx.runMutation(internal.ai.updateSwapSelection, {
+			swapId: args.swapId,
+			substitutedExercise: args.selectedExercise,
+		});
+	},
 });
 ```
 
@@ -854,82 +880,83 @@ export const confirmSwap = action({
 // convex/ai/trainingLab.ts
 
 export const getCtaState = query({
-  args: {},
-  handler: async (ctx): Promise<TrainingLabCTAState | null> => {
-    const user = await getCurrentUser(ctx, { requireAuth: false });
-    if (!user) return null;
-    
-    // Free users see teaser
-    if (user.tier !== "pro") {
-      return {
-        show: true,
-        isPro: false,
-        workoutsSinceLastReport: 0,
-        reportType: "none",
-        message: "Unlock AI-powered training insights",
-      };
-    }
-    
-    // Get last assessment date
-    const lastAssessment = await ctx.db
-      .query("assessments")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .filter((q) => q.eq(q.field("subjectType"), "weekly_review"))
-      .order("desc")
-      .first();
-    
-    const lastAssessmentDate = lastAssessment?.createdAt ?? 0;
-    
-    // Count workouts since last assessment
-    const workoutsSince = await ctx.db
-      .query("workouts")
-      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
-      .filter((q) => 
-        q.and(
-          q.gt(q.field("startedAt"), lastAssessmentDate),
-          q.eq(q.field("status"), "completed")
-        )
-      )
-      .collect();
-    
-    const count = workoutsSince.length;
-    
-    // Tiered messaging based on workout count
-    if (count < 3) {
-      // Not enough data - show progress indicator
-      return {
-        show: true,
-        isPro: true,
-        workoutsSinceLastReport: count,
-        reportType: "none",
-        message: `Log ${3 - count} more workout${3 - count > 1 ? "s" : ""} to unlock your training snapshot`,
-      };
-    }
-    
-    if (count < 5) {
-      // Snapshot tier (3-4 workouts)
-      return {
-        show: true,
-        isPro: true,
-        workoutsSinceLastReport: count,
-        reportType: "snapshot",
-        message: "Your training snapshot is ready",
-      };
-    }
-    
-    // Full report tier (5+ workouts)
-    const message = count >= 7 
-      ? `Big week! ${count} workouts logged. Your full report is ready.`
-      : `${count} workouts logged. Your Training Lab report is ready.`;
-    
-    return {
-      show: true,
-      isPro: true,
-      workoutsSinceLastReport: count,
-      reportType: "full",
-      message,
-    };
-  },
+	args: {},
+	handler: async (ctx): Promise<TrainingLabCTAState | null> => {
+		const user = await getCurrentUser(ctx, { requireAuth: false });
+		if (!user) return null;
+
+		// Free users see teaser
+		if (user.tier !== "pro") {
+			return {
+				show: true,
+				isPro: false,
+				workoutsSinceLastReport: 0,
+				reportType: "none",
+				message: "Unlock AI-powered training insights",
+			};
+		}
+
+		// Get last assessment date
+		const lastAssessment = await ctx.db
+			.query("assessments")
+			.withIndex("by_user", (q) => q.eq("userId", user._id))
+			.filter((q) => q.eq(q.field("subjectType"), "weekly_review"))
+			.order("desc")
+			.first();
+
+		const lastAssessmentDate = lastAssessment?.createdAt ?? 0;
+
+		// Count workouts since last assessment
+		const workoutsSince = await ctx.db
+			.query("workouts")
+			.withIndex("by_user_started", (q) => q.eq("userId", user._id))
+			.filter((q) =>
+				q.and(
+					q.gt(q.field("startedAt"), lastAssessmentDate),
+					q.eq(q.field("status"), "completed")
+				)
+			)
+			.collect();
+
+		const count = workoutsSince.length;
+
+		// Tiered messaging based on workout count
+		if (count < 3) {
+			// Not enough data - show progress indicator
+			return {
+				show: true,
+				isPro: true,
+				workoutsSinceLastReport: count,
+				reportType: "none",
+				message: `Log ${3 - count} more workout${3 - count > 1 ? "s" : ""} to unlock your training snapshot`,
+			};
+		}
+
+		if (count < 5) {
+			// Snapshot tier (3-4 workouts)
+			return {
+				show: true,
+				isPro: true,
+				workoutsSinceLastReport: count,
+				reportType: "snapshot",
+				message: "Your training snapshot is ready",
+			};
+		}
+
+		// Full report tier (5+ workouts)
+		const message =
+			count >= 7
+				? `Big week! ${count} workouts logged. Your full report is ready.`
+				: `${count} workouts logged. Your Training Lab report is ready.`;
+
+		return {
+			show: true,
+			isPro: true,
+			workoutsSinceLastReport: count,
+			reportType: "full",
+			message,
+		};
+	},
 });
 ```
 
@@ -947,44 +974,45 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
 interface GeminiCallOptions {
-  systemPrompt: string;
-  userMessage: string;
-  responseFormat?: "json" | "text";
-  maxTokens?: number;
+	systemPrompt: string;
+	userMessage: string;
+	responseFormat?: "json" | "text";
+	maxTokens?: number;
 }
 
 interface GeminiResponse {
-  text: string;
-  usageMetadata: {
-    promptTokenCount: number;
-    candidatesTokenCount: number;
-    totalTokenCount: number;
-  };
+	text: string;
+	usageMetadata: {
+		promptTokenCount: number;
+		candidatesTokenCount: number;
+		totalTokenCount: number;
+	};
 }
 
-export async function callGemini(options: GeminiCallOptions): Promise<GeminiResponse> {
-  const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.5-flash-preview-05-20",
-    systemInstruction: options.systemPrompt,
-    generationConfig: {
-      responseMimeType: options.responseFormat === "json" 
-        ? "application/json" 
-        : "text/plain",
-      maxOutputTokens: options.maxTokens ?? 1024,
-    },
-  });
-  
-  const result = await model.generateContent(options.userMessage);
-  const response = result.response;
-  
-  return {
-    text: response.text(),
-    usageMetadata: response.usageMetadata ?? {
-      promptTokenCount: 0,
-      candidatesTokenCount: 0,
-      totalTokenCount: 0,
-    },
-  };
+export async function callGemini(
+	options: GeminiCallOptions
+): Promise<GeminiResponse> {
+	const model = genAI.getGenerativeModel({
+		model: "gemini-2.5-flash-preview-05-20",
+		systemInstruction: options.systemPrompt,
+		generationConfig: {
+			responseMimeType:
+				options.responseFormat === "json" ? "application/json" : "text/plain",
+			maxOutputTokens: options.maxTokens ?? 1024,
+		},
+	});
+
+	const result = await model.generateContent(options.userMessage);
+	const response = result.response;
+
+	return {
+		text: response.text(),
+		usageMetadata: response.usageMetadata ?? {
+			promptTokenCount: 0,
+			candidatesTokenCount: 0,
+			totalTokenCount: 0,
+		},
+	};
 }
 ```
 
@@ -1002,6 +1030,7 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 ### 8.1 Training Lab Dashboard Card
 
 **Pro User — Full Report Ready (5+ workouts)**:
+
 ```
 ┌────────────────────────────────────────┐
 │ 🧪 Training Lab                    PRO │
@@ -1014,6 +1043,7 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 ```
 
 **Pro User — Snapshot Ready (3-4 workouts)**:
+
 ```
 ┌────────────────────────────────────────┐
 │ 🧪 Training Lab                    PRO │
@@ -1028,6 +1058,7 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 ```
 
 **Pro User — Not Ready (0-2 workouts)**:
+
 ```
 ┌────────────────────────────────────────┐
 │ 🧪 Training Lab                    PRO │
@@ -1040,6 +1071,7 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 ```
 
 **Free User (Teaser)**:
+
 ```
 ┌────────────────────────────────────────┐
 │ 🧪 Training Lab                   🔒   │
@@ -1131,6 +1163,7 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 ### 8.3 Smart Swap Flow
 
 **Step 1: Swap Button on Exercise Card**
+
 ```
 ┌────────────────────────────────────────┐
 │ Barbell Row                     [...] │
@@ -1142,6 +1175,7 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 ```
 
 **Step 2: Reason Selection (Bottom Sheet)**
+
 ```
 ┌────────────────────────────────────────┐
 │ Why swap Barbell Row?                  │
@@ -1162,6 +1196,7 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 ```
 
 **Step 3: AI Alternatives (Loading → Results)**
+
 ```
 ┌────────────────────────────────────────┐
 │ Alternatives for Barbell Row           │
@@ -1195,6 +1230,7 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 ```
 
 **Step 4: End-of-Workout Prompt (if applicable)**
+
 ```
 ┌────────────────────────────────────────┐
 │ Workout Complete! 🎉                   │
@@ -1219,12 +1255,12 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 
 ### 9.1 AI Call Failures
 
-| Error Type | User Message | Action |
-|------------|--------------|--------|
-| Rate limit | "AI is busy. Try again in a moment." | Exponential backoff, max 3 retries |
-| Timeout | "Analysis is taking longer than expected." | Show partial data if available |
-| Invalid response | "Couldn't generate insights. Try again." | Log for debugging, don't store |
-| Insufficient data | "Not enough workout data for analysis." | Show in UI, guide to log more |
+| Error Type        | User Message                               | Action                             |
+| ----------------- | ------------------------------------------ | ---------------------------------- |
+| Rate limit        | "AI is busy. Try again in a moment."       | Exponential backoff, max 3 retries |
+| Timeout           | "Analysis is taking longer than expected." | Show partial data if available     |
+| Invalid response  | "Couldn't generate insights. Try again."   | Log for debugging, don't store     |
+| Insufficient data | "Not enough workout data for analysis."    | Show in UI, guide to log more      |
 
 ### 9.2 Graceful Degradation
 
@@ -1238,35 +1274,37 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 
 ### 10.1 Token Budget per Feature
 
-| Feature | Input Tokens | Output Tokens | Est. Cost (Gemini Flash) |
-|---------|--------------|---------------|-------------------------|
-| Training Lab | 400-600 | 300-500 | ~$0.001-0.002 |
-| Smart Swap | 150-250 | 150-250 | ~$0.0005-0.001 |
+| Feature      | Input Tokens | Output Tokens | Est. Cost (Gemini Flash) |
+| ------------ | ------------ | ------------- | ------------------------ |
+| Training Lab | 400-600      | 300-500       | ~$0.001-0.002            |
+| Smart Swap   | 150-250      | 150-250       | ~$0.0005-0.001           |
 
 ### 10.2 Monthly Allowance (Pro Users)
 
-| Action Type | Monthly Limit | Overage |
-|-------------|---------------|---------|
-| Training Lab Reports | 8 (2/week) | $0.10 each |
-| Smart Swaps | Unlimited | N/A (low cost) |
+| Action Type          | Monthly Limit | Overage        |
+| -------------------- | ------------- | -------------- |
+| Training Lab Reports | 8 (2/week)    | $0.10 each     |
+| Smart Swaps          | Unlimited     | N/A (low cost) |
 
 ### 10.3 Usage Tracking
 
 Track in `assessments.tokenUsage`:
+
 ```typescript
 tokenUsage: {
-  input: number;
-  output: number;
-  costUsd: number; // Calculated at time of call
+	input: number;
+	output: number;
+	costUsd: number; // Calculated at time of call
 }
 ```
 
 Monthly aggregation query for dashboard display:
+
 ```typescript
 export const getMonthlyAiUsage = query({
-  handler: async (ctx) => {
-    // Sum tokenUsage.costUsd for current month
-  },
+	handler: async (ctx) => {
+		// Sum tokenUsage.costUsd for current month
+	},
 });
 ```
 
@@ -1275,12 +1313,14 @@ export const getMonthlyAiUsage = query({
 ## 11. Implementation Phases
 
 ### Phase 1: Foundation (Week 1)
+
 - [ ] Add `exerciseSwaps` table to schema
 - [ ] Create Gemini client utility (`convex/ai/gemini.ts`)
 - [ ] Implement data aggregation queries
 - [ ] Add environment variables
 
 ### Phase 2: Training Lab (Week 2)
+
 - [ ] Build `generateReport` action
 - [ ] Build `getCtaState` query
 - [ ] Create Training Lab report page UI
@@ -1288,6 +1328,7 @@ export const getMonthlyAiUsage = query({
 - [ ] Add Pro gate + teaser for free users
 
 ### Phase 3: Smart Swap (Week 3)
+
 - [ ] Build `getAlternatives` action
 - [ ] Build swap reason bottom sheet UI
 - [ ] Build alternatives display UI
@@ -1295,6 +1336,7 @@ export const getMonthlyAiUsage = query({
 - [ ] Add end-of-workout prompt logic
 
 ### Phase 4: Integration & Polish (Week 4)
+
 - [ ] Connect swap history to Training Lab insights
 - [ ] Add usage tracking and monthly limits
 - [ ] Error handling and fallbacks
@@ -1305,13 +1347,13 @@ export const getMonthlyAiUsage = query({
 
 ## 12. Future Enhancements
 
-| Feature | Description | Priority |
-|---------|-------------|----------|
-| Push notifications | "Your weekly report is ready" | High |
-| Routine auto-adjustment | AI modifies routine based on Training Lab | Medium |
-| Voice logging | "Log bench 135 for 10" → Smart Swap context | Low |
-| Comparison reports | Month-over-month Training Lab comparison | Medium |
-| Exercise video links | Smart Swap shows form videos for alternatives | Low |
+| Feature                 | Description                                   | Priority |
+| ----------------------- | --------------------------------------------- | -------- |
+| Push notifications      | "Your weekly report is ready"                 | High     |
+| Routine auto-adjustment | AI modifies routine based on Training Lab     | Medium   |
+| Voice logging           | "Log bench 135 for 10" → Smart Swap context   | Low      |
+| Comparison reports      | Month-over-month Training Lab comparison      | Medium   |
+| Exercise video links    | Smart Swap shows form videos for alternatives | Low      |
 
 ---
 
@@ -1329,21 +1371,24 @@ export const getMonthlyAiUsage = query({
 ## 14. Testing Strategy
 
 ### Unit Tests
+
 - Aggregation functions (volume calculation, trend detection)
 - Payload building functions
 - Response parsing
 
 ### Integration Tests
+
 - Full Training Lab flow with mock Gemini responses
 - Smart Swap flow with various reasons
 - Pro gate enforcement
 
 ### Manual Testing
+
 - Various workout patterns (high volume, low volume, imbalanced)
 - Edge cases (no data, single exercise, all cardio)
 - UI/UX on mobile devices
 
 ---
 
-*Last Updated: December 27, 2025*
-*Version: 1.0*
+_Last Updated: December 27, 2025_
+_Version: 1.0_

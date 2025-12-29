@@ -1,10 +1,11 @@
-# OpenFit Technical Specification
+# OpenTrainer Technical Specification
 
 ## 1. Overview
 
-OpenFit is a minimalist, AI-first workout tracking application designed for a mobile-first PWA experience. It focuses on rapid logging in a gym environment, leveraging a real-time data layer (Convex) and advanced AI orchestration (OpenRouter) to provide routines and performance assessments.
+OpenTrainer is a minimalist, AI-first workout tracking application designed for a mobile-first PWA experience. It focuses on rapid logging in a gym environment, leveraging a real-time data layer (Convex) and advanced AI orchestration (OpenRouter) to provide routines and performance assessments.
 
 ### Vision
+
 - **Gym-Floor Ready**: Large tap targets (48px+), one-handed operation, works offline
 - **AI-Powered**: Routine generation and weekly performance assessments
 - **Import Anywhere**: Paste ChatGPT-generated routines as JSON
@@ -13,22 +14,22 @@ OpenFit is a minimalist, AI-first workout tracking application designed for a mo
 
 ## 2. Core Tech Stack
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Runtime | Bun | Fast package management, native TypeScript |
-| Framework | Next.js 16 (App Router) | Server components, PWA support |
-| Database | Convex | Real-time sync, document model, serverless |
-| Auth | Clerk | OAuth, session management, user profiles |
-| Styling | Tailwind CSS + shadcn/ui | Mobile-first components |
-| AI | OpenRouter | Claude 3.5 Sonnet / GPT-4o-mini orchestration |
-| Deployment | Vercel + Convex Cloud | Global edge, auto-scaling |
+| Component  | Technology               | Purpose                                       |
+| ---------- | ------------------------ | --------------------------------------------- |
+| Runtime    | Bun                      | Fast package management, native TypeScript    |
+| Framework  | Next.js 16 (App Router)  | Server components, PWA support                |
+| Database   | Convex                   | Real-time sync, document model, serverless    |
+| Auth       | Clerk                    | OAuth, session management, user profiles      |
+| Styling    | Tailwind CSS + shadcn/ui | Mobile-first components                       |
+| AI         | OpenRouter               | Claude 3.5 Sonnet / GPT-4o-mini orchestration |
+| Deployment | Vercel + Convex Cloud    | Global edge, auto-scaling                     |
 
 ---
 
 ## 3. Project Structure
 
 ```
-openfit/
+opentrainer/
 ├── convex/
 │   ├── schema.ts           # Convex data model (7 tables)
 │   ├── auth.config.ts      # Clerk JWT authentication config
@@ -74,15 +75,15 @@ openfit/
 
 ### 4.1 Tables Overview
 
-| Table | Purpose |
-|-------|---------|
-| `users` | Extended profile data synced from Clerk + onboarding info |
-| `exercises` | Canonical exercise definitions (system + user-created) |
-| `workouts` | Individual workout sessions |
-| `entries` | Exercise logs within workouts (lifting sets, cardio intervals) |
-| `routines` | Workout templates for repeatable programs |
-| `assessments` | AI-generated performance feedback |
-| `assessmentDetails` | Long-form AI content (separate for performance) |
+| Table               | Purpose                                                        |
+| ------------------- | -------------------------------------------------------------- |
+| `users`             | Extended profile data synced from Clerk + onboarding info      |
+| `exercises`         | Canonical exercise definitions (system + user-created)         |
+| `workouts`          | Individual workout sessions                                    |
+| `entries`           | Exercise logs within workouts (lifting sets, cardio intervals) |
+| `routines`          | Workout templates for repeatable programs                      |
+| `assessments`       | AI-generated performance feedback                              |
+| `assessmentDetails` | Long-form AI content (separate for performance)                |
 
 ### 4.2 Entry Discriminated Union
 
@@ -127,12 +128,12 @@ The `entries` table uses a discriminated union pattern via the `kind` field:
 
 ### 5.1 Mobile-First Logging
 
-| Feature | Implementation |
-|---------|---------------|
+| Feature           | Implementation                                                |
+| ----------------- | ------------------------------------------------------------- |
 | Large Tap Targets | Minimum 48px interactive area, shadcn Button with `size="lg"` |
-| Optimistic UI | Convex mutations with `clientId` for instant feedback |
-| Rest Timer | Haptic feedback via `navigator.vibrate()` |
-| Offline Support | PWA shell caching, IndexedDB queue for offline sets |
+| Optimistic UI     | Convex mutations with `clientId` for instant feedback         |
+| Rest Timer        | Haptic feedback via `navigator.vibrate()`                     |
+| Offline Support   | PWA shell caching, IndexedDB queue for offline sets           |
 
 ### 5.2 The "Add Set" Flow
 
@@ -147,11 +148,11 @@ The `entries` table uses a discriminated union pattern via the `kind` field:
 
 ### 5.3 AI Integration (OpenRouter)
 
-| Feature | Model | Trigger |
-|---------|-------|---------|
-| Routine Generation | Claude 3.5 Sonnet | Onboarding / manual request |
-| Weekly Assessment | GPT-4o-mini | Every Sunday (cron) |
-| Exercise Suggestions | GPT-4o-mini | After 3+ weeks of data |
+| Feature              | Model             | Trigger                     |
+| -------------------- | ----------------- | --------------------------- |
+| Routine Generation   | Claude 3.5 Sonnet | Onboarding / manual request |
+| Weekly Assessment    | GPT-4o-mini       | Every Sunday (cron)         |
+| Exercise Suggestions | GPT-4o-mini       | After 3+ weeks of data      |
 
 ### 5.4 Onboarding Flow
 
@@ -168,10 +169,10 @@ The `entries` table uses a discriminated union pattern via the `kind` field:
 
 ### 6.1 Pricing Tiers
 
-| Tier | Price | Features |
-|------|-------|----------|
-| Free | $0 | Core logging, manual routines, 1 AI generation |
-| Pro | $5/mo | Unlimited AI, weekly assessments, JSON import/export |
+| Tier | Price | Features                                             |
+| ---- | ----- | ---------------------------------------------------- |
+| Free | $0    | Core logging, manual routines, 1 AI generation       |
+| Pro  | $5/mo | Unlimited AI, weekly assessments, JSON import/export |
 
 ### 6.2 AI Cost Management
 
@@ -184,6 +185,7 @@ The `entries` table uses a discriminated union pattern via the `kind` field:
 ## 7. Implementation Roadmap
 
 ### Phase 1: Foundation (Weeks 1-2) ✅ COMPLETE
+
 - [x] Setup Bun + Next.js 16 + Convex + Clerk
 - [x] Define Convex schema (7 tables)
 - [x] Create ConvexClientProvider with Clerk integration
@@ -191,6 +193,7 @@ The `entries` table uses a discriminated union pattern via the `kind` field:
 - [x] Build landing page with auth
 
 ### Phase 2: Logging UX (Weeks 3-4) ✅ COMPLETE
+
 - [x] Build "Active Workout" screen (`/workout/active`)
 - [x] Implement set increment steppers (weight/reps) with tap-to-edit
 - [x] Add rest timer with haptic feedback and adjustable duration
@@ -203,12 +206,14 @@ The `entries` table uses a discriminated union pattern via the `kind` field:
 - [x] Auto-create user on first dashboard visit
 
 ### Phase 3: AI & Imports (Weeks 5-6)
+
 - [ ] Integrate OpenRouter for routine generation
 - [ ] Build JSON import parser
 - [ ] Create "Assessment" Convex Action
 - [ ] Design assessment UI cards
 
 ### Phase 4: Polish & Launch (Weeks 7-8)
+
 - [ ] Stripe integration for Pro tier
 - [ ] Performance profiling
 - [ ] Public beta launch
@@ -218,32 +223,32 @@ The `entries` table uses a discriminated union pattern via the `kind` field:
 
 ## 8. JSON Import Schema
 
-### 8.1 OpenFit Import Format (v1)
+### 8.1 OpenTrainer Import Format (v1)
 
 ```json
 {
-  "version": 1,
-  "name": "Push Pull Legs",
-  "days": [
-    {
-      "name": "Push Day",
-      "exercises": [
-        {
-          "name": "Bench Press",
-          "kind": "lifting",
-          "targetSets": 4,
-          "targetReps": "6-8",
-          "targetRpe": 8
-        },
-        {
-          "name": "Stairstepper",
-          "kind": "cardio",
-          "targetDuration": 15,
-          "targetIntensity": 7
-        }
-      ]
-    }
-  ]
+	"version": 1,
+	"name": "Push Pull Legs",
+	"days": [
+		{
+			"name": "Push Day",
+			"exercises": [
+				{
+					"name": "Bench Press",
+					"kind": "lifting",
+					"targetSets": 4,
+					"targetReps": "6-8",
+					"targetRpe": 8
+				},
+				{
+					"name": "Stairstepper",
+					"kind": "cardio",
+					"targetDuration": 15,
+					"targetIntensity": 7
+				}
+			]
+		}
+	]
 }
 ```
 
@@ -252,7 +257,7 @@ The `entries` table uses a discriminated union pattern via the `kind` field:
 Users can use this prompt to generate compatible JSON:
 
 ```
-Act as a fitness data architect for the OpenFit app.
+Act as a fitness data architect for the OpenTrainer app.
 
 Convert my workout routine into JSON with this exact format:
 {
@@ -285,6 +290,7 @@ Rules:
 ## 9. Environment Variables
 
 ### Local (.env.local)
+
 ```bash
 # Convex (from dashboard.convex.dev)
 CONVEX_DEPLOYMENT=
@@ -299,6 +305,7 @@ OPENROUTER_API_KEY=
 ```
 
 ### Convex Dashboard Environment Variables
+
 ```bash
 # Required for Clerk JWT validation
 # Get from Clerk Dashboard → API Keys → JWT Issuer
@@ -306,6 +313,7 @@ CLERK_JWT_ISSUER_DOMAIN=https://your-app.clerk.accounts.dev
 ```
 
 ### Clerk Setup Requirements
+
 1. Create a "convex" JWT Template in Clerk Dashboard → JWT Templates → New → Convex
 
 ---

@@ -30,6 +30,13 @@ SCHEMA:
   ]
 }
 
+INPUT DATA STRUCTURE:
+- notes (IMPORTANT): User's own notes about exercises during workouts. Each note has:
+  - ex: Exercise name
+  - txt: The user's note (e.g., "felt twinge in shoulder", "grip was slipping", "easy day")
+  - date: When the note was recorded
+  These notes provide qualitative context that numbers alone cannot capture.
+
 GUIDELINES:
 1. Be evidence-based. Reference specific data points from the input.
 2. Prioritize injury prevention over performance gains.
@@ -38,6 +45,7 @@ GUIDELINES:
 5. Consider the user's stated goals and experience level.
 6. If swap patterns indicate recurring discomfort, flag it prominently.
 7. Use layperson-friendly language but maintain scientific accuracy.
+8. PAY ATTENTION TO USER NOTES: If notes mention pain, discomfort, or injury signals, prioritize addressing these. Notes about fatigue, grip issues, or equipment problems are valuable context for recommendations.
 
 SCORING RUBRIC:
 - volumeAdherence: Are they hitting reasonable weekly set targets for their goals?
@@ -53,6 +61,10 @@ INPUT DATA STRUCTURE:
 - period: Current week's workouts (start, end, count)
 - vol: Volume by muscle group this week
 - trends: Exercise-level performance this week
+- notes: User's own notes about exercises during workouts. Each note has:
+  - ex: Exercise name
+  - txt: The user's note (e.g., "felt twinge in shoulder", "grip was slipping", "easy day")
+  - date: When the note was recorded
 - hist (CRITICAL): Complete training history including:
   - age: Days since first workout (training age)
   - total: Lifetime workout count
@@ -107,6 +119,7 @@ GUIDELINES:
 8. If muscle distribution shows imbalance (>40% in one area), suggest diversification.
 9. Consider their goals (from user profile) when making recommendations.
 10. Keep progressIndicators to 2-4 items, recommendations to 1-2 items.
+11. PAY ATTENTION TO USER NOTES: Notes mentioning pain, discomfort, fatigue, or issues provide valuable qualitative context. If notes suggest injury risk or recurring problems, address them in recommendations.
 
 CONSISTENCY RATING RUBRIC:
 - excellent: avg 4+ workouts/week, current streak 4+ weeks

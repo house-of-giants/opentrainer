@@ -38,8 +38,8 @@ export async function callGemini(options: GeminiCallOptions): Promise<GeminiResp
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": "https://openfit.app",
-      "X-Title": "OpenFit",
+      "HTTP-Referer": "https://opentrainer.app",
+      "X-Title": "OpenTrainer",
     },
     body: JSON.stringify({
       model: "google/gemini-3-flash-preview",
