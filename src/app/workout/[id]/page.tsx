@@ -162,11 +162,11 @@ export default function WorkoutDetailsPage() {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Date</p>
-              <p className="font-medium">{formatDate(workout.startedAt)}</p>
+              <p className="font-medium font-mono">{formatDate(workout.startedAt)}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Time</p>
-              <p className="font-medium">
+              <p className="font-medium font-mono tabular-nums">
                 {formatTime(workout.startedAt)}
                 {workout.completedAt && ` - ${formatTime(workout.completedAt)}`}
               </p>
@@ -174,7 +174,7 @@ export default function WorkoutDetailsPage() {
             {workout.summary?.totalDurationMinutes && (
               <div>
                 <p className="text-muted-foreground">Duration</p>
-                <p className="font-medium flex items-center gap-1">
+                <p className="font-medium font-mono tabular-nums flex items-center gap-1">
                   <Clock className="h-4 w-4" />
                   {formatDuration(workout.summary.totalDurationMinutes)}
                 </p>
@@ -183,7 +183,7 @@ export default function WorkoutDetailsPage() {
             {workout.summary?.totalVolume && workout.summary.totalVolume > 0 && (
               <div>
                 <p className="text-muted-foreground">Volume</p>
-                <p className="font-medium flex items-center gap-1">
+                <p className="font-medium font-mono tabular-nums flex items-center gap-1">
                   <Weight className="h-4 w-4" />
                   {workout.summary.totalVolume.toLocaleString()} lb
                 </p>
@@ -224,11 +224,11 @@ export default function WorkoutDetailsPage() {
                             )}
                           </span>
                           <div className="flex items-center gap-3">
-                            <span className="font-medium">
+                            <span className="font-medium font-mono tabular-nums">
                               {entry.lifting.weight ?? 0} {entry.lifting.unit}
                             </span>
                             <span className="text-muted-foreground">x</span>
-                            <span className="font-medium">
+                            <span className="font-medium font-mono tabular-nums">
                               {entry.lifting.reps ?? 0} reps
                             </span>
                             {entry.lifting.rpe && (
@@ -251,7 +251,7 @@ export default function WorkoutDetailsPage() {
                             {entry.cardio.mode}
                           </span>
                           <div className="flex items-center gap-3">
-                            <span className="font-medium">
+                            <span className="font-medium font-mono tabular-nums">
                               {formatCardioDuration(entry.cardio.durationSeconds)}
                             </span>
                             {entry.cardio.intensity && (

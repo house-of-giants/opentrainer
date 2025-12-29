@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUser } from "./auth";
 
 // ============================================================================
 // System Exercises Data
@@ -69,13 +70,13 @@ const SYSTEM_EXERCISES = [
   // --------------------------------------------------------------------------
   // Legs - Quads
   // --------------------------------------------------------------------------
-  { name: "Squat", aliases: ["Back Squat", "Barbell Squat"], category: "lifting", muscleGroups: ["quads", "glutes", "hamstrings"], equipment: ["barbell"] },
+  { name: "Squat", aliases: ["Back Squat", "Barbell Squat", "Air Squat"], category: "lifting", muscleGroups: ["quads", "glutes", "hamstrings"], equipment: ["barbell", "bodyweight"] },
   { name: "Front Squat", aliases: ["Barbell Front Squat"], category: "lifting", muscleGroups: ["quads", "glutes"], equipment: ["barbell"] },
   { name: "Leg Press", aliases: ["Machine Leg Press"], category: "lifting", muscleGroups: ["quads", "glutes"], equipment: ["machine"] },
   { name: "Leg Extension", aliases: ["Machine Leg Extension"], category: "lifting", muscleGroups: ["quads"], equipment: ["machine"] },
   { name: "Hack Squat", aliases: ["Machine Hack Squat"], category: "lifting", muscleGroups: ["quads", "glutes"], equipment: ["machine"] },
-  { name: "Goblet Squat", aliases: ["Dumbbell Goblet Squat"], category: "lifting", muscleGroups: ["quads", "glutes"], equipment: ["dumbbell"] },
-  { name: "Bulgarian Split Squat", aliases: ["Rear Foot Elevated Split Squat"], category: "lifting", muscleGroups: ["quads", "glutes"], equipment: ["dumbbell", "bench"] },
+  { name: "Goblet Squat", aliases: ["Dumbbell Goblet Squat"], category: "lifting", muscleGroups: ["quads", "glutes"], equipment: ["dumbbell", "bodyweight"] },
+  { name: "Bulgarian Split Squat", aliases: ["Rear Foot Elevated Split Squat"], category: "lifting", muscleGroups: ["quads", "glutes"], equipment: ["dumbbell", "bench", "bodyweight"] },
   { name: "Lunge", aliases: ["Walking Lunge", "Dumbbell Lunge"], category: "lifting", muscleGroups: ["quads", "glutes"], equipment: ["dumbbell", "bodyweight"] },
 
   // --------------------------------------------------------------------------
@@ -84,7 +85,7 @@ const SYSTEM_EXERCISES = [
   { name: "Romanian Deadlift", aliases: ["RDL", "Stiff Leg Deadlift"], category: "lifting", muscleGroups: ["hamstrings", "glutes"], equipment: ["barbell", "dumbbell"] },
   { name: "Leg Curl", aliases: ["Lying Leg Curl", "Hamstring Curl"], category: "lifting", muscleGroups: ["hamstrings"], equipment: ["machine"] },
   { name: "Seated Leg Curl", aliases: ["Seated Hamstring Curl"], category: "lifting", muscleGroups: ["hamstrings"], equipment: ["machine"] },
-  { name: "Hip Thrust", aliases: ["Barbell Hip Thrust", "Glute Bridge"], category: "lifting", muscleGroups: ["glutes", "hamstrings"], equipment: ["barbell", "bench"] },
+  { name: "Hip Thrust", aliases: ["Barbell Hip Thrust", "Glute Bridge"], category: "lifting", muscleGroups: ["glutes", "hamstrings"], equipment: ["barbell", "bench", "bodyweight"] },
   { name: "Glute Bridge", aliases: ["Bodyweight Glute Bridge"], category: "lifting", muscleGroups: ["glutes"], equipment: ["bodyweight"] },
   { name: "Good Morning", aliases: ["Barbell Good Morning"], category: "lifting", muscleGroups: ["hamstrings", "glutes", "back"], equipment: ["barbell"] },
   { name: "Sumo Deadlift", aliases: ["Wide Stance Deadlift"], category: "lifting", muscleGroups: ["glutes", "hamstrings", "quads"], equipment: ["barbell"] },
@@ -110,14 +111,18 @@ const SYSTEM_EXERCISES = [
   // --------------------------------------------------------------------------
   // Cardio
   // --------------------------------------------------------------------------
-  { name: "Running", aliases: ["Run", "Jogging", "Treadmill"], category: "cardio", muscleGroups: [], equipment: [], modality: "run" },
-  { name: "Cycling", aliases: ["Bike", "Stationary Bike"], category: "cardio", muscleGroups: [], equipment: [], modality: "bike" },
-  { name: "Rowing", aliases: ["Row", "Rowing Machine", "Erg"], category: "cardio", muscleGroups: [], equipment: [], modality: "row" },
-  { name: "Stair Climber", aliases: ["Stair Stepper", "StairMaster"], category: "cardio", muscleGroups: [], equipment: [], modality: "stairs" },
-  { name: "Elliptical", aliases: ["Elliptical Trainer"], category: "cardio", muscleGroups: [], equipment: [], modality: "elliptical" },
-  { name: "Jump Rope", aliases: ["Skipping"], category: "cardio", muscleGroups: [], equipment: [], modality: "jump_rope" },
-  { name: "Swimming", aliases: ["Swim"], category: "cardio", muscleGroups: [], equipment: [], modality: "swim" },
-  { name: "Walking", aliases: ["Walk", "Incline Walking"], category: "cardio", muscleGroups: [], equipment: [], modality: "walk" },
+  { name: "Running", aliases: ["Run", "Jogging", "Outdoor Run"], category: "cardio", muscleGroups: [], equipment: [], modality: "run", primaryMetric: "distance" },
+  { name: "Treadmill", aliases: ["Treadmill Run", "Indoor Run"], category: "cardio", muscleGroups: [], equipment: [], modality: "treadmill", primaryMetric: "duration" },
+  { name: "Cycling", aliases: ["Bike", "Outdoor Bike"], category: "cardio", muscleGroups: [], equipment: [], modality: "bike", primaryMetric: "distance" },
+  { name: "Stationary Bike", aliases: ["Indoor Bike", "Spin Bike"], category: "cardio", muscleGroups: [], equipment: [], modality: "stationary_bike", primaryMetric: "duration" },
+  { name: "Rowing", aliases: ["Row", "Rowing Machine", "Erg"], category: "cardio", muscleGroups: [], equipment: [], modality: "row", primaryMetric: "distance" },
+  { name: "Stair Climber", aliases: ["Stair Stepper", "StairMaster"], category: "cardio", muscleGroups: [], equipment: [], modality: "stairs", primaryMetric: "duration" },
+  { name: "Elliptical", aliases: ["Elliptical Trainer"], category: "cardio", muscleGroups: [], equipment: [], modality: "elliptical", primaryMetric: "duration" },
+  { name: "Jump Rope", aliases: ["Skipping"], category: "cardio", muscleGroups: [], equipment: [], modality: "jump_rope", primaryMetric: "duration" },
+  { name: "Swimming", aliases: ["Swim"], category: "cardio", muscleGroups: [], equipment: [], modality: "swim", primaryMetric: "distance" },
+  { name: "Walking", aliases: ["Walk", "Outdoor Walk"], category: "cardio", muscleGroups: [], equipment: [], modality: "walk", primaryMetric: "distance" },
+  { name: "Incline Walking", aliases: ["Treadmill Walk", "Indoor Walk"], category: "cardio", muscleGroups: [], equipment: [], modality: "incline_walk", primaryMetric: "duration" },
+  { name: "HIIT", aliases: ["High Intensity Interval Training", "Interval Training"], category: "cardio", muscleGroups: [], equipment: [], modality: "hiit", primaryMetric: "duration" },
 
   // --------------------------------------------------------------------------
   // Mobility
@@ -236,6 +241,7 @@ export const seedSystemExercises = mutation({
         muscleGroups: exercise.muscleGroups?.length ? [...exercise.muscleGroups] : undefined,
         equipment: exercise.equipment?.length ? [...exercise.equipment] : undefined,
         modality: "modality" in exercise ? exercise.modality : undefined,
+        primaryMetric: "primaryMetric" in exercise ? (exercise.primaryMetric as "duration" | "distance") : undefined,
         isSystemExercise: true,
         createdAt: now,
       });
@@ -244,6 +250,49 @@ export const seedSystemExercises = mutation({
     }
 
     return { added, total: SYSTEM_EXERCISES.length, skipped: SYSTEM_EXERCISES.length - added };
+  },
+});
+
+/**
+ * Update existing system exercises with latest data from SYSTEM_EXERCISES
+ * Use this after modifying equipment, aliases, or other fields in SYSTEM_EXERCISES
+ */
+export const updateSystemExercises = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const existing = await ctx.db
+      .query("exercises")
+      .filter((q) => q.eq(q.field("isSystemExercise"), true))
+      .collect();
+    
+    const existingByName = new Map(
+      existing.map(e => [e.name.toLowerCase(), e])
+    );
+    
+    let updated = 0;
+
+    for (const exercise of SYSTEM_EXERCISES) {
+      const existingExercise = existingByName.get(exercise.name.toLowerCase());
+      if (!existingExercise) continue;
+
+      const needsUpdate = 
+        JSON.stringify(existingExercise.aliases ?? []) !== JSON.stringify(exercise.aliases ?? []) ||
+        JSON.stringify(existingExercise.equipment ?? []) !== JSON.stringify(exercise.equipment ?? []) ||
+        JSON.stringify(existingExercise.muscleGroups ?? []) !== JSON.stringify(exercise.muscleGroups ?? []) ||
+        existingExercise.category !== exercise.category;
+
+      if (needsUpdate) {
+        await ctx.db.patch(existingExercise._id, {
+          aliases: exercise.aliases?.length ? [...exercise.aliases] : undefined,
+          equipment: exercise.equipment?.length ? [...exercise.equipment] : undefined,
+          muscleGroups: exercise.muscleGroups?.length ? [...exercise.muscleGroups] : undefined,
+          category: exercise.category as "lifting" | "cardio" | "mobility" | "other",
+        });
+        updated++;
+      }
+    }
+
+    return { updated, total: existing.length };
   },
 });
 
@@ -263,21 +312,11 @@ export const createExercise = mutation({
     muscleGroups: v.optional(v.array(v.string())),
     equipment: v.optional(v.array(v.string())),
     modality: v.optional(v.string()),
+    primaryMetric: v.optional(v.union(v.literal("duration"), v.literal("distance"))),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const id = await ctx.db.insert("exercises", {
       userId: user._id,
@@ -287,6 +326,7 @@ export const createExercise = mutation({
       muscleGroups: args.muscleGroups,
       equipment: args.equipment,
       modality: args.modality,
+      primaryMetric: args.primaryMetric,
       isSystemExercise: false,
       createdAt: Date.now(),
     });

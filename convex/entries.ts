@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUser } from "./auth";
 
 const liftingDataValidator = v.object({
   setNumber: v.number(),
@@ -11,6 +12,19 @@ const liftingDataValidator = v.object({
   isWarmup: v.optional(v.boolean()),
   tempo: v.optional(v.string()),
   restSeconds: v.optional(v.number()),
+});
+
+const cardioSetValidator = v.object({
+  type: v.union(
+    v.literal("warmup"),
+    v.literal("work"),
+    v.literal("rest"),
+    v.literal("cooldown")
+  ),
+  durationSeconds: v.number(),
+  distance: v.optional(v.number()),
+  intensity: v.optional(v.number()),
+  avgHeartRate: v.optional(v.number()),
 });
 
 const cardioDataValidator = v.object({
@@ -31,15 +45,20 @@ const cardioDataValidator = v.object({
       })
     )
   ),
+  primaryMetric: v.optional(v.union(v.literal("duration"), v.literal("distance"))),
+  vestWeight: v.optional(v.number()),
+  vestWeightUnit: v.optional(v.union(v.literal("kg"), v.literal("lb"))),
+  rpe: v.optional(v.number()),
+  intervalType: v.optional(v.union(
+    v.literal("steady"),
+    v.literal("hiit"),
+    v.literal("tabata"),
+    v.literal("emom"),
+    v.literal("custom")
+  )),
+  sets: v.optional(v.array(cardioSetValidator)),
 });
 
-async function requireAuth(ctx: { auth: { getUserIdentity: () => Promise<{ subject: string } | null> } }) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new Error("Not authenticated");
-  }
-  return identity;
-}
 
 export const addLiftingEntry = mutation({
   args: {
@@ -51,16 +70,8 @@ export const addLiftingEntry = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const workout = await ctx.db.get(args.workoutId);
     if (!workout || workout.userId !== user._id) {
@@ -108,16 +119,8 @@ export const addCardioEntry = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const workout = await ctx.db.get(args.workoutId);
     if (!workout || workout.userId !== user._id) {
@@ -162,16 +165,8 @@ export const updateLiftingEntry = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const entry = await ctx.db.get(args.entryId);
     if (!entry || entry.userId !== user._id) {
@@ -196,16 +191,8 @@ export const deleteEntry = mutation({
     entryId: v.id("entries"),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const entry = await ctx.db.get(args.entryId);
     if (!entry || entry.userId !== user._id) {
@@ -223,16 +210,7 @@ export const getEntriesByWorkout = query({
     workoutId: v.id("workouts"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
     if (!user) {
       return [];
     }
@@ -256,16 +234,7 @@ export const getLastSetForExercise = query({
     exerciseName: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
     if (!user) {
       return null;
     }

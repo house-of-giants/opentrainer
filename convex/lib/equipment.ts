@@ -1,0 +1,91 @@
+export const EQUIPMENT_CATEGORIES = {
+  freeWeights: [
+    "barbell",
+    "dumbbells",
+    "kettlebells",
+    "ez_curl_bar",
+  ],
+  racksAndBenches: [
+    "power_rack",
+    "squat_rack",
+    "smith_machine",
+    "flat_bench",
+    "incline_bench",
+    "adjustable_bench",
+  ],
+  cableMachines: [
+    "cable_machine",
+    "lat_pulldown",
+    "cable_crossover",
+  ],
+  legMachines: [
+    "leg_press",
+    "hack_squat",
+    "leg_curl",
+    "leg_extension",
+  ],
+  otherMachines: [
+    "chest_press_machine",
+    "shoulder_press_machine",
+    "row_machine",
+    "pec_deck",
+  ],
+  bodyweight: [
+    "pull_up_bar",
+    "dip_station",
+    "rings",
+  ],
+  accessories: [
+    "resistance_bands",
+    "trx",
+    "landmine",
+    "cable_attachments",
+  ],
+  cardio: [
+    "treadmill",
+    "rower",
+    "bike",
+    "stairmaster",
+    "elliptical",
+  ],
+} as const;
+
+export const ALL_EQUIPMENT_IDS = Object.values(EQUIPMENT_CATEGORIES).flat();
+
+export type EquipmentId = (typeof ALL_EQUIPMENT_IDS)[number];
+
+export const EQUIPMENT_DISPLAY_NAMES: Record<EquipmentId, string> = {
+  barbell: "Barbell",
+  dumbbells: "Dumbbells",
+  kettlebells: "Kettlebells",
+  ez_curl_bar: "EZ Curl Bar",
+  power_rack: "Power Rack",
+  squat_rack: "Squat Rack",
+  smith_machine: "Smith Machine",
+  flat_bench: "Flat Bench",
+  incline_bench: "Incline Bench",
+  adjustable_bench: "Adjustable Bench",
+  cable_machine: "Cable Machine",
+  lat_pulldown: "Lat Pulldown",
+  cable_crossover: "Cable Crossover",
+  leg_press: "Leg Press",
+  hack_squat: "Hack Squat",
+  leg_curl: "Leg Curl",
+  leg_extension: "Leg Extension",
+  chest_press_machine: "Chest Press Machine",
+  shoulder_press_machine: "Shoulder Press Machine",
+  row_machine: "Row Machine",
+  pec_deck: "Pec Deck",
+  pull_up_bar: "Pull-up Bar",
+  dip_station: "Dip Station",
+  rings: "Rings",
+  resistance_bands: "Resistance Bands",
+  trx: "TRX",
+  landmine: "Landmine",
+  cable_attachments: "Cable Attachments",
+  treadmill: "Treadmill",
+  rower: "Rower",
+  bike: "Bike",
+  stairmaster: "Stairmaster",
+  elliptical: "Elliptical",
+};

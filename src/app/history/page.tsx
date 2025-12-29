@@ -118,7 +118,7 @@ export default function HistoryPage() {
           <div className="space-y-6">
             {groupedWorkouts.map((group) => (
               <section key={group.key}>
-                <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+                <h2 className="mb-3 text-sm font-mono uppercase tracking-wider text-muted-foreground">
                   {group.label}
                 </h2>
                 <div className="space-y-2">
@@ -157,10 +157,10 @@ export default function HistoryPage() {
                           <div className="text-right">
                             {workout.summary && (
                               <>
-                                <p className="font-medium">
+                                <p className="font-mono font-medium tabular-nums">
                                   {workout.summary.totalSets ?? 0} sets
                                 </p>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-xs text-muted-foreground font-mono tabular-nums">
                                   {workout.summary.exerciseCount ?? 0} exercises
                                 </p>
                               </>

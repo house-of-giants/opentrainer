@@ -1,39 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useHaptic } from "@/hooks/use-haptic";
+import { Dumbbell, Heart, Plus, Search } from "lucide-react";
 
-const COMMON_EXERCISES = [
-  "Bench Press",
-  "Squat",
-  "Deadlift",
-  "Overhead Press",
-  "Barbell Row",
-  "Pull-ups",
-  "Dips",
-  "Lat Pulldown",
-  "Leg Press",
-  "Romanian Deadlift",
-  "Incline Bench Press",
-  "Cable Fly",
-  "Tricep Pushdown",
-  "Bicep Curl",
-  "Lateral Raise",
-];
+export interface ExerciseSelection {
+  name: string;
+  category: "lifting" | "cardio" | "mobility" | "other";
+  primaryMetric?: "duration" | "distance";
+  equipment?: string[];
+}
 
 interface AddExerciseSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelectExercise: (name: string) => void;
+  onSelectExercise: (exercise: ExerciseSelection) => void;
 }
 
 export function AddExerciseSheet({
@@ -42,36 +35,74 @@ export function AddExerciseSheet({
   onSelectExercise,
 }: AddExerciseSheetProps) {
   const [customExercise, setCustomExercise] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"lifting" | "cardio">("lifting");
   const { vibrate } = useHaptic();
 
-  const handleSelect = (name: string) => {
+  const exercises = useQuery(api.exercises.getExercises, {
+    category: activeTab,
+    search: searchQuery || undefined,
+  });
+
+  const handleSelect = (exercise: ExerciseSelection) => {
     vibrate("medium");
-    onSelectExercise(name);
+    onSelectExercise(exercise);
     onOpenChange(false);
     setCustomExercise("");
+    setSearchQuery("");
   };
 
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (customExercise.trim()) {
-      handleSelect(customExercise.trim());
+      handleSelect({
+        name: customExercise.trim(),
+        category: activeTab,
+        primaryMetric: activeTab === "cardio" ? "duration" : undefined,
+      });
     }
   };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh]">
+      <SheetContent side="bottom" className="h-[85vh] flex flex-col">
         <SheetHeader>
           <SheetTitle>Add Exercise</SheetTitle>
           <SheetDescription>
-            Select from common exercises or add your own
+            Select an exercise or create a custom one
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex flex-col gap-4 overflow-y-auto p-4">
+        <div className="flex-1 flex flex-col gap-4 px-4 overflow-hidden">
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as "lifting" | "cardio")}
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="lifting" className="flex items-center gap-2">
+                <Dumbbell className="h-4 w-4" />
+                Lifting
+              </TabsTrigger>
+              <TabsTrigger value="cardio" className="flex items-center gap-2">
+                <Heart className="h-4 w-4" />
+                Cardio
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search exercises..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-12 pl-10"
+            />
+          </div>
+
           <form onSubmit={handleCustomSubmit} className="flex gap-2">
             <Input
-              placeholder="Custom exercise name..."
+              placeholder={`Custom ${activeTab} exercise...`}
               value={customExercise}
               onChange={(e) => setCustomExercise(e.target.value)}
               className="h-12"
@@ -79,25 +110,47 @@ export function AddExerciseSheet({
             <Button
               type="submit"
               size="lg"
-              className="h-12 px-6"
+              className="h-12 px-4"
               disabled={!customExercise.trim()}
             >
-              Add
+              <Plus className="h-5 w-5" />
             </Button>
           </form>
 
-          <div className="grid grid-cols-1 gap-2">
-            {COMMON_EXERCISES.map((exercise) => (
-              <Button
-                key={exercise}
-                variant="outline"
-                size="lg"
-                className="h-14 justify-start text-left"
-                onClick={() => handleSelect(exercise)}
-              >
-                {exercise}
-              </Button>
-            ))}
+          <div className="flex-1 overflow-y-auto -mx-4 px-4 pb-8">
+            <div className="grid grid-cols-1 gap-2">
+              {exercises?.map((exercise) => (
+                <button
+                  key={exercise._id}
+                  className="flex items-center justify-between h-14 px-4 rounded-lg border bg-card text-left transition-colors hover:bg-muted/50 active:bg-muted/70"
+                  onClick={() =>
+                    handleSelect({
+                      name: exercise.name,
+                      category: exercise.category,
+                      primaryMetric: exercise.primaryMetric,
+                      equipment: exercise.equipment,
+                    })
+                  }
+                >
+                  <span className="font-medium truncate flex-1">{exercise.name}</span>
+                  {exercise.category === "cardio" && (
+                    <span className="text-xs text-muted-foreground ml-2 shrink-0">
+                      {exercise.primaryMetric === "distance" ? "Distance" : "Time"}
+                    </span>
+                  )}
+                </button>
+              ))}
+              {exercises?.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">
+                    No exercises found
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Add a custom exercise above
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </SheetContent>

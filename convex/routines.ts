@@ -1,13 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-
-async function requireAuth(ctx: { auth: { getUserIdentity: () => Promise<{ subject: string } | null> } }) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new Error("Not authenticated");
-  }
-  return identity;
-}
+import { getCurrentUser } from "./auth";
 
 const routineExerciseValidator = v.object({
   exerciseId: v.optional(v.id("exercises")),
@@ -35,16 +28,8 @@ export const createRoutine = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const now = Date.now();
 
@@ -71,16 +56,8 @@ export const createRoutineFromWorkout = mutation({
     dayName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const workout = await ctx.db.get(args.workoutId);
     if (!workout || workout.userId !== user._id) {
@@ -137,16 +114,7 @@ export const getRoutines = query({
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
     if (!user) {
       return [];
     }
@@ -168,16 +136,7 @@ export const getRoutines = query({
 export const getRoutine = query({
   args: { routineId: v.id("routines") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
     if (!user) {
       return null;
     }
@@ -201,16 +160,8 @@ export const updateRoutine = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const routine = await ctx.db.get(args.routineId);
     if (!routine || routine.userId !== user._id) {
@@ -235,16 +186,8 @@ export const importRoutineFromJson = mutation({
     json: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     let parsed: unknown;
     try {
@@ -334,16 +277,8 @@ export const importRoutineFromJson = mutation({
 export const deleteRoutine = mutation({
   args: { routineId: v.id("routines") },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const routine = await ctx.db.get(args.routineId);
     if (!routine || routine.userId !== user._id) {

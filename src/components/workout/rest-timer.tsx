@@ -122,7 +122,7 @@ export function RestTimer({
         </svg>
         <span
           className={cn(
-            "text-4xl font-bold tabular-nums",
+            "text-4xl font-mono font-bold tabular-nums",
             hasCompleted && "text-green-500"
           )}
         >

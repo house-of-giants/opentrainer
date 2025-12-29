@@ -42,57 +42,139 @@ export default function Home() {
       <main className="flex-1">
         <section className="mx-auto flex w-full max-w-6xl flex-col items-center justify-center gap-6 px-4 py-24 text-center sm:px-6 md:py-32 lg:px-8">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-            Track Workouts.
+            A workout tracker
             <br />
-            <span className="text-muted-foreground">Get AI Coaching.</span>
+            <span className="text-muted-foreground">that gets out of your way.</span>
           </h1>
           <p className="max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Minimalist workout logging designed for the gym floor. Large tap
-            targets, instant sync, and AI-powered routine suggestions.
+            A minimal workout tracker built for lifters who care about the
+            numbers. Big buttons, fast logging, no nonsense.
           </p>
           <div className="flex gap-4">
             <SignedOut>
               <SignUpButton mode="modal">
                 <Button size="lg" className="min-h-12 px-8">
-                  Start Free
+                  Start Logging
                 </Button>
               </SignUpButton>
             </SignedOut>
             <SignedIn>
-              <Link href="/workout/new">
+              <Link href="/dashboard">
                 <Button size="lg" className="min-h-12 px-8">
-                  Start Workout
+                  Go to Dashboard
                 </Button>
               </Link>
             </SignedIn>
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="grid gap-8 md:grid-cols-3">
+        <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
+          <div className="grid gap-6 md:grid-cols-3">
             <FeatureCard
-              title="Gym-Floor Ready"
-              description="48px+ tap targets, one-handed operation, works offline. Designed for sweaty hands and bad signal."
+              title="Log in Seconds"
+              description="Tap weight, tap reps, done. No menus to dig through, no animations to wait for. Just log your sets and move on."
             />
             <FeatureCard
-              title="AI Coach"
-              description="Get personalized routine suggestions and weekly performance assessments powered by Claude."
+              title="Built for the Gym Floor"
+              description="Log sets between reps, not after your session. Works with sweaty hands, bad signal, and zero patience for loading screens."
             />
             <FeatureCard
-              title="Import Anywhere"
-              description="Paste your ChatGPT routine as JSON. We'll parse it and create your program instantly."
+              title="Your Data, Your Way"
+              description="Export everything as JSON. No lock-in, no hostage data. Works alongside whatever else you use."
             />
           </div>
         </section>
+
+        <section className="border-y bg-muted/30">
+          <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                OpenFit Pro
+              </h2>
+              <p className="mt-2 text-muted-foreground">
+                For lifters who want an edge.
+              </p>
+            </div>
+            <div className="mx-auto mt-8 grid max-w-4xl gap-8 md:grid-cols-2">
+              <div className="space-y-4">
+                <h3 className="font-semibold">What you get</h3>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex gap-2">
+                    <span className="text-foreground">-</span>
+                    <span>
+                      <strong className="text-foreground">AI Routines</strong>{" "}
+                      — Generate training programs tailored to your goals and
+                      equipment
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-foreground">-</span>
+                    <span>
+                      <strong className="text-foreground">
+                        Weekly Assessments
+                      </strong>{" "}
+                      — Get performance insights based on your actual training
+                      data
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-foreground">-</span>
+                    <span>
+                      <strong className="text-foreground">Data Export</strong>{" "}
+                      — Full JSON export of your workout history
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-foreground">-</span>
+                    <span>
+                      <strong className="text-foreground">Priority Sync</strong>{" "}
+                      — Your data syncs first when servers are busy
+                    </span>
+                  </li>
+                </ul>
+              </div>
+              <div className="flex flex-col items-center justify-center rounded-lg border bg-card p-6 text-center">
+                <div className="text-3xl font-bold">$8</div>
+                <div className="text-sm text-muted-foreground">per month</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  or $72/year (save $24)
+                </div>
+                <SignedOut>
+                  <SignUpButton mode="modal">
+                    <Button className="mt-6 w-full" size="lg">
+                      Get Started
+                    </Button>
+                  </SignUpButton>
+                </SignedOut>
+                <SignedIn>
+                  <Link href="/dashboard" className="mt-6 w-full">
+                    <Button className="w-full" size="lg">
+                      Upgrade to Pro
+                    </Button>
+                  </Link>
+                </SignedIn>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Free tier includes core logging forever.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto w-full max-w-6xl px-4 py-12 text-center sm:px-6 lg:px-8">
+          <p className="text-muted-foreground">
+            No tracking pixels. No selling your data.
+            <br />
+            Just a workout log that works.
+          </p>
+        </section>
       </main>
 
-      <footer className="border-t py-6">
+      <footer className="border-t py-8">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row lg:px-8">
+          <p className="text-sm text-muted-foreground">OpenFit</p>
           <p className="text-sm text-muted-foreground">
-            Built with Convex, Clerk, and OpenRouter.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            $5/mo for Pro. No tracking. No BS.
+            Free forever. Pro at $8/mo.
           </p>
         </div>
       </footer>

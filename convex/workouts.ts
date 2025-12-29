@@ -1,13 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-
-async function requireAuth(ctx: { auth: { getUserIdentity: () => Promise<{ subject: string } | null> } }) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new Error("Not authenticated");
-  }
-  return identity;
-}
+import { getCurrentUser } from "./auth";
 
 export const createWorkout = mutation({
   args: {
@@ -16,16 +9,8 @@ export const createWorkout = mutation({
     routineDayIndex: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found. Please complete signup first.");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const existingWorkout = await ctx.db
       .query("workouts")
@@ -53,16 +38,7 @@ export const createWorkout = mutation({
 export const getActiveWorkout = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
     if (!user) {
       return null;
     }
@@ -80,23 +56,14 @@ export const getActiveWorkout = query({
 export const getWorkout = query({
   args: { workoutId: v.id("workouts") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
+    if (!user) {
       return null;
     }
 
     const workout = await ctx.db.get(args.workoutId);
 
-    if (!workout) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || workout.userId !== user._id) {
+    if (!workout || workout.userId !== user._id) {
       return null;
     }
 
@@ -110,16 +77,8 @@ export const completeWorkout = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const workout = await ctx.db.get(args.workoutId);
     if (!workout) {
@@ -177,16 +136,8 @@ export const cancelWorkout = mutation({
     workoutId: v.id("workouts"),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const workout = await ctx.db.get(args.workoutId);
     if (!workout) {
@@ -216,16 +167,7 @@ export const getWorkoutHistory = query({
     status: v.optional(v.union(v.literal("completed"), v.literal("cancelled"), v.literal("all"))),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
     if (!user) {
       return [];
     }
@@ -233,17 +175,18 @@ export const getWorkoutHistory = query({
     const limit = args.limit ?? 50;
     const statusFilter = args.status ?? "completed";
 
-    let workouts = await ctx.db
+    let query = ctx.db
       .query("workouts")
       .withIndex("by_user_started", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .take(limit);
+      .order("desc");
 
     if (statusFilter !== "all") {
-      workouts = workouts.filter((w) => w.status === statusFilter);
+      query = query.filter((q) => q.eq(q.field("status"), statusFilter));
     } else {
-      workouts = workouts.filter((w) => w.status !== "in_progress");
+      query = query.filter((q) => q.neq(q.field("status"), "in_progress"));
     }
+
+    const workouts = await query.take(limit);
 
     return workouts;
   },
@@ -252,16 +195,7 @@ export const getWorkoutHistory = query({
 export const getWorkoutWithEntries = query({
   args: { workoutId: v.id("workouts") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
     if (!user) {
       return null;
     }
@@ -286,16 +220,7 @@ export const getWorkoutWithEntries = query({
 export const getRoutineExercisesForWorkout = query({
   args: { workoutId: v.id("workouts") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
     if (!user) {
       return null;
     }
@@ -314,7 +239,22 @@ export const getRoutineExercisesForWorkout = query({
       return null;
     }
 
-    return routine.days[workout.routineDayIndex].exercises;
+    const exercises = routine.days[workout.routineDayIndex].exercises;
+
+    const exercisesWithEquipment = await Promise.all(
+      exercises.map(async (ex) => {
+        if (ex.exerciseId) {
+          const exerciseData = await ctx.db.get(ex.exerciseId);
+          return {
+            ...ex,
+            equipment: exerciseData?.equipment,
+          };
+        }
+        return ex;
+      })
+    );
+
+    return exercisesWithEquipment;
   },
 });
 
@@ -324,16 +264,8 @@ export const updateWorkoutTitle = mutation({
     title: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await requireAuth(ctx);
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
 
     const workout = await ctx.db.get(args.workoutId);
     if (!workout) {
@@ -349,5 +281,150 @@ export const updateWorkoutTitle = mutation({
     });
 
     return args.workoutId;
+  },
+});
+
+export const getDashboardStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
+    if (!user) {
+      return null;
+    }
+
+    // Calculate start of current week (Sunday)
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - dayOfWeek);
+    startOfWeek.setHours(0, 0, 0, 0);
+    const weekStartTimestamp = startOfWeek.getTime();
+
+    // Get last 7 days for activity dots
+    const last7Days: { date: string; dayName: string; hasWorkout: boolean }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      last7Days.push({
+        date: date.toISOString().split("T")[0],
+        dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
+        hasWorkout: false,
+      });
+    }
+
+    // Get workouts from the last 7 days
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const recentWorkouts = await ctx.db
+      .query("workouts")
+      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "completed"),
+          q.gte(q.field("startedAt"), sevenDaysAgo.getTime())
+        )
+      )
+      .collect();
+
+    // Mark days with workouts
+    for (const workout of recentWorkouts) {
+      const workoutDate = new Date(workout.startedAt).toISOString().split("T")[0];
+      const dayEntry = last7Days.find((d) => d.date === workoutDate);
+      if (dayEntry) {
+        dayEntry.hasWorkout = true;
+      }
+    }
+
+    // Calculate this week's stats
+    const thisWeekWorkouts = recentWorkouts.filter(
+      (w) => w.startedAt >= weekStartTimestamp
+    );
+
+    const weeklyWorkoutCount = thisWeekWorkouts.length;
+    let weeklyTotalSets = 0;
+    let weeklyTotalVolume = 0;
+    let weeklyTotalDuration = 0;
+
+    for (const workout of thisWeekWorkouts) {
+      weeklyTotalSets += workout.summary?.totalSets ?? 0;
+      weeklyTotalVolume += workout.summary?.totalVolume ?? 0;
+      weeklyTotalDuration += workout.summary?.totalDurationMinutes ?? 0;
+    }
+
+    // Get weekly trend data (last 4 weeks)
+    const fourWeeksAgo = new Date(now);
+    fourWeeksAgo.setDate(now.getDate() - 28);
+    fourWeeksAgo.setHours(0, 0, 0, 0);
+
+    const trendWorkouts = await ctx.db
+      .query("workouts")
+      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "completed"),
+          q.gte(q.field("startedAt"), fourWeeksAgo.getTime())
+        )
+      )
+      .collect();
+
+    // Group by week for trend chart
+    const weeklyTrend: { week: string; volume: number; workouts: number; duration: number }[] = [];
+    for (let i = 3; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - (i * 7 + dayOfWeek));
+      weekStart.setHours(0, 0, 0, 0);
+
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+
+      const weekWorkouts = trendWorkouts.filter(
+        (w) => w.startedAt >= weekStart.getTime() && w.startedAt < weekEnd.getTime()
+      );
+
+      let volume = 0;
+      let duration = 0;
+      for (const w of weekWorkouts) {
+        volume += w.summary?.totalVolume ?? 0;
+        duration += w.summary?.totalDurationMinutes ?? 0;
+      }
+
+      weeklyTrend.push({
+        week: weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        volume,
+        workouts: weekWorkouts.length,
+        duration,
+      });
+    }
+
+    return {
+      weeklyGoal: user.weeklyAvailability ?? 4,
+      weeklyWorkoutCount,
+      weeklyTotalSets,
+      weeklyTotalVolume,
+      weeklyTotalDuration,
+      last7Days,
+      weeklyTrend,
+      preferredUnits: user.preferredUnits ?? "lb",
+    };
+  },
+});
+
+export const updateWeeklyGoal = mutation({
+  args: {
+    weeklyGoal: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(user._id, {
+      weeklyAvailability: args.weeklyGoal,
+      updatedAt: Date.now(),
+    });
+
+    return user._id;
   },
 });

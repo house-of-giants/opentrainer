@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
+import { getCurrentUser as getAuthUser } from "./auth";
 
 export const getOrCreateUser = mutation({
   args: {
@@ -48,17 +49,7 @@ export const getOrCreateUser = mutation({
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    return user;
+    return await getAuthUser(ctx, { requireAuth: false, requireUser: false });
   },
 });
 
@@ -82,24 +73,14 @@ export const updateOnboarding = mutation({
         v.literal("advanced")
       )
     ),
+    equipmentDescription: v.optional(v.string()),
     equipment: v.optional(v.array(v.string())),
     weeklyAvailability: v.optional(v.number()),
     sessionDuration: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthUser(ctx);
+    if (!user) throw new Error("User not found");
 
     await ctx.db.patch(user._id, {
       ...args,
@@ -110,24 +91,50 @@ export const updateOnboarding = mutation({
   },
 });
 
+export const completeOnboarding = mutation({
+  args: {
+    goals: v.array(
+      v.union(
+        v.literal("strength"),
+        v.literal("hypertrophy"),
+        v.literal("endurance"),
+        v.literal("weight_loss"),
+        v.literal("general_fitness")
+      )
+    ),
+    experienceLevel: v.union(
+      v.literal("beginner"),
+      v.literal("intermediate"),
+      v.literal("advanced")
+    ),
+    equipmentDescription: v.string(),
+    equipment: v.array(v.string()),
+    weeklyAvailability: v.number(),
+    sessionDuration: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(user._id, {
+      ...args,
+      onboardingCompletedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return user._id;
+  },
+});
+
 export const updatePreferences = mutation({
   args: {
     preferredUnits: v.optional(v.union(v.literal("kg"), v.literal("lb"))),
+    bodyweight: v.optional(v.number()),
+    bodyweightUnit: v.optional(v.union(v.literal("kg"), v.literal("lb"))),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthUser(ctx);
+    if (!user) throw new Error("User not found");
 
     await ctx.db.patch(user._id, {
       ...args,
@@ -135,5 +142,17 @@ export const updatePreferences = mutation({
     });
 
     return user._id;
+  },
+});
+
+export const getByClerkId = internalQuery({
+  args: {
+    clerkId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
   },
 });

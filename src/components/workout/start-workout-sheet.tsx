@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -83,12 +84,15 @@ export function StartWorkoutSheet({ open, onOpenChange }: StartWorkoutSheetProps
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh]">
+      <SheetContent side="bottom" className="h-[85vh] flex flex-col">
         <SheetHeader>
           <SheetTitle>Start Workout</SheetTitle>
+          <SheetDescription>
+            Start from scratch or use a saved routine
+          </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-2 space-y-6 overflow-y-auto px-4 pb-8">
+        <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-6">
           <Button
             size="lg"
             className="h-16 w-full text-lg"
@@ -106,68 +110,69 @@ export function StartWorkoutSheet({ open, onOpenChange }: StartWorkoutSheetProps
               <Skeleton className="h-20 w-full" />
             </div>
           ) : routines.length > 0 ? (
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-muted-foreground">
+            <section>
+              <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-3">
                 From Routine
               </h3>
-              {(routines as Routine[]).map((routine) => (
-                <Card key={routine._id} className="overflow-hidden">
-                  <button
-                    className="flex w-full cursor-pointer items-center justify-between p-4 text-left transition-colors hover:bg-muted/50"
-                    onClick={() => toggleRoutine(routine._id)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                        <Dumbbell className="h-5 w-5 text-primary" />
+              <div className="space-y-2">
+                {(routines as Routine[]).map((routine) => (
+                  <Card key={routine._id} className="overflow-hidden">
+                    <button
+                      className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-muted/50"
+                      onClick={() => toggleRoutine(routine._id)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                          <Dumbbell className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{routine.name}</p>
+                          <p className="text-sm text-muted-foreground font-mono tabular-nums">
+                            {routine.days.length} day{routine.days.length !== 1 ? "s" : ""}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{routine.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {routine.days.length} day{routine.days.length !== 1 ? "s" : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight
-                      className={`h-5 w-5 text-muted-foreground transition-transform ${
-                        expandedRoutine === routine._id ? "rotate-90" : ""
-                      }`}
-                    />
-                  </button>
+                      <ChevronRight
+                        className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${
+                          expandedRoutine === routine._id ? "rotate-90" : ""
+                        }`}
+                      />
+                    </button>
 
-                  {expandedRoutine === routine._id && (
-                    <div className="border-t divide-y">
-                      {routine.days.map((day, idx) => (
-                        <button
-                          key={idx}
-                          className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-muted/50 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={() => handleStartFromRoutine(routine, idx)}
-                          disabled={isStarting}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium">{day.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {day.exercises.slice(0, 3).map(e => e.exerciseName).join(", ")}
-                              {day.exercises.length > 3 && ` +${day.exercises.length - 3} more`}
-                            </p>
-                          </div>
-                          <Play className="ml-3 h-4 w-4 shrink-0 text-primary" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              ))}
-            </div>
+                    {expandedRoutine === routine._id && (
+                      <div className="border-t divide-y bg-muted/30">
+                        {routine.days.map((day, idx) => (
+                          <button
+                            key={idx}
+                            className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={() => handleStartFromRoutine(routine, idx)}
+                            disabled={isStarting}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium">{day.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {day.exercises.slice(0, 3).map(e => e.exerciseName).join(", ")}
+                                {day.exercises.length > 3 && ` +${day.exercises.length - 3} more`}
+                              </p>
+                            </div>
+                            <Play className="ml-3 h-4 w-4 shrink-0 text-primary" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            </section>
           ) : (
             <Card className="p-6 text-center">
               <Dumbbell className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                No routines yet. Create one to quickly start workouts!
+              <p className="font-medium mb-1">No routines yet</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Create a routine to quickly start similar workouts
               </p>
               <Button
                 variant="outline"
-                size="sm"
-                className="mt-3"
                 onClick={() => {
                   onOpenChange(false);
                   router.push("/routines/new");

@@ -38,16 +38,24 @@ export default defineSchema({
       v.literal("advanced")
     )),
     
-    // Available equipment for AI routine generation
-    equipment: v.optional(v.array(v.string())),
+    // Equipment - dual storage for AI routine generation
+    equipmentDescription: v.optional(v.string()),  // Raw: "Planet Fitness"
+    equipment: v.optional(v.array(v.string())),    // Parsed: ["smith_machine", "cables"]
     
     // Preferences
     preferredUnits: v.optional(v.union(v.literal("kg"), v.literal("lb"))),
     weeklyAvailability: v.optional(v.number()), // days per week
     sessionDuration: v.optional(v.number()), // minutes
     
+    // Bodyweight for training load calculations and "bodyweight" exercises
+    bodyweight: v.optional(v.number()),
+    bodyweightUnit: v.optional(v.union(v.literal("kg"), v.literal("lb"))),
+    
     // Subscription tier
     tier: v.optional(v.union(v.literal("free"), v.literal("pro"))),
+    
+    // Onboarding tracking
+    onboardingCompletedAt: v.optional(v.number()),
     
     // Timestamps
     createdAt: v.number(),
@@ -80,6 +88,7 @@ export default defineSchema({
     
     // For cardio exercises
     modality: v.optional(v.string()), // run, bike, row, stairstepper, etc.
+    primaryMetric: v.optional(v.union(v.literal("duration"), v.literal("distance"))),
     
     isSystemExercise: v.boolean(),
     
@@ -165,11 +174,43 @@ export default defineSchema({
       calories: v.optional(v.number()),
       intensity: v.optional(v.number()), // 1-10 scale or machine level
       incline: v.optional(v.number()),
-      // For interval training
+      // For interval training (legacy structure)
       intervals: v.optional(v.array(v.object({
         workSeconds: v.number(),
         restSeconds: v.number(),
         rounds: v.number(),
+      }))),
+      
+      // NEW: Enhanced cardio tracking
+      // Primary metric indicator (modality-driven default)
+      primaryMetric: v.optional(v.union(v.literal("duration"), v.literal("distance"))),
+      
+      // Weighted vest support
+      vestWeight: v.optional(v.number()),
+      vestWeightUnit: v.optional(v.union(v.literal("kg"), v.literal("lb"))),
+      
+      // RPE for training load calculation (1-10 Borg scale)
+      rpe: v.optional(v.number()),
+      
+      // Interval structure for HIIT (treats intervals as "sets")
+      intervalType: v.optional(v.union(
+        v.literal("steady"),
+        v.literal("hiit"),
+        v.literal("tabata"),
+        v.literal("emom"),
+        v.literal("custom")
+      )),
+      sets: v.optional(v.array(v.object({
+        type: v.union(
+          v.literal("warmup"),
+          v.literal("work"),
+          v.literal("rest"),
+          v.literal("cooldown")
+        ),
+        durationSeconds: v.number(),
+        distance: v.optional(v.number()),
+        intensity: v.optional(v.number()), // 1-10 or machine level for this set
+        avgHeartRate: v.optional(v.number()),
       }))),
     })),
     
@@ -303,4 +344,39 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_assessment", ["assessmentId"]),
+
+  // --------------------------------------------------------------------------
+  // Exercise Swaps Table
+  // Track swap events for Training Lab analysis and follow-up prompts
+  // --------------------------------------------------------------------------
+  exerciseSwaps: defineTable({
+    userId: v.id("users"),
+    workoutId: v.id("workouts"),
+    
+    // What was swapped
+    originalExercise: v.string(),
+    substitutedExercise: v.optional(v.string()), // Set when user selects alternative
+    
+    // Why
+    reason: v.union(
+      v.literal("equipment_busy"),
+      v.literal("equipment_unavailable"),
+      v.literal("discomfort"),
+      v.literal("variety")
+    ),
+    
+    // Context for AI
+    originalMuscleGroups: v.optional(v.array(v.string())),
+    originalEquipment: v.optional(v.string()),
+    
+    // Follow-up tracking
+    permanentSwapPromptShown: v.optional(v.boolean()),
+    permanentSwapAccepted: v.optional(v.boolean()),
+    
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_exercise", ["userId", "originalExercise"])
+    .index("by_workout", ["workoutId"])
+    .index("by_user_reason", ["userId", "reason"]),
 });

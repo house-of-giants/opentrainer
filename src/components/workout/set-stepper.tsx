@@ -117,7 +117,7 @@ export function SetStepper({
               onChange={(e) => setInputValue(e.target.value)}
               onBlur={handleInputBlur}
               onKeyDown={handleInputKeyDown}
-              className="h-12 w-24 text-center text-2xl font-bold tabular-nums"
+              className="h-12 w-24 text-center text-2xl font-mono font-bold tabular-nums"
               min={min}
               max={max}
             />
@@ -131,7 +131,7 @@ export function SetStepper({
                 "focus:outline-none focus:ring-2 focus:ring-ring"
               )}
             >
-              <span className="text-3xl font-bold tabular-nums">{displayValue}</span>
+              <span className="text-3xl font-mono font-bold tabular-nums">{displayValue}</span>
               {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
             </button>
           )}

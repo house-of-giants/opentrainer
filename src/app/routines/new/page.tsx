@@ -445,7 +445,7 @@ export default function NewRoutinePage() {
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Days</h2>
+              <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">Days</h2>
               <Button variant="outline" size="sm" onClick={addDay}>
                 <Plus className="mr-1 h-4 w-4" />
                 Add Day
@@ -468,7 +468,7 @@ export default function NewRoutinePage() {
                     onClick={(e) => e.stopPropagation()}
                     className="h-8 flex-1 font-medium"
                   />
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground font-mono tabular-nums">
                     {day.exercises.length} exercise
                     {day.exercises.length !== 1 ? "s" : ""}
                   </span>
