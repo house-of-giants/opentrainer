@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -8,8 +9,9 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, Dumbbell, Weight } from "lucide-react";
+import { ArrowLeft, Clock, Download, Dumbbell, Weight } from "lucide-react";
 import Link from "next/link";
+import { ExportWorkoutDialog } from "@/components/workout/export-workout-dialog";
 
 type LiftingEntry = {
   _id: string;
@@ -49,8 +51,11 @@ export default function WorkoutDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const workoutId = params.id as Id<"workouts">;
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   const workout = useQuery(api.workouts.getWorkoutWithEntries, { workoutId });
+  const user = useQuery(api.users.getCurrentUser);
+  const isPro = user?.tier === "pro";
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -151,6 +156,15 @@ export default function WorkoutDetailsPage() {
               {workout.title ?? "Workout"}
             </h1>
           </div>
+          {isPro && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowExportDialog(true)}
+            >
+              <Download className="h-5 w-5" />
+            </Button>
+          )}
           {workout.status === "cancelled" && (
             <Badge variant="secondary">Cancelled</Badge>
           )}
@@ -272,6 +286,12 @@ export default function WorkoutDetailsPage() {
           </div>
         )}
       </main>
+
+      <ExportWorkoutDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        workoutId={workoutId}
+      />
     </div>
   );
 }

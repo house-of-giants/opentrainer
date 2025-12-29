@@ -428,3 +428,142 @@ export const updateWeeklyGoal = mutation({
     return user._id;
   },
 });
+
+export const exportWorkoutAsJson = query({
+  args: { workoutId: v.id("workouts") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    if (user.tier !== "pro") {
+      throw new Error("Export is a Pro feature");
+    }
+
+    const workout = await ctx.db.get(args.workoutId);
+    if (!workout || workout.userId !== user._id) {
+      throw new Error("Workout not found");
+    }
+
+    const entries = await ctx.db
+      .query("entries")
+      .withIndex("by_workout_created", (q) => q.eq("workoutId", args.workoutId))
+      .collect();
+
+    // Group entries by exercise name, preserving order
+    const exerciseGroups: Record<string, { kind: "lifting" | "cardio"; entries: typeof entries }> = {};
+    const exerciseOrder: string[] = [];
+
+    for (const entry of entries) {
+      if (!exerciseGroups[entry.exerciseName]) {
+        exerciseGroups[entry.exerciseName] = { kind: entry.kind, entries: [] };
+        exerciseOrder.push(entry.exerciseName);
+      }
+      exerciseGroups[entry.exerciseName].entries.push(entry);
+    }
+
+    // Transform to detailed export format with actual set data
+    const exercises = exerciseOrder.map((name) => {
+      const group = exerciseGroups[name];
+      const entryList = group.entries;
+
+      if (group.kind === "lifting") {
+        // Include all sets with their actual data
+        const sets = entryList
+          .filter((e) => e.kind === "lifting" && e.lifting)
+          .sort((a, b) => {
+            const aSet = a.kind === "lifting" ? a.lifting?.setNumber ?? 0 : 0;
+            const bSet = b.kind === "lifting" ? b.lifting?.setNumber ?? 0 : 0;
+            return aSet - bSet;
+          })
+          .map((e) => {
+            if (e.kind !== "lifting" || !e.lifting) return null;
+            const set: {
+              setNumber: number;
+              weight?: number;
+              reps?: number;
+              unit: "kg" | "lb";
+              rpe?: number;
+              isWarmup?: boolean;
+              isBodyweight?: boolean;
+            } = {
+              setNumber: e.lifting.setNumber,
+              unit: e.lifting.unit,
+            };
+            if (e.lifting.weight !== undefined) set.weight = e.lifting.weight;
+            if (e.lifting.reps !== undefined) set.reps = e.lifting.reps;
+            if (e.lifting.rpe !== undefined) set.rpe = e.lifting.rpe;
+            if (e.lifting.isWarmup) set.isWarmup = true;
+            if (e.lifting.isBodyweight) set.isBodyweight = true;
+            return set;
+          })
+          .filter((s) => s !== null);
+
+        return {
+          name,
+          kind: "lifting" as const,
+          sets,
+        };
+      } else {
+        // Cardio exercise - include all cardio entries
+        const cardioData = entryList
+          .filter((e) => e.kind === "cardio" && e.cardio)
+          .map((e) => {
+            if (e.kind !== "cardio" || !e.cardio) return null;
+            const cardio: {
+              mode: "steady" | "intervals";
+              durationSeconds: number;
+              distance?: number;
+              distanceUnit?: "m" | "km" | "mi";
+              intensity?: number;
+              incline?: number;
+              rpe?: number;
+            } = {
+              mode: e.cardio.mode,
+              durationSeconds: e.cardio.durationSeconds,
+            };
+            if (e.cardio.distance !== undefined) cardio.distance = e.cardio.distance;
+            if (e.cardio.distanceUnit) cardio.distanceUnit = e.cardio.distanceUnit;
+            if (e.cardio.intensity !== undefined) cardio.intensity = e.cardio.intensity;
+            if (e.cardio.incline !== undefined) cardio.incline = e.cardio.incline;
+            if (e.cardio.rpe !== undefined) cardio.rpe = e.cardio.rpe;
+            return cardio;
+          })
+          .filter((c) => c !== null);
+
+        return {
+          name,
+          kind: "cardio" as const,
+          cardio: cardioData.length === 1 ? cardioData[0] : cardioData,
+        };
+      }
+    });
+
+    // Format workout date for name
+    const workoutDate = new Date(workout.startedAt).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    const exportData = {
+      version: 1,
+      exportType: "workout",
+      name: workout.title ? `${workout.title} - ${workoutDate}` : `Workout - ${workoutDate}`,
+      workout: {
+        title: workout.title ?? "Workout",
+        date: new Date(workout.startedAt).toISOString(),
+        completedAt: workout.completedAt ? new Date(workout.completedAt).toISOString() : undefined,
+        durationMinutes: workout.summary?.totalDurationMinutes,
+        totalVolume: workout.summary?.totalVolume,
+        totalSets: workout.summary?.totalSets,
+        notes: workout.notes,
+        exercises,
+      },
+    };
+
+    return {
+      json: JSON.stringify(exportData, null, 2),
+      workoutTitle: workout.title ?? "Workout",
+    };
+  },
+});
