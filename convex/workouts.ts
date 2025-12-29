@@ -300,31 +300,34 @@ export const getDashboardStats = query({
     startOfWeek.setHours(0, 0, 0, 0);
     const weekStartTimestamp = startOfWeek.getTime();
 
-    // Get last 7 days for activity dots
-    const last7Days: { date: string; dayName: string; hasWorkout: boolean }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(now.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-      last7Days.push({
+    // Get current week (Monday through Sunday) for activity dots
+    const currentWeek: { date: string; dayName: string; hasWorkout: boolean }[] = [];
+    // Calculate start of week (Monday)
+    // getDay() returns 0 for Sunday, 1 for Monday, etc.
+    // We want Monday as day 0, so we adjust: (dayOfWeek + 6) % 7 gives us days since Monday
+    const daysSinceMonday = (dayOfWeek + 6) % 7;
+    const mondayOfThisWeek = new Date(now);
+    mondayOfThisWeek.setDate(now.getDate() - daysSinceMonday);
+    mondayOfThisWeek.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(mondayOfThisWeek);
+      date.setDate(mondayOfThisWeek.getDate() + i);
+      currentWeek.push({
         date: date.toISOString().split("T")[0],
         dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
         hasWorkout: false,
       });
     }
 
-    // Get workouts from the last 7 days
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(now.getDate() - 6);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
-
+    // Get workouts from the current week
     const recentWorkouts = await ctx.db
       .query("workouts")
       .withIndex("by_user_started", (q) => q.eq("userId", user._id))
       .filter((q) =>
         q.and(
           q.eq(q.field("status"), "completed"),
-          q.gte(q.field("startedAt"), sevenDaysAgo.getTime())
+          q.gte(q.field("startedAt"), mondayOfThisWeek.getTime())
         )
       )
       .collect();
@@ -332,7 +335,7 @@ export const getDashboardStats = query({
     // Mark days with workouts
     for (const workout of recentWorkouts) {
       const workoutDate = new Date(workout.startedAt).toISOString().split("T")[0];
-      const dayEntry = last7Days.find((d) => d.date === workoutDate);
+      const dayEntry = currentWeek.find((d) => d.date === workoutDate);
       if (dayEntry) {
         dayEntry.hasWorkout = true;
       }
@@ -405,7 +408,7 @@ export const getDashboardStats = query({
       weeklyTotalSets,
       weeklyTotalVolume,
       weeklyTotalDuration,
-      last7Days,
+      currentWeek,
       weeklyTrend,
       preferredUnits: user.preferredUnits ?? "lb",
     };

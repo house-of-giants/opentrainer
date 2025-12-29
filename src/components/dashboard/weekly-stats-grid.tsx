@@ -10,7 +10,7 @@ interface WeeklyStatsGridProps {
   totalSets: number;
   totalVolume: number;
   unit: "kg" | "lb";
-  last7Days?: Array<{ date: string; dayName: string; hasWorkout: boolean }>;
+  currentWeek?: Array<{ date: string; dayName: string; hasWorkout: boolean }>;
   onEditGoal?: () => void;
 }
 
@@ -83,7 +83,7 @@ export function WeeklyStatsGrid({
   totalSets,
   totalVolume,
   unit,
-  last7Days = [],
+  currentWeek = [],
   onEditGoal,
 }: WeeklyStatsGridProps) {
   return (
@@ -136,9 +136,9 @@ export function WeeklyStatsGrid({
 
       <SegmentedProgress current={workoutCount} goal={workoutGoal} />
 
-      {last7Days.length > 0 && (
+      {currentWeek.length > 0 && (
         <div className="pt-3 border-t border-border/50">
-          <ActivityTracker days={last7Days} />
+          <ActivityTracker days={currentWeek} />
         </div>
       )}
     </div>

@@ -139,7 +139,7 @@ export default function DashboardPage() {
             totalSets={dashboardStats.weeklyTotalSets}
             totalVolume={dashboardStats.weeklyTotalVolume}
             unit={dashboardStats.preferredUnits}
-            last7Days={dashboardStats.last7Days}
+            currentWeek={dashboardStats.currentWeek}
             onEditGoal={() => setShowGoalDialog(true)}
           />
         ) : (
