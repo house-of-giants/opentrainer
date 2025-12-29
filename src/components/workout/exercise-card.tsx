@@ -104,7 +104,7 @@ export function ExerciseCard({
         </div>
         <span className="shrink-0 text-sm text-muted-foreground font-mono tabular-nums whitespace-nowrap">
           {targetSets !== undefined
-            ? `${targetSets} ${targetSets === 1 ? "set" : "sets"}`
+            ? `${sets.length}/${targetSets} ${targetSets === 1 ? "set" : "sets"}`
             : `${sets.length} ${sets.length === 1 ? "set" : "sets"}`}
         </span>
       </div>
@@ -221,7 +221,7 @@ export function ExerciseCard({
         className="mt-4 h-14 w-full text-lg"
         onClick={handleAddSet}
       >
-        Log Set {sets.length + 1}
+        Log Set {targetSets !== undefined ? `${sets.length + 1} of ${targetSets}` : sets.length + 1}
       </Button>
     </Card>
   );
