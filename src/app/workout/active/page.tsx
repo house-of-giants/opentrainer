@@ -25,6 +25,7 @@ type EntryData = {
     reps?: number;
     weight?: number;
     unit: "kg" | "lb";
+    isBodyweight?: boolean;
   };
   cardio?: {
     durationSeconds: number;
@@ -99,22 +100,25 @@ export default function ActiveWorkoutPage() {
   const completeWorkout = useMutation(api.workouts.completeWorkout);
   const cancelWorkout = useMutation(api.workouts.cancelWorkout);
 
+  // Stable order: exercises appear in the order they were added to pendingExercises
+  // We don't remove from pendingExercises when logging sets - this preserves order and metadata
   const exerciseGroups = useMemo(() => {
     const groups = new Map<string, { entries: EntryData[]; meta: PendingExercise }>();
 
-    // First, add all pending exercises to establish the meta (targetSets, targetReps, etc.)
+    // First, add all pending exercises to establish stable order and meta (targetSets, targetReps, etc.)
     for (const pending of pendingExercises) {
       groups.set(pending.name, { entries: [], meta: pending });
     }
 
-    // Then, add entries and merge with existing meta
+    // Then, add entries to their groups (entries may exist for exercises in pendingExercises)
     if (entries) {
       for (const entry of entries) {
         const existing = groups.get(entry.exerciseName);
         if (existing) {
           existing.entries.push(entry as EntryData);
         } else {
-          // Create new group with basic meta if no pending exercise exists
+          // Entry for an exercise not in pendingExercises (edge case: old data or manual add)
+          // Add at the end to preserve stable ordering of pending exercises
           groups.set(entry.exerciseName, {
             entries: [entry as EntryData],
             meta: {
@@ -168,7 +172,7 @@ export default function ActiveWorkoutPage() {
 
   const handleAddSet = async (
     exerciseName: string,
-    set: { reps: number; weight: number; unit: "lb" | "kg" }
+    set: { reps: number; weight: number; unit: "lb" | "kg"; isBodyweight?: boolean }
   ) => {
     const group = exerciseGroups.get(exerciseName);
     const existingSets = group?.entries ?? [];
@@ -184,10 +188,11 @@ export default function ActiveWorkoutPage() {
           reps: set.reps,
           weight: set.weight,
           unit: set.unit,
+          isBodyweight: set.isBodyweight,
         },
       });
       setShowRestTimer(true);
-      setPendingExercises((prev) => prev.filter((p) => p.name !== exerciseName));
+      // Don't remove from pendingExercises - we need to preserve order and metadata (targetSets, targetReps)
     } catch (error) {
       toast.error("Failed to log set");
       console.error(error);
@@ -222,7 +227,7 @@ export default function ActiveWorkoutPage() {
           intensity: data.intensity,
         },
       });
-      setPendingExercises((prev) => prev.filter((p) => p.name !== exerciseName));
+      // Don't remove from pendingExercises - we need to preserve order and metadata
       toast.success("Cardio logged!");
     } catch (error) {
       toast.error("Failed to log cardio");
@@ -361,6 +366,7 @@ export default function ActiveWorkoutPage() {
               reps: e.lifting!.reps ?? 0,
               weight: e.lifting!.weight ?? 0,
               unit: (e.lifting!.unit ?? "lb") as "lb" | "kg",
+              isBodyweight: e.lifting!.isBodyweight,
             }));
 
           const parseTargetReps = (targetReps?: string): number | undefined => {

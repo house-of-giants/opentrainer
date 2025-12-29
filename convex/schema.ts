@@ -160,6 +160,7 @@ export default defineSchema({
       rpe: v.optional(v.number()), // 1-10 scale
       rir: v.optional(v.number()), // Reps in reserve
       isWarmup: v.optional(v.boolean()),
+      isBodyweight: v.optional(v.boolean()), // True for bodyweight exercises (with or without added weight)
       tempo: v.optional(v.string()), // e.g., "3-1-1-0"
       restSeconds: v.optional(v.number()),
     })),

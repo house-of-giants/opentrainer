@@ -10,6 +10,7 @@ const liftingDataValidator = v.object({
   rpe: v.optional(v.number()),
   rir: v.optional(v.number()),
   isWarmup: v.optional(v.boolean()),
+  isBodyweight: v.optional(v.boolean()),
   tempo: v.optional(v.string()),
   restSeconds: v.optional(v.number()),
 });
