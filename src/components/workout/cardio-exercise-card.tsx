@@ -227,9 +227,9 @@ export function CardioExerciseCard({
   if (isLogged) {
     return (
       <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{exerciseName}</h3>
-          <span className="text-sm text-muted-foreground">Logged</span>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="min-w-0 flex-1 truncate text-lg font-semibold">{exerciseName}</h3>
+          <span className="shrink-0 text-sm text-muted-foreground">Logged</span>
         </div>
         <div className="mt-3 flex items-center justify-between rounded-md bg-muted/50 px-3 py-2">
           <div className="flex items-center gap-4">
@@ -257,7 +257,7 @@ export function CardioExerciseCard({
   return (
     <Card className="p-4">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold">{exerciseName}</h3>
+        <h3 className="truncate text-lg font-semibold">{exerciseName}</h3>
       </div>
 
       {primaryMetric === "duration" ? (

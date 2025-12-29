@@ -85,14 +85,14 @@ export function ExerciseCard({
 
   return (
     <Card className="p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold">{exerciseName}</h3>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <h3 className="truncate text-lg font-semibold">{exerciseName}</h3>
           {onSwap && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 shrink-0 p-0"
               onClick={onSwap}
             >
               <Shuffle className="h-4 w-4 text-muted-foreground" />
@@ -100,7 +100,7 @@ export function ExerciseCard({
             </Button>
           )}
         </div>
-        <span className="text-sm text-muted-foreground font-mono tabular-nums">
+        <span className="shrink-0 text-sm text-muted-foreground font-mono tabular-nums whitespace-nowrap">
           {sets.length} {sets.length === 1 ? "set" : "sets"}
         </span>
       </div>
@@ -189,7 +189,7 @@ export function ExerciseCard({
         </div>
       )}
 
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-center gap-4">
         {(weightMode === "weighted-only" || 
           (weightMode === "bodyweight-optional" && !isBodyweight) ||
           (weightMode === "bodyweight-only" && showAddedWeight)) && (

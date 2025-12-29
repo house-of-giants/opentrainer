@@ -301,12 +301,12 @@ export default function ActiveWorkoutPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-        <div className="flex h-14 items-center justify-between px-4">
-          <div>
-            <h1 className="font-semibold">{workout.title ?? "Workout"}</h1>
+        <div className="flex h-14 items-center justify-between gap-3 px-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate font-semibold">{workout.title ?? "Workout"}</h1>
             <p className="text-xs text-muted-foreground font-mono tabular-nums">{duration}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             <Button variant="ghost" size="sm" onClick={handleCancel}>
               Cancel
             </Button>
