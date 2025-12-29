@@ -374,6 +374,7 @@ export default function ActiveWorkoutPage() {
               equipment={meta.equipment}
               defaultReps={parseTargetReps(meta.targetReps)}
               targetSets={meta.targetSets}
+              targetReps={meta.targetReps}
               onAddSet={(set) => handleAddSet(name, set)}
               onSwap={() => setSwapExercise(name)}
             />

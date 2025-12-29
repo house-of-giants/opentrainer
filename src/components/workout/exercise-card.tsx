@@ -42,6 +42,7 @@ interface ExerciseCardProps {
   defaultReps?: number;
   unit?: "lb" | "kg";
   targetSets?: number;
+  targetReps?: string;
   onAddSet: (set: Omit<SetData, "setNumber">) => void;
   onSwap?: () => void;
 }
@@ -54,6 +55,7 @@ export function ExerciseCard({
   defaultReps = 8,
   unit = "lb",
   targetSets,
+  targetReps,
   onAddSet,
   onSwap,
 }: ExerciseCardProps) {
@@ -109,23 +111,62 @@ export function ExerciseCard({
         </span>
       </div>
 
-      {sets.length > 0 && (
+      {(sets.length > 0 || targetSets !== undefined) && (
         <div className="mb-4 space-y-1">
-          {sets.map((set) => (
-            <div
-              key={set.setNumber}
-              className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm"
-            >
-              <span className="font-medium">Set {set.setNumber}</span>
-              <span className="font-mono tabular-nums">
-                {set.isBodyweight && set.weight === 0
-                  ? `BW × ${set.reps}`
-                  : set.isBodyweight && set.weight > 0
-                    ? `BW+${set.weight} ${set.unit} × ${set.reps}`
-                    : `${set.weight} ${set.unit} × ${set.reps}`}
-              </span>
-            </div>
-          ))}
+          {targetSets !== undefined
+            ? // Show all target sets with placeholders for unlogged sets
+              Array.from({ length: targetSets }, (_, i) => i + 1).map((setNumber) => {
+                const loggedSet = sets.find((s) => s.setNumber === setNumber);
+                if (loggedSet) {
+                  // Show logged set
+                  return (
+                    <div
+                      key={setNumber}
+                      className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium">Set {setNumber}</span>
+                      <span className="font-mono tabular-nums">
+                        {loggedSet.isBodyweight && loggedSet.weight === 0
+                          ? `BW × ${loggedSet.reps}`
+                          : loggedSet.isBodyweight && loggedSet.weight > 0
+                            ? `BW+${loggedSet.weight} ${loggedSet.unit} × ${loggedSet.reps}`
+                            : `${loggedSet.weight} ${loggedSet.unit} × ${loggedSet.reps}`}
+                      </span>
+                    </div>
+                  );
+                } else {
+                  // Show placeholder set
+                  const displayReps = targetReps || defaultReps?.toString() || "—";
+                  const placeholderWeight = weightMode === "bodyweight-only" ? "BW" : "—";
+                  return (
+                    <div
+                      key={setNumber}
+                      className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2 text-sm opacity-60"
+                    >
+                      <span className="font-medium">Set {setNumber}</span>
+                      <span className="font-mono tabular-nums text-muted-foreground">
+                        {placeholderWeight} × {displayReps}
+                      </span>
+                    </div>
+                  );
+                }
+              })
+            : // Show only logged sets when no target
+              sets.map((set) => (
+                <div
+                  key={set.setNumber}
+                  className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm"
+                >
+                  <span className="font-medium">Set {set.setNumber}</span>
+                  <span className="font-mono tabular-nums">
+                    {set.isBodyweight && set.weight === 0
+                      ? `BW × ${set.reps}`
+                      : set.isBodyweight && set.weight > 0
+                        ? `BW+${set.weight} ${set.unit} × ${set.reps}`
+                        : `${set.weight} ${set.unit} × ${set.reps}`}
+                  </span>
+                </div>
+              ))}
         </div>
       )}
 
