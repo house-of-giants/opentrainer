@@ -64,29 +64,27 @@ http.route({
       }
     }
 
-    // Clerk Billing subscription events
-    // Available: subscription.created, subscription.updated, subscription.active, subscription.pastDue
-    // Payload keys: active_at, canceled_at, created_at, ended_at, id, items, latest_payment_id, 
-    //               object, payer, payer_id, payment_source_id, status, updated_at
+    // Clerk Billing: subscription.* events contain items[] array - find active item to determine tier
     if (
       eventType === "subscription.created" ||
       eventType === "subscription.updated" ||
-      eventType === "subscription.active"
+      eventType === "subscription.active" ||
+      eventType === "subscription.pastDue"
     ) {
-      const userId = data.payer_id;
+      const userId = data.payer?.user_id || data.payer_id;
       if (!userId) {
-        return new Response("Missing payer_id", { status: 400 });
+        console.error(`[Webhook] ${eventType}: Missing user_id/payer_id`, { data });
+        return new Response("Missing payer user_id", { status: 400 });
       }
 
-      // subscription.active event name itself indicates active subscription
-      // For other events, check the status field
-      const isActive = eventType === "subscription.active" || data.status === "active";
-      const tier = isActive ? "pro" : "free";
+      const items = Array.isArray(data.items) ? data.items : [];
+      const activeItem = items.find((item: any) => item.status === "active");
+      const isPaidPlan = activeItem?.plan?.amount > 0;
+      const tier = isPaidPlan ? "pro" : "free";
+      const planId = activeItem?.plan_id || activeItem?.plan?.id;
+      const planName = activeItem?.plan?.name;
 
-      // Plan info is in items array
-      const firstItem = Array.isArray(data.items) ? data.items[0] : null;
-      const planId = firstItem?.plan_id || firstItem?.planId;
-      const planName = firstItem?.plan?.name;
+
 
       await ctx.runMutation((internal as any).webhooks.updateUserTier, {
         clerkId: userId as string,
@@ -97,20 +95,33 @@ http.route({
       });
     }
 
-    // Handle past_due and ended/canceled subscriptions
+    // Clerk Billing: subscriptionItem.* events fire for individual plan status changes
     if (
-      eventType === "subscription.pastDue" ||
-      (eventType === "subscription.updated" && 
-        (data.status === "past_due" || data.status === "canceled" || data.status === "ended"))
+      eventType === "subscriptionItem.active" ||
+      eventType === "subscriptionItem.canceled" ||
+      eventType === "subscriptionItem.ended"
     ) {
-      const userId = data.payer_id;
+      const userId = data.payer?.user_id;
       if (!userId) {
-        return new Response("Missing payer_id", { status: 400 });
+        console.error(`[Webhook] ${eventType}: Missing payer.user_id`, { data });
+        return new Response("Missing payer user_id", { status: 400 });
       }
+
+      let tier: "free" | "pro" = "free";
+      if (eventType === "subscriptionItem.active" && data.plan?.amount > 0) {
+        tier = "pro";
+      }
+
+      const planId = data.plan_id || data.plan?.id;
+      const planName = data.plan?.name;
+
+
 
       await ctx.runMutation((internal as any).webhooks.updateUserTier, {
         clerkId: userId as string,
-        tier: "free",
+        tier,
+        planId,
+        planName,
         subscriptionStatus: data.status as string,
       });
     }
