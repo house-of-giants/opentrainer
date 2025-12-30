@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAction, useMutation } from "convex/react";
 import { useAuth } from "@clerk/nextjs";
 import { api } from "../../../convex/_generated/api";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -98,26 +98,26 @@ export function SmartSwapSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent side="bottom" className="h-[85vh] flex flex-col">
-        <SheetHeader>
-          <SheetTitle>
+    <Drawer open={open} onOpenChange={handleClose}>
+      <DrawerContent className="h-[85vh] flex flex-col">
+        <DrawerHeader>
+          <DrawerTitle>
             {!hasAiCoach && "Smart Swap"}
             {hasAiCoach && step === "reason" && "Swap Exercise"}
             {hasAiCoach && step === "loading" && "Finding alternatives..."}
             {hasAiCoach && step === "alternatives" && "Alternatives"}
-          </SheetTitle>
+          </DrawerTitle>
           {hasAiCoach && step === "reason" && (
-            <SheetDescription>
+            <DrawerDescription>
               Why do you want to swap {exerciseName}?
-            </SheetDescription>
+            </DrawerDescription>
           )}
           {hasAiCoach && step === "alternatives" && (
-            <SheetDescription>
+            <DrawerDescription>
               Select an alternative for {exerciseName}
-            </SheetDescription>
+            </DrawerDescription>
           )}
-        </SheetHeader>
+        </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-3">
           {!hasAiCoach && (
@@ -229,7 +229,7 @@ export function SmartSwapSheet({
             </>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }

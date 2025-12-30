@@ -8,13 +8,13 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Pencil, Play, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useHaptic } from "@/hooks/use-haptic";
@@ -93,16 +93,16 @@ export function RoutineDetailSheet({ routine, onOpenChange }: RoutineDetailSheet
   };
 
   return (
-    <Sheet open={!!routine} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] flex flex-col">
+    <Drawer open={!!routine} onOpenChange={onOpenChange}>
+      <DrawerContent className="h-[85vh] flex flex-col">
         {routine && (
           <>
-            <SheetHeader>
-              <SheetTitle>{routine.name}</SheetTitle>
+            <DrawerHeader>
+              <DrawerTitle>{routine.name}</DrawerTitle>
               {routine.description && (
-                <SheetDescription>{routine.description}</SheetDescription>
+                <DrawerDescription>{routine.description}</DrawerDescription>
               )}
-            </SheetHeader>
+            </DrawerHeader>
 
             <div className="flex-1 overflow-y-auto px-4 space-y-4">
               <h4 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
@@ -153,7 +153,7 @@ export function RoutineDetailSheet({ routine, onOpenChange }: RoutineDetailSheet
               ))}
             </div>
 
-            <SheetFooter className="flex-row gap-2">
+            <DrawerFooter className="flex-row gap-2">
               <Button
                 variant="outline"
                 className="flex-1"
@@ -171,10 +171,10 @@ export function RoutineDetailSheet({ routine, onOpenChange }: RoutineDetailSheet
                 <Trash2 className="mr-2 h-4 w-4" />
                 {isDeleting ? "Deleting..." : "Delete"}
               </Button>
-            </SheetFooter>
+            </DrawerFooter>
           </>
         )}
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }

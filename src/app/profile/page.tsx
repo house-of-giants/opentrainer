@@ -5,7 +5,8 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserButton, useUser, useClerk } from "@clerk/nextjs";
+import { UserButton, useUser, useClerk, useAuth } from "@clerk/nextjs";
+import { SubscriptionDetailsButton } from "@clerk/nextjs/experimental";
 import {
   LogOut,
   Scale,
@@ -17,7 +18,10 @@ import {
   Sun,
   Moon,
   Monitor,
+  CreditCard,
+  Sparkles,
 } from "lucide-react";
+import Link from "next/link";
 import { useTheme } from "next-themes";
 import { BottomNav } from "@/components/navigation/bottom-nav";
 import { StartWorkoutSheet } from "@/components/workout/start-workout-sheet";
@@ -44,6 +48,8 @@ const EXPERIENCE_LABELS: Record<string, string> = {
 export default function ProfilePage() {
   const { user: clerkUser, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const { has } = useAuth();
+  const isPro = has?.({ feature: "ai_coach" });
   const user = useQuery(api.users.getCurrentUser);
   const workouts = useQuery(api.workouts.getWorkoutHistory, { limit: 1000, status: "all" });
 
@@ -282,6 +288,44 @@ export default function ProfilePage() {
                 ))}
               </div>
             </button>
+          </Card>
+        </section>
+
+        <section>
+          <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-3 px-1">
+            Subscription
+          </h3>
+          <Card className="p-4">
+            {isPro ? (
+              <SubscriptionDetailsButton>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="h-5 w-5 text-muted-foreground" />
+                    <div className="text-left">
+                      <span className="font-medium">Pro Plan</span>
+                      <p className="text-sm text-muted-foreground">Manage subscription</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-500">
+                    ACTIVE
+                  </span>
+                </button>
+              </SubscriptionDetailsButton>
+            ) : (
+              <Link href="/pricing" className="flex w-full items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-5 w-5 text-violet-500" />
+                  <div className="text-left">
+                    <span className="font-medium">Upgrade to Pro</span>
+                    <p className="text-sm text-muted-foreground">Get AI-powered insights</p>
+                  </div>
+                </div>
+                <span className="text-sm text-violet-500">from $6/mo</span>
+              </Link>
+            )}
           </Card>
         </section>
 

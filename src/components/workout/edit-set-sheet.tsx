@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { SetStepper } from "./set-stepper";
 import { Trash2 } from "lucide-react";
 
@@ -65,13 +65,13 @@ function EditSetContent({
   };
 
   return (
-    <SheetContent side="bottom" className="flex flex-col">
-      <SheetHeader>
-        <SheetTitle>Edit Set {set.setNumber}</SheetTitle>
-        <SheetDescription>
+    <DrawerContent className="flex flex-col">
+      <DrawerHeader>
+        <DrawerTitle>Edit Set {set.setNumber}</DrawerTitle>
+        <DrawerDescription>
           {set.exerciseName} — {formatSetDisplay()}
-        </SheetDescription>
-      </SheetHeader>
+        </DrawerDescription>
+      </DrawerHeader>
 
       <div className="flex-1 px-4 py-6">
         <div className="flex flex-wrap items-end justify-center gap-6">
@@ -105,15 +105,15 @@ function EditSetContent({
         </Button>
       </div>
 
-      <SheetFooter className="flex-row gap-2">
+      <DrawerFooter className="flex-row gap-2">
         <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
           Cancel
         </Button>
         <Button className="flex-1" onClick={handleSave}>
           Save
         </Button>
-      </SheetFooter>
-    </SheetContent>
+      </DrawerFooter>
+    </DrawerContent>
   );
 }
 
@@ -124,7 +124,7 @@ export function EditSetSheet({
   onDelete,
 }: EditSetSheetProps) {
   return (
-    <Sheet open={!!set} onOpenChange={onOpenChange}>
+    <Drawer open={!!set} onOpenChange={onOpenChange}>
       {set && (
         <EditSetContent
           key={set.entryId}
@@ -134,6 +134,6 @@ export function EditSetSheet({
           onDelete={onDelete}
         />
       )}
-    </Sheet>
+    </Drawer>
   );
 }

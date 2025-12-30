@@ -6,12 +6,12 @@ import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useHaptic } from "@/hooks/use-haptic";
 import { Dumbbell, Heart, Plus, Search } from "lucide-react";
@@ -64,14 +64,14 @@ export function AddExerciseSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] flex flex-col">
-        <SheetHeader>
-          <SheetTitle>Add Exercise</SheetTitle>
-          <SheetDescription>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="h-[85vh] flex flex-col">
+        <DrawerHeader>
+          <DrawerTitle>Add Exercise</DrawerTitle>
+          <DrawerDescription>
             Select an exercise or create a custom one
-          </SheetDescription>
-        </SheetHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         <div className="flex-1 flex flex-col gap-4 px-4 overflow-hidden">
           <Tabs
@@ -153,7 +153,7 @@ export function AddExerciseSheet({
             </div>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }

@@ -26,26 +26,31 @@ export function TrainingLabCard() {
 
   if (!hasAiCoach) {
     return (
-      <Card className="relative overflow-hidden p-4">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-purple-500/10" />
-        <div className="relative">
-          <div className="mb-2 flex items-center gap-2">
-            <FlaskConical className="h-5 w-5 text-violet-500" />
-            <span className="font-semibold">Training Lab</span>
-            <Lock className="ml-auto h-4 w-4 text-muted-foreground" />
+      <Link href="/pricing" className="block">
+        <Card className="relative overflow-hidden p-3 transition-colors hover:bg-muted/50">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-purple-500/10" />
+          <div className="relative flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+              <FlaskConical className="h-4 w-4 text-violet-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">Training Lab</span>
+                <span className="rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-500">
+                  PRO
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                AI insights on volume, intensity & recovery
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+              <Lock className="h-3 w-3" />
+              <span className="hidden sm:inline">Unlock</span>
+            </div>
           </div>
-          <div className="mb-3 space-y-1 text-sm text-muted-foreground">
-            <div className="h-3 w-full rounded bg-muted/50" />
-            <div className="h-3 w-3/4 rounded bg-muted/50" />
-          </div>
-          <p className="mb-3 text-sm text-muted-foreground">
-            AI-powered training insights
-          </p>
-          <Button size="sm" variant="outline" className="w-full" asChild>
-            <Link href="/pricing">Unlock with Pro</Link>
-          </Button>
-        </div>
-      </Card>
+        </Card>
+      </Link>
     );
   }
 

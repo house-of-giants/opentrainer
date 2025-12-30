@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 interface NoteSheetProps {
   open: boolean;
@@ -40,11 +40,11 @@ function NoteSheetContent({
   };
 
   return (
-    <SheetContent side="bottom" className="flex flex-col">
-      <SheetHeader>
-        <SheetTitle>Note</SheetTitle>
+    <DrawerContent className="flex flex-col">
+      <DrawerHeader>
+        <DrawerTitle>Note</DrawerTitle>
         <p className="text-sm text-muted-foreground">{exerciseName}</p>
-      </SheetHeader>
+      </DrawerHeader>
 
       <div className="flex-1 px-4 py-4">
         <textarea
@@ -56,7 +56,7 @@ function NoteSheetContent({
         />
       </div>
 
-      <SheetFooter className="flex-row gap-2">
+      <DrawerFooter className="flex-row gap-2">
         {localNote && (
           <Button variant="ghost" className="text-muted-foreground" onClick={handleClear}>
             Clear
@@ -67,8 +67,8 @@ function NoteSheetContent({
           Cancel
         </Button>
         <Button onClick={handleSave}>Save</Button>
-      </SheetFooter>
-    </SheetContent>
+      </DrawerFooter>
+    </DrawerContent>
   );
 }
 
@@ -80,7 +80,7 @@ export function NoteSheet({
   onSave,
 }: NoteSheetProps) {
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Drawer open={open} onOpenChange={onOpenChange}>
       {open && (
         <NoteSheetContent
           exerciseName={exerciseName}
@@ -89,6 +89,6 @@ export function NoteSheet({
           onSave={onSave}
         />
       )}
-    </Sheet>
+    </Drawer>
   );
 }

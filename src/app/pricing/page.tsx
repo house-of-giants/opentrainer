@@ -1,8 +1,8 @@
 "use client";
 
-import { PricingTable } from "@clerk/nextjs";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { ProPlanCard, FreePlanCard } from "@/components/pricing";
 
 export default function PricingPage() {
   return (
@@ -19,40 +19,27 @@ export default function PricingPage() {
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col items-center px-4 py-8">
-        <div className="max-w-2xl text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight mb-3">
-            Unlock Your Full Potential
+      <main className="flex flex-1 flex-col items-center px-4 py-12">
+        <div className="mb-10 max-w-xl text-center">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Train smarter, not harder
           </h1>
-          <p className="text-muted-foreground text-lg">
-            Get AI-powered training insights, smart exercise swaps, and personalized recommendations.
+          <p className="mt-3 text-lg text-muted-foreground">
+            Free forever for logging workouts. Upgrade for AI-powered insights that help you break plateaus.
           </p>
         </div>
 
-        <div className="w-full max-w-md mb-8">
-          <ul className="space-y-3 text-sm">
-            <li className="flex items-center gap-3">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs">✓</span>
-              <span>Training Lab — weekly AI analysis of your workouts</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs">✓</span>
-              <span>Smart Swap — context-aware exercise substitutions</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs">✓</span>
-              <span>Personalized insights based on your goals</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs">✓</span>
-              <span>Early access to new AI features</span>
-            </li>
-          </ul>
+        <div className="grid w-full max-w-3xl gap-6 md:grid-cols-2">
+          <FreePlanCard />
+          <ProPlanCard />
         </div>
 
-        <div className="w-full flex justify-center">
-          <PricingTable />
-        </div>
+        <p className="mt-8 text-center text-sm text-muted-foreground">
+          Questions? Reach out at{" "}
+          <a href="mailto:support@opentrainer.app" className="underline underline-offset-4 hover:text-foreground">
+            support@opentrainer.app
+          </a>
+        </p>
       </main>
     </div>
   );

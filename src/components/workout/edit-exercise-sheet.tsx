@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Dumbbell, Heart, Trash2 } from "lucide-react";
@@ -90,14 +90,14 @@ export function EditExerciseSheet({
   };
 
   return (
-    <Sheet open={!!exercise} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] flex flex-col">
-        <SheetHeader>
-          <SheetTitle>Edit Exercise</SheetTitle>
-          <SheetDescription>
+    <Drawer open={!!exercise} onOpenChange={onOpenChange}>
+      <DrawerContent className="h-[85vh] flex flex-col">
+        <DrawerHeader>
+          <DrawerTitle>Edit Exercise</DrawerTitle>
+          <DrawerDescription>
             Configure sets, reps, and rest time
-          </SheetDescription>
-        </SheetHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto px-4 space-y-6">
           <div className="space-y-2">
@@ -259,15 +259,15 @@ export function EditExerciseSheet({
           </Button>
         </div>
 
-        <SheetFooter className="flex-row gap-2">
+        <DrawerFooter className="flex-row gap-2">
           <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button className="flex-1" onClick={handleSave}>
             Save Changes
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }

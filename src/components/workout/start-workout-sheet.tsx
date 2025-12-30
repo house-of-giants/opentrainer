@@ -8,12 +8,12 @@ import { Id, Doc } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, ChevronRight, Dumbbell, Play, Zap, X } from "lucide-react";
 import { toast } from "sonner";
@@ -144,17 +144,17 @@ export function StartWorkoutSheet({ open, onOpenChange, activeWorkout }: StartWo
 
   if (activeWorkout) {
     return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-auto flex flex-col">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="flex flex-col">
+          <DrawerHeader>
+            <DrawerTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
               Workout In Progress
-            </SheetTitle>
-            <SheetDescription>
+            </DrawerTitle>
+            <DrawerDescription>
               You already have an active workout. What would you like to do?
-            </SheetDescription>
-          </SheetHeader>
+            </DrawerDescription>
+          </DrawerHeader>
 
           <div className="space-y-4 px-4 py-4 pb-8">
             <Card className="border-primary/50 bg-primary/5 p-4">
@@ -197,20 +197,20 @@ export function StartWorkoutSheet({ open, onOpenChange, activeWorkout }: StartWo
               Cancelling will discard all progress from your current workout.
             </p>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
     );
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] flex flex-col">
-        <SheetHeader>
-          <SheetTitle>Start Workout</SheetTitle>
-          <SheetDescription>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="h-[85vh] flex flex-col">
+        <DrawerHeader>
+          <DrawerTitle>Start Workout</DrawerTitle>
+          <DrawerDescription>
             Start from scratch or use a saved routine
-          </SheetDescription>
-        </SheetHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-6">
           <Button
@@ -303,7 +303,7 @@ export function StartWorkoutSheet({ open, onOpenChange, activeWorkout }: StartWo
             </Card>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }
