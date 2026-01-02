@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserButton, useUser, useClerk, useAuth } from "@clerk/nextjs";
+import { UserButton, useUser, useClerk } from "@clerk/nextjs";
 import { SubscriptionDetailsButton } from "@clerk/nextjs/experimental";
 import {
   LogOut,
@@ -48,9 +48,8 @@ const EXPERIENCE_LABELS: Record<string, string> = {
 export default function ProfilePage() {
   const { user: clerkUser, isLoaded } = useUser();
   const { signOut } = useClerk();
-  const { has } = useAuth();
-  const isPro = has?.({ feature: "ai_coach" });
   const user = useQuery(api.users.getCurrentUser);
+  const isPro = user?.tier === "pro";
   const workouts = useQuery(api.workouts.getWorkoutHistory, { limit: 1000, status: "all" });
 
   const [showStartSheet, setShowStartSheet] = useState(false);
