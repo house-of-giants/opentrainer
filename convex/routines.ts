@@ -290,3 +290,81 @@ export const deleteRoutine = mutation({
     return args.routineId;
   },
 });
+
+export const importDayToRoutine = mutation({
+  args: {
+    routineId: v.id("routines"),
+    json: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const routine = await ctx.db.get(args.routineId);
+    if (!routine || routine.userId !== user._id) {
+      throw new Error("Routine not found or not authorized");
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(args.json);
+    } catch {
+      throw new Error("Invalid JSON format");
+    }
+
+    const data = parsed as {
+      name?: string;
+      exercises?: Array<{
+        name?: string;
+        kind?: string;
+        targetSets?: number;
+        targetReps?: string;
+        targetRpe?: number;
+        targetDuration?: number;
+        targetIntensity?: number;
+        notes?: string;
+      }>;
+    };
+
+    if (!data.name || typeof data.name !== "string") {
+      throw new Error("Missing or invalid day name");
+    }
+
+    if (!data.exercises || !Array.isArray(data.exercises) || data.exercises.length === 0) {
+      throw new Error("Day must have at least one exercise");
+    }
+
+    const exercises = data.exercises.map((ex, exIdx) => {
+      if (!ex.name || typeof ex.name !== "string") {
+        throw new Error(`Exercise ${exIdx + 1} is missing a name`);
+      }
+
+      const kind = ex.kind === "cardio" ? "cardio" : "lifting";
+
+      return {
+        exerciseName: ex.name,
+        kind: kind as "lifting" | "cardio",
+        targetSets: typeof ex.targetSets === "number" ? ex.targetSets : undefined,
+        targetReps: typeof ex.targetReps === "string" ? ex.targetReps : undefined,
+        targetRpe: typeof ex.targetRpe === "number" ? ex.targetRpe : undefined,
+        targetDuration: typeof ex.targetDuration === "number" ? ex.targetDuration : undefined,
+        targetIntensity: typeof ex.targetIntensity === "number" ? ex.targetIntensity : undefined,
+        notes: typeof ex.notes === "string" ? ex.notes : undefined,
+      };
+    });
+
+    const newDay = {
+      name: data.name,
+      exercises,
+    };
+
+    const updatedDays = [...routine.days, newDay];
+
+    await ctx.db.patch(args.routineId, {
+      days: updatedDays,
+      updatedAt: Date.now(),
+    });
+
+    return { routineId: args.routineId, dayIndex: updatedDays.length - 1 };
+  },
+});
