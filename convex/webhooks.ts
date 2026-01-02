@@ -29,7 +29,8 @@ export const upsertUser = internalMutation({
       email: args.email,
       name: args.name,
       imageUrl: args.imageUrl,
-      tier: "free",
+      tier: "pro",
+      isAlphaUser: true,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -70,6 +71,11 @@ export const updateUserTier = internalMutation({
 
     if (!user) {
       console.error(`User not found for clerkId: ${args.clerkId}`);
+      return;
+    }
+
+    if (user.isAlphaUser && args.tier === "free") {
+      console.log(`Skipping downgrade for Alpha user ${args.clerkId}`);
       return;
     }
 

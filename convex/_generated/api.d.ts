@@ -20,6 +20,7 @@ import type * as ai_trainingLabTypes from "../ai/trainingLabTypes.js";
 import type * as auth from "../auth.js";
 import type * as entries from "../entries.js";
 import type * as exercises from "../exercises.js";
+import type * as feedback from "../feedback.js";
 import type * as http from "../http.js";
 import type * as lib_equipment from "../lib/equipment.js";
 import type * as routines from "../routines.js";
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   entries: typeof entries;
   exercises: typeof exercises;
+  feedback: typeof feedback;
   http: typeof http;
   "lib/equipment": typeof lib_equipment;
   routines: typeof routines;
