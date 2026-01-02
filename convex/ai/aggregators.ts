@@ -116,7 +116,7 @@ export interface AggregatedWorkoutData {
   }>;
   exerciseTrends: Array<{
     exercise: string;
-    kind: "lifting" | "cardio";
+    kind: "lifting" | "cardio" | "mobility";
     sessions: number;
     totalSets: number;
     topWeight?: number;
@@ -526,7 +526,7 @@ function aggregateExerciseTrends(
   workouts: Doc<"workouts">[]
 ): Array<{
   exercise: string;
-  kind: "lifting" | "cardio";
+  kind: "lifting" | "cardio" | "mobility";
   sessions: number;
   totalSets: number;
   topWeight?: number;
@@ -537,7 +537,7 @@ function aggregateExerciseTrends(
   const exerciseStats = new Map<
     string,
     {
-      kind: "lifting" | "cardio";
+      kind: "lifting" | "cardio" | "mobility";
       sessions: Set<Id<"workouts">>;
       totalSets: number;
       topWeight: number;

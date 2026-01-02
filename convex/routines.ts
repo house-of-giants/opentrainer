@@ -5,12 +5,14 @@ import { getCurrentUser } from "./auth";
 const routineExerciseValidator = v.object({
   exerciseId: v.optional(v.id("exercises")),
   exerciseName: v.string(),
-  kind: v.union(v.literal("lifting"), v.literal("cardio")),
+  kind: v.union(v.literal("lifting"), v.literal("cardio"), v.literal("mobility")),
   targetSets: v.optional(v.number()),
   targetReps: v.optional(v.string()),
   targetRpe: v.optional(v.number()),
   targetDuration: v.optional(v.number()),
   targetIntensity: v.optional(v.number()),
+  targetHoldSeconds: v.optional(v.number()),
+  perSide: v.optional(v.boolean()),
   notes: v.optional(v.string()),
 });
 
@@ -69,7 +71,7 @@ export const createRoutineFromWorkout = mutation({
       .withIndex("by_workout", (q) => q.eq("workoutId", args.workoutId))
       .collect();
 
-    const exerciseMap = new Map<string, { kind: "lifting" | "cardio"; sets: number }>();
+    const exerciseMap = new Map<string, { kind: "lifting" | "cardio" | "mobility"; sets: number }>();
     
     for (const entry of entries) {
       const existing = exerciseMap.get(entry.exerciseName);
@@ -83,9 +85,10 @@ export const createRoutineFromWorkout = mutation({
     const exercises = Array.from(exerciseMap.entries()).map(([name, data]) => ({
       exerciseName: name,
       kind: data.kind,
-      targetSets: data.kind === "lifting" ? data.sets : undefined,
+      targetSets: data.kind === "lifting" ? data.sets : (data.kind === "mobility" ? data.sets : undefined),
       targetReps: data.kind === "lifting" ? "8-12" : undefined,
       targetDuration: data.kind === "cardio" ? 15 : undefined,
+      targetHoldSeconds: data.kind === "mobility" ? 30 : undefined,
     }));
 
     const now = Date.now();
@@ -210,6 +213,8 @@ export const importRoutineFromJson = mutation({
           targetRpe?: number;
           targetDuration?: number;
           targetIntensity?: number;
+          targetHoldSeconds?: number;
+          perSide?: boolean;
           notes?: string;
         }>;
       }>;
@@ -237,16 +242,18 @@ export const importRoutineFromJson = mutation({
           throw new Error(`Exercise ${exIdx + 1} in "${day.name}" is missing a name`);
         }
 
-        const kind = ex.kind === "cardio" ? "cardio" : "lifting";
+        const kind = ex.kind === "cardio" ? "cardio" : (ex.kind === "mobility" ? "mobility" : "lifting");
 
         return {
           exerciseName: ex.name,
-          kind: kind as "lifting" | "cardio",
+          kind: kind as "lifting" | "cardio" | "mobility",
           targetSets: typeof ex.targetSets === "number" ? ex.targetSets : undefined,
           targetReps: typeof ex.targetReps === "string" ? ex.targetReps : undefined,
           targetRpe: typeof ex.targetRpe === "number" ? ex.targetRpe : undefined,
           targetDuration: typeof ex.targetDuration === "number" ? ex.targetDuration : undefined,
           targetIntensity: typeof ex.targetIntensity === "number" ? ex.targetIntensity : undefined,
+          targetHoldSeconds: typeof ex.targetHoldSeconds === "number" ? ex.targetHoldSeconds : undefined,
+          perSide: typeof ex.perSide === "boolean" ? ex.perSide : undefined,
           notes: typeof ex.notes === "string" ? ex.notes : undefined,
         };
       });
@@ -322,6 +329,8 @@ export const importDayToRoutine = mutation({
         targetRpe?: number;
         targetDuration?: number;
         targetIntensity?: number;
+        targetHoldSeconds?: number;
+        perSide?: boolean;
         notes?: string;
       }>;
     };
@@ -339,16 +348,18 @@ export const importDayToRoutine = mutation({
         throw new Error(`Exercise ${exIdx + 1} is missing a name`);
       }
 
-      const kind = ex.kind === "cardio" ? "cardio" : "lifting";
+      const kind = ex.kind === "cardio" ? "cardio" : (ex.kind === "mobility" ? "mobility" : "lifting");
 
       return {
         exerciseName: ex.name,
-        kind: kind as "lifting" | "cardio",
+        kind: kind as "lifting" | "cardio" | "mobility",
         targetSets: typeof ex.targetSets === "number" ? ex.targetSets : undefined,
         targetReps: typeof ex.targetReps === "string" ? ex.targetReps : undefined,
         targetRpe: typeof ex.targetRpe === "number" ? ex.targetRpe : undefined,
         targetDuration: typeof ex.targetDuration === "number" ? ex.targetDuration : undefined,
         targetIntensity: typeof ex.targetIntensity === "number" ? ex.targetIntensity : undefined,
+        targetHoldSeconds: typeof ex.targetHoldSeconds === "number" ? ex.targetHoldSeconds : undefined,
+        perSide: typeof ex.perSide === "boolean" ? ex.perSide : undefined,
         notes: typeof ex.notes === "string" ? ex.notes : undefined,
       };
     });

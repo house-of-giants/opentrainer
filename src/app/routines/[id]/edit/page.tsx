@@ -67,6 +67,8 @@ const DEFAULT_EXERCISE: Omit<RoutineExercise, "id" | "exerciseName"> = {
 	targetSets: 3,
 	targetReps: "8-12",
 	targetDuration: 20,
+	targetHoldSeconds: 30,
+	perSide: false,
 	restSeconds: 90,
 };
 
@@ -105,10 +107,19 @@ function SortableExerciseItem({
 		opacity: isDragging ? 0.5 : 1,
 	};
 
-	const summary =
-		exercise.kind === "cardio"
-			? `${exercise.targetDuration ?? 20} min`
-			: `${exercise.targetSets}×${exercise.targetReps}`;
+	const getSummary = () => {
+		if (exercise.kind === "cardio") {
+			return `${exercise.targetDuration ?? 20} min`;
+		}
+		if (exercise.kind === "mobility") {
+			const base = exercise.targetHoldSeconds
+				? `${exercise.targetHoldSeconds}s hold`
+				: `${exercise.targetSets}×${exercise.targetReps}`;
+			return exercise.perSide ? `${base} /side` : base;
+		}
+		return `${exercise.targetSets}×${exercise.targetReps}`;
+	};
+	const summary = getSummary();
 
 	return (
 		<div
@@ -192,6 +203,8 @@ export default function EditRoutinePage() {
 						targetSets: ex.targetSets || 3,
 						targetReps: ex.targetReps || "8-12",
 						targetDuration: targetDuration || 20,
+						targetHoldSeconds: ex.targetHoldSeconds || 30,
+						perSide: ex.perSide || false,
 						restSeconds: 90,
 					};
 				}),
@@ -263,7 +276,7 @@ export default function EditRoutinePage() {
 
 	const addExerciseToDay = (
 		exerciseName: string,
-		kind: "lifting" | "cardio" = "lifting"
+		kind: "lifting" | "cardio" | "mobility" = "lifting"
 	) => {
 		if (!activeDayId) return;
 		vibrate("medium");
@@ -336,9 +349,16 @@ export default function EditRoutinePage() {
 					exercises: d.exercises.map((e) => ({
 						exerciseName: e.exerciseName,
 						kind: e.kind,
-						targetSets: e.kind === "lifting" ? e.targetSets : 1,
-						targetReps: e.kind === "lifting" ? e.targetReps : undefined,
+						targetSets:
+							e.kind === "lifting" || e.kind === "mobility" ? e.targetSets : 1,
+						targetReps:
+							e.kind === "lifting" || e.kind === "mobility"
+								? e.targetReps
+								: undefined,
 						targetDuration: e.kind === "cardio" ? e.targetDuration : undefined,
+						targetHoldSeconds:
+							e.kind === "mobility" ? e.targetHoldSeconds : undefined,
+						perSide: e.kind === "mobility" ? e.perSide : undefined,
 					})),
 				})),
 			});
@@ -686,7 +706,11 @@ export default function EditRoutinePage() {
 									onClick={() =>
 										addExerciseToDay(
 											exercise.name,
-											exercise.category === "cardio" ? "cardio" : "lifting"
+											exercise.category === "cardio"
+												? "cardio"
+												: exercise.category === "mobility"
+													? "mobility"
+													: "lifting"
 										)
 									}
 								>
