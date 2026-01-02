@@ -108,8 +108,8 @@ export function ImportDayDialog({
 						<p className="font-medium mb-1">Tip: Generate with AI</p>
 						<p>
 							Ask ChatGPT: &quot;Create a workout day in JSON format with name
-							and exercises array containing name, kind (lifting/cardio),
-							targetSets, and targetReps.&quot;
+							and exercises array containing name, kind
+							(lifting/cardio/mobility), targetSets, and targetReps.&quot;
 						</p>
 					</div>
 				</div>
