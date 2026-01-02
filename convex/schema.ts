@@ -158,7 +158,7 @@ export default defineSchema({
     exerciseId: v.optional(v.id("exercises")),
     exerciseName: v.string(), // Denormalized for display
     
-    kind: v.union(v.literal("lifting"), v.literal("cardio")),
+    kind: v.union(v.literal("lifting"), v.literal("cardio"), v.literal("mobility")),
     
     // Lifting-specific data
     lifting: v.optional(v.object({
@@ -224,6 +224,14 @@ export default defineSchema({
       }))),
     })),
     
+    // Mobility-specific data (stretches, holds)
+    mobility: v.optional(v.object({
+      reps: v.optional(v.number()),
+      holdSeconds: v.optional(v.number()),
+      sets: v.optional(v.number()),
+      perSide: v.optional(v.boolean()),
+    })),
+    
     notes: v.optional(v.string()),
     
     createdAt: v.number(),
@@ -256,7 +264,7 @@ export default defineSchema({
       exercises: v.array(v.object({
         exerciseId: v.optional(v.id("exercises")),
         exerciseName: v.string(),
-        kind: v.union(v.literal("lifting"), v.literal("cardio")),
+        kind: v.union(v.literal("lifting"), v.literal("cardio"), v.literal("mobility")),
         // Target for lifting
         targetSets: v.optional(v.number()),
         targetReps: v.optional(v.string()), // e.g., "8-12"
@@ -264,6 +272,9 @@ export default defineSchema({
         // Target for cardio
         targetDuration: v.optional(v.number()), // minutes
         targetIntensity: v.optional(v.number()),
+        // Target for mobility
+        targetHoldSeconds: v.optional(v.number()),
+        perSide: v.optional(v.boolean()),
         notes: v.optional(v.string()),
       })),
     })),

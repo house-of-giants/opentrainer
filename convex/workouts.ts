@@ -498,7 +498,7 @@ export const exportWorkoutAsJson = query({
       .collect();
 
     // Group entries by exercise name, preserving order
-    const exerciseGroups: Record<string, { kind: "lifting" | "cardio"; entries: typeof entries }> = {};
+    const exerciseGroups: Record<string, { kind: "lifting" | "cardio" | "mobility"; entries: typeof entries }> = {};
     const exerciseOrder: string[] = [];
 
     for (const entry of entries) {

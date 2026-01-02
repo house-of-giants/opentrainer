@@ -60,6 +60,13 @@ const cardioDataValidator = v.object({
   sets: v.optional(v.array(cardioSetValidator)),
 });
 
+const mobilityDataValidator = v.object({
+  reps: v.optional(v.number()),
+  holdSeconds: v.optional(v.number()),
+  sets: v.optional(v.number()),
+  perSide: v.optional(v.boolean()),
+});
+
 
 export const addLiftingEntry = mutation({
   args: {
@@ -180,6 +187,83 @@ export const updateLiftingEntry = mutation({
 
     await ctx.db.patch(args.entryId, {
       lifting: args.lifting ?? entry.lifting,
+      notes: args.notes ?? entry.notes,
+    });
+
+    return args.entryId;
+  },
+});
+
+export const addMobilityEntry = mutation({
+  args: {
+    workoutId: v.id("workouts"),
+    clientId: v.string(),
+    exerciseName: v.string(),
+    exerciseId: v.optional(v.id("exercises")),
+    mobility: mobilityDataValidator,
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const workout = await ctx.db.get(args.workoutId);
+    if (!workout || workout.userId !== user._id) {
+      throw new Error("Workout not found or not authorized");
+    }
+
+    if (workout.status !== "in_progress") {
+      throw new Error("Cannot add entries to a completed workout");
+    }
+
+    const existingEntry = await ctx.db
+      .query("entries")
+      .withIndex("by_client_id", (q) =>
+        q.eq("workoutId", args.workoutId).eq("clientId", args.clientId)
+      )
+      .first();
+
+    if (existingEntry) {
+      return existingEntry._id;
+    }
+
+    const entryId = await ctx.db.insert("entries", {
+      workoutId: args.workoutId,
+      userId: user._id,
+      clientId: args.clientId,
+      exerciseId: args.exerciseId,
+      exerciseName: args.exerciseName,
+      kind: "mobility",
+      mobility: args.mobility,
+      notes: args.notes,
+      createdAt: Date.now(),
+    });
+
+    return entryId;
+  },
+});
+
+export const updateMobilityEntry = mutation({
+  args: {
+    entryId: v.id("entries"),
+    mobility: v.optional(mobilityDataValidator),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const entry = await ctx.db.get(args.entryId);
+    if (!entry || entry.userId !== user._id) {
+      throw new Error("Entry not found or not authorized");
+    }
+
+    if (entry.kind !== "mobility") {
+      throw new Error("Entry is not a mobility entry");
+    }
+
+    await ctx.db.patch(args.entryId, {
+      mobility: args.mobility ?? entry.mobility,
       notes: args.notes ?? entry.notes,
     });
 
