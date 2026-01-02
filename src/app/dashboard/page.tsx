@@ -91,9 +91,14 @@ export default function DashboardPage() {
 		<div className="flex min-h-screen flex-col">
 			<header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
 				<div className="flex h-14 items-center justify-between px-4">
-					<Link href="/" className="text-xl font-bold">
-						OpenTrainer
-					</Link>
+					<div className="flex items-center gap-2">
+						<Link href="/" className="text-xl font-bold">
+							OpenTrainer
+						</Link>
+						<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+							Alpha
+						</span>
+					</div>
 					<UserButton />
 				</div>
 			</header>
@@ -221,11 +226,11 @@ export default function DashboardPage() {
 			</main>
 
 			<BottomNav onStartWorkout={() => setShowStartSheet(true)} />
-		<StartWorkoutSheet
-			open={showStartSheet}
-			onOpenChange={setShowStartSheet}
-			activeWorkout={activeWorkout}
-		/>
+			<StartWorkoutSheet
+				open={showStartSheet}
+				onOpenChange={setShowStartSheet}
+				activeWorkout={activeWorkout}
+			/>
 			<GoalSettingDialog
 				open={showGoalDialog}
 				onOpenChange={setShowGoalDialog}

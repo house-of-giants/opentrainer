@@ -54,6 +54,9 @@ export default defineSchema({
     // Subscription tier
     tier: v.optional(v.union(v.literal("free"), v.literal("pro"))),
     
+    // Alpha program tracking
+    isAlphaUser: v.optional(v.boolean()),
+    
     // Onboarding tracking
     onboardingCompletedAt: v.optional(v.number()),
     
@@ -386,4 +389,39 @@ export default defineSchema({
     .index("by_user_exercise", ["userId", "originalExercise"])
     .index("by_workout", ["workoutId"])
     .index("by_user_reason", ["userId", "reason"]),
+
+  // --------------------------------------------------------------------------
+  // Feedback Table
+  // User-submitted feedback for Alpha program
+  // --------------------------------------------------------------------------
+  feedback: defineTable({
+    userId: v.id("users"),
+    
+    type: v.union(
+      v.literal("bug"),
+      v.literal("feature_request"),
+      v.literal("ai_quality"),
+      v.literal("general")
+    ),
+    
+    message: v.string(),
+    
+    // Optional context about where feedback was submitted
+    context: v.optional(v.object({
+      page: v.optional(v.string()),
+      workoutId: v.optional(v.id("workouts")),
+    })),
+    
+    // For tracking follow-ups
+    status: v.optional(v.union(
+      v.literal("new"),
+      v.literal("reviewed"),
+      v.literal("resolved")
+    )),
+    
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_type", ["type"])
+    .index("by_status", ["status"]),
 });
