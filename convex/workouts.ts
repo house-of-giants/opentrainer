@@ -100,6 +100,10 @@ export const completeWorkout = mutation({
 
     let totalVolume = 0;
     let totalSets = 0;
+    let totalCardioDurationSeconds = 0;
+    let totalDistanceKm = 0;
+    let hasCardio = false;
+    let hasMobility = false;
     const exerciseNames = new Set<string>();
 
     for (const entry of entries) {
@@ -109,6 +113,19 @@ export const completeWorkout = mutation({
         if (entry.lifting.weight && entry.lifting.reps) {
           totalVolume += entry.lifting.weight * entry.lifting.reps;
         }
+      } else if (entry.kind === "cardio" && entry.cardio) {
+        hasCardio = true;
+        totalCardioDurationSeconds += entry.cardio.durationSeconds;
+        if (entry.cardio.distance && entry.cardio.distanceUnit) {
+          const distanceKm = entry.cardio.distanceUnit === "km" 
+            ? entry.cardio.distance 
+            : entry.cardio.distanceUnit === "mi" 
+              ? entry.cardio.distance * 1.60934 
+              : entry.cardio.distance / 1000;
+          totalDistanceKm += distanceKm;
+        }
+      } else if (entry.kind === "mobility") {
+        hasMobility = true;
       }
     }
 
@@ -124,6 +141,10 @@ export const completeWorkout = mutation({
         totalSets,
         totalDurationMinutes,
         exerciseCount: exerciseNames.size,
+        totalCardioDurationSeconds: hasCardio ? totalCardioDurationSeconds : undefined,
+        totalDistanceKm: totalDistanceKm > 0 ? totalDistanceKm : undefined,
+        hasCardio: hasCardio || undefined,
+        hasMobility: hasMobility || undefined,
       },
     });
 
@@ -210,8 +231,43 @@ export const getWorkoutWithEntries = query({
       .withIndex("by_workout_created", (q) => q.eq("workoutId", args.workoutId))
       .collect();
 
+    // Compute cardio stats on-the-fly if not present in summary (for legacy workouts)
+    let summary = workout.summary;
+    if (summary && summary.totalCardioDurationSeconds === undefined) {
+      let totalCardioDurationSeconds = 0;
+      let totalDistanceKm = 0;
+      let hasCardio = false;
+      let hasMobility = false;
+
+      for (const entry of entries) {
+        if (entry.kind === "cardio" && entry.cardio) {
+          hasCardio = true;
+          totalCardioDurationSeconds += entry.cardio.durationSeconds;
+          if (entry.cardio.distance && entry.cardio.distanceUnit) {
+            const distanceKm = entry.cardio.distanceUnit === "km"
+              ? entry.cardio.distance
+              : entry.cardio.distanceUnit === "mi"
+                ? entry.cardio.distance * 1.60934
+                : entry.cardio.distance / 1000;
+            totalDistanceKm += distanceKm;
+          }
+        } else if (entry.kind === "mobility") {
+          hasMobility = true;
+        }
+      }
+
+      summary = {
+        ...summary,
+        totalCardioDurationSeconds: hasCardio ? totalCardioDurationSeconds : undefined,
+        totalDistanceKm: totalDistanceKm > 0 ? totalDistanceKm : undefined,
+        hasCardio: hasCardio || undefined,
+        hasMobility: hasMobility || undefined,
+      };
+    }
+
     return {
       ...workout,
+      summary,
       entries,
     };
   },
