@@ -219,8 +219,8 @@ export function CardioExerciseCard({
 
     onLog({
       durationSeconds: totalSeconds,
-      distance: primaryMetric === "distance" || distance > 0 ? distance : undefined,
-      distanceUnit,
+      distance: primaryMetric === "distance" ? distance : undefined,
+      distanceUnit: primaryMetric === "distance" ? distanceUnit : undefined,
       rpe,
       vestWeight: useVest ? vestWeight : undefined,
       vestWeightUnit: useVest ? unit : undefined,

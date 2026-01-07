@@ -318,11 +318,13 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <Sparkles className="h-5 w-5 text-violet-500" />
                   <div className="text-left">
-                    <span className="font-medium">Upgrade to Pro</span>
-                    <p className="text-sm text-muted-foreground">Get AI-powered insights</p>
+                    <span className="font-medium">Get Pro Free</span>
+                    <p className="text-sm text-muted-foreground">Free during alpha</p>
                   </div>
                 </div>
-                <span className="text-sm text-violet-500">from $6/mo</span>
+                <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-500">
+                  ALPHA
+                </span>
               </Link>
             )}
           </Card>

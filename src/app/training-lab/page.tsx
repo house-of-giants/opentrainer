@@ -65,10 +65,13 @@ export default function TrainingLabPage() {
         </header>
         <main className="flex-1 flex flex-col items-center justify-center p-4 text-center">
           <FlaskConical className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-bold mb-2">Training Lab is a Pro feature</h2>
-          <p className="text-muted-foreground mb-4">Get AI-powered training insights with Pro.</p>
+          <span className="mb-3 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-600">
+            Free During Alpha
+          </span>
+          <h2 className="text-xl font-bold mb-2">Training Lab</h2>
+          <p className="text-muted-foreground mb-4">Get AI-powered training insights — free while we&apos;re in alpha.</p>
           <Button asChild>
-            <Link href="/profile">Upgrade to Pro</Link>
+            <Link href="/dashboard">Go to Dashboard</Link>
           </Button>
         </main>
       </div>

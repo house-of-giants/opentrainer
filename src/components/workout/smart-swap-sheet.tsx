@@ -21,7 +21,6 @@ import {
 	Shuffle,
 	AlertTriangle,
 	Check,
-	Lock,
 	Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -174,17 +173,20 @@ export function SmartSwapSheet({
 							<div className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/10 mb-4">
 								<Sparkles className="h-8 w-8 text-violet-500" />
 							</div>
+							<span className="mb-3 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-600">
+								Free During Alpha
+							</span>
 							<h3 className="text-lg font-semibold mb-2">
-								Smart Swap is a Pro Feature
+								Smart Swap
 							</h3>
 							<p className="text-sm text-muted-foreground mb-6 max-w-xs">
 								Get AI-powered exercise alternatives that match your equipment,
-								goals, and workout context.
+								goals, and workout context — free during alpha.
 							</p>
 							<Button className="gap-2" asChild>
-								<Link href="/pricing">
-									<Lock className="h-4 w-4" />
-									Unlock with Pro
+								<Link href="/dashboard">
+									<Sparkles className="h-4 w-4" />
+									Get Started Free
 								</Link>
 							</Button>
 							<Button variant="ghost" className="mt-2" onClick={handleClose}>

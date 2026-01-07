@@ -199,11 +199,14 @@ export default function Home() {
 				<section className="border-y bg-muted/20">
 					<div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
 						<div className="mx-auto max-w-2xl text-center">
+							<span className="mb-4 inline-block rounded-full bg-violet-500/10 px-4 py-1.5 text-sm font-semibold text-violet-600">
+								Alpha — Pro is Free for Everyone
+							</span>
 							<h2 className="text-3xl font-bold tracking-tight">
 								Simple pricing
 							</h2>
 							<p className="mt-2 text-muted-foreground">
-								Free forever. Pro when you want more.
+								Everything is free while we&apos;re in alpha. Help us build the best workout tracker.
 							</p>
 						</div>
 						<div className="mx-auto mt-12 grid max-w-4xl gap-8 md:grid-cols-2">
@@ -255,13 +258,16 @@ export default function Home() {
 							<div className="flex flex-col rounded-lg border-2 border-primary bg-card p-8">
 								<div className="flex items-center justify-between">
 									<h3 className="text-xl font-semibold">Pro</h3>
-									<span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-										Popular
+									<span className="rounded-full bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-600">
+										Free in Alpha
 									</span>
 								</div>
-								<div className="mt-4 text-4xl font-bold">$8</div>
+								<div className="mt-4 flex items-baseline gap-2">
+									<span className="text-4xl font-bold">$0</span>
+									<span className="text-muted-foreground line-through">$8/mo</span>
+								</div>
 								<p className="mt-1 text-sm text-muted-foreground">
-									per month · or $72/year
+									Free while we&apos;re in alpha
 								</p>
 								<ul className="mt-8 flex-1 space-y-4 text-sm">
 									<li className="flex items-start gap-3">
@@ -292,24 +298,16 @@ export default function Home() {
 								<SignedOut>
 									<SignUpButton mode="modal">
 										<Button className="mt-8 w-full" size="lg">
-											Start Free Trial
+											Get Started Free
 										</Button>
 									</SignUpButton>
 								</SignedOut>
 								<SignedIn>
-									{isPro ? (
-										<Link href="/dashboard" className="mt-8">
-											<Button className="w-full" size="lg" variant="outline">
-												Current Plan
-											</Button>
-										</Link>
-									) : (
-										<Link href="/pricing" className="mt-8">
-											<Button className="w-full" size="lg">
-												Upgrade to Pro
-											</Button>
-										</Link>
-									)}
+									<Link href="/dashboard" className="mt-8">
+										<Button className="w-full" size="lg">
+											Go to Dashboard
+										</Button>
+									</Link>
 								</SignedIn>
 							</div>
 						</div>
@@ -334,15 +332,15 @@ export default function Home() {
 						/>
 						<FAQItem
 							question="Can I export my data?"
-							answer="Absolutely. Pro users can export their complete workout history as JSON. We believe in data portability—no lock-in."
+							answer="Absolutely. You can export your complete workout history as JSON. We believe in data portability—no lock-in."
 						/>
 						<FAQItem
 							question="What makes the AI different?"
 							answer="Our AI generates routines based on your actual goals, experience level, and available equipment. Not generic templates—personalized programs."
 						/>
 						<FAQItem
-							question="Is the free tier actually usable?"
-							answer="Absolutely. Free includes unlimited logging, full workout history, rest timers, and one AI routine. Pro unlocks unlimited AI and deeper insights."
+							question="Is everything really free during alpha?"
+							answer="Yes! During our alpha period, all Pro features are completely free. This includes unlimited AI routines, Training Lab insights, and Smart Swap. No credit card required."
 						/>
 					</div>
 				</section>
@@ -381,7 +379,7 @@ export default function Home() {
 			<footer className="border-t py-8">
 				<div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row lg:px-8">
 					<p className="text-sm text-muted-foreground">
-						© 2025 OpenTrainer. Free forever. Pro at $8/mo.
+						© 2025 OpenTrainer. Pro is free during alpha.
 					</p>
 					<div className="flex gap-6 text-sm text-muted-foreground">
 						<Link href="#" className="hover:text-foreground">
