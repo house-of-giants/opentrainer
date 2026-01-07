@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 import { getCurrentUser } from "./auth";
 
 const liftingDataValidator = v.object({
@@ -332,5 +332,219 @@ export const getLastSetForExercise = query({
       .first();
 
     return entry;
+  },
+});
+
+export const getExerciseHistory = query({
+  args: {
+    exerciseName: v.string(),
+    sessionCount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
+    if (!user) {
+      return [];
+    }
+
+    const limit = args.sessionCount ?? 3;
+
+    const entries = await ctx.db
+      .query("entries")
+      .withIndex("by_user_created", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("exerciseName"), args.exerciseName),
+          q.eq(q.field("kind"), "lifting")
+        )
+      )
+      .collect();
+
+    if (entries.length === 0) {
+      return [];
+    }
+
+    const sessionMap = new Map<string, typeof entries>();
+    for (const entry of entries) {
+      const workoutId = entry.workoutId.toString();
+      const existing = sessionMap.get(workoutId);
+      if (existing) {
+        existing.push(entry);
+      } else {
+        sessionMap.set(workoutId, [entry]);
+      }
+    }
+
+    const workoutIds = Array.from(sessionMap.keys());
+    const workouts = await Promise.all(
+      workoutIds.map(async (id) => {
+        const workout = await ctx.db.get(id as unknown as import("./_generated/dataModel").Id<"workouts">);
+        return workout;
+      })
+    );
+
+    type ExerciseSession = {
+      workoutId: string;
+      date: string;
+      sets: Array<{
+        setNumber: number;
+        weight: number;
+        reps: number;
+        rpe: number | null;
+        unit: "kg" | "lb";
+      }>;
+      bestSet: {
+        weight: number;
+        reps: number;
+        rpe: number | null;
+        unit: "kg" | "lb";
+      };
+    };
+
+    const sessions: ExerciseSession[] = [];
+
+    for (let i = 0; i < workoutIds.length && sessions.length < limit; i++) {
+      const workout = workouts[i];
+      if (!workout || workout.status !== "completed") {
+        continue;
+      }
+
+      const sessionEntries = sessionMap.get(workoutIds[i])!;
+      sessionEntries.sort((a, b) => 
+        (a.lifting?.setNumber ?? 0) - (b.lifting?.setNumber ?? 0)
+      );
+
+      const sets = sessionEntries
+        .filter((e) => e.lifting)
+        .map((e) => ({
+          setNumber: e.lifting!.setNumber,
+          weight: e.lifting!.weight ?? 0,
+          reps: e.lifting!.reps ?? 0,
+          rpe: e.lifting!.rpe ?? null,
+          unit: e.lifting!.unit,
+        }));
+
+      if (sets.length === 0) continue;
+
+      const workingSets = sets.filter((s) => s.reps > 0);
+      const bestSet = workingSets.reduce(
+        (best, current) => (current.weight > best.weight ? current : best),
+        workingSets[0] ?? sets[0]
+      );
+
+      sessions.push({
+        workoutId: workoutIds[i],
+        date: new Date(workout.completedAt ?? workout.startedAt).toISOString(),
+        sets,
+        bestSet,
+      });
+    }
+
+    return sessions;
+  },
+});
+
+export const getExerciseHistoryInternal = internalQuery({
+  args: {
+    userId: v.id("users"),
+    exerciseName: v.string(),
+    sessionCount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.sessionCount ?? 3;
+
+    const entries = await ctx.db
+      .query("entries")
+      .withIndex("by_user_created", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("exerciseName"), args.exerciseName),
+          q.eq(q.field("kind"), "lifting")
+        )
+      )
+      .collect();
+
+    if (entries.length === 0) {
+      return [];
+    }
+
+    const sessionMap = new Map<string, typeof entries>();
+    for (const entry of entries) {
+      const workoutId = entry.workoutId.toString();
+      const existing = sessionMap.get(workoutId);
+      if (existing) {
+        existing.push(entry);
+      } else {
+        sessionMap.set(workoutId, [entry]);
+      }
+    }
+
+    const workoutIds = Array.from(sessionMap.keys());
+    const workouts = await Promise.all(
+      workoutIds.map(async (id) => {
+        const workout = await ctx.db.get(id as unknown as import("./_generated/dataModel").Id<"workouts">);
+        return workout;
+      })
+    );
+
+    type ExerciseSession = {
+      workoutId: string;
+      date: string;
+      sets: Array<{
+        setNumber: number;
+        weight: number;
+        reps: number;
+        rpe: number | null;
+        unit: "kg" | "lb";
+      }>;
+      bestSet: {
+        weight: number;
+        reps: number;
+        rpe: number | null;
+        unit: "kg" | "lb";
+      };
+    };
+
+    const sessions: ExerciseSession[] = [];
+
+    for (let i = 0; i < workoutIds.length && sessions.length < limit; i++) {
+      const workout = workouts[i];
+      if (!workout || workout.status !== "completed") {
+        continue;
+      }
+
+      const sessionEntries = sessionMap.get(workoutIds[i])!;
+      sessionEntries.sort((a, b) => 
+        (a.lifting?.setNumber ?? 0) - (b.lifting?.setNumber ?? 0)
+      );
+
+      const sets = sessionEntries
+        .filter((e) => e.lifting)
+        .map((e) => ({
+          setNumber: e.lifting!.setNumber,
+          weight: e.lifting!.weight ?? 0,
+          reps: e.lifting!.reps ?? 0,
+          rpe: e.lifting!.rpe ?? null,
+          unit: e.lifting!.unit,
+        }));
+
+      if (sets.length === 0) continue;
+
+      const workingSets = sets.filter((s) => s.reps > 0);
+      const bestSet = workingSets.reduce(
+        (best, current) => (current.weight > best.weight ? current : best),
+        workingSets[0] ?? sets[0]
+      );
+
+      sessions.push({
+        workoutId: workoutIds[i],
+        date: new Date(workout.completedAt ?? workout.startedAt).toISOString(),
+        sets,
+        bestSet,
+      });
+    }
+
+    return sessions;
   },
 });
