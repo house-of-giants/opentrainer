@@ -801,11 +801,19 @@ aiUsage: defineTable({
 
 ## 7. Implementation Roadmap
 
-### Phase 1: Context & History (Week 1)
-- [ ] Implement "Ghost Set" UI in `ActiveWorkout` exercise cards
-- [ ] Create `getProgressionSuggestion` query
-- [ ] Display "Last Session" data from `getLastSetForExercise`
-- [ ] Add "Target" badge with AI progression suggestion
+### Phase 1: Context & History (Week 1) ✅ COMPLETE
+- [x] Implement "Ghost Set" UI in `ActiveWorkout` exercise cards
+  - `GhostSetBox` component in `exercise-accordion.tsx`
+  - Shows last session weight × reps @ RPE with collapsible state
+- [x] Create `getProgressionSuggestion` query
+  - `convex/ai/progression.ts` - rule-based + AI-powered (Pro)
+  - `convex/entries.ts` - `getExerciseHistory` and `getExerciseHistoryInternal`
+- [x] Display "Last Session" data from `getExerciseHistory`
+  - `ExerciseAccordionWithHistory` wrapper fetches per-exercise history
+  - Best set from last 3 completed workouts
+- [x] Add "Target" badge with AI progression suggestion
+  - `GoalBadge` component with color-coded suggestions
+  - Pre-fills weight/reps inputs from progression target
 
 ### Phase 2: Multimodal Recap (Week 2)
 - [ ] Add Convex file storage for workout screenshots
