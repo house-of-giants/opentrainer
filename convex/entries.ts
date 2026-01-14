@@ -548,3 +548,5 @@ export const getExerciseHistoryInternal = internalQuery({
     return sessions;
   },
 });
+
+
