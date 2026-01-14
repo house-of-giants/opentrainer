@@ -93,21 +93,21 @@ export function SetStepper({
   const displayValue = formatValue ? formatValue(value) : value.toString();
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <span className="text-sm font-medium text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-2">
         <Button
           type="button"
           variant="outline"
           size="lg"
-          className="h-14 w-14 text-2xl font-bold"
+          className="h-11 w-11 text-xl font-bold"
           onClick={handleDecrement}
           disabled={value <= min}
         >
           −
         </Button>
 
-        <div className="flex min-w-[80px] flex-col items-center justify-center">
+        <div className="flex min-w-[64px] flex-col items-center justify-center">
           {isEditing ? (
             <Input
               ref={inputRef}
@@ -117,7 +117,7 @@ export function SetStepper({
               onChange={(e) => setInputValue(e.target.value)}
               onBlur={handleInputBlur}
               onKeyDown={handleInputKeyDown}
-              className="h-12 w-24 text-center text-2xl font-mono font-bold tabular-nums"
+              className="h-10 w-20 text-center text-xl font-mono font-bold tabular-nums"
               min={min}
               max={max}
             />
@@ -126,13 +126,13 @@ export function SetStepper({
               type="button"
               onClick={handleValueClick}
               className={cn(
-                "flex flex-col items-center rounded-md px-3 py-1",
+                "flex flex-col items-center rounded-md px-2 py-0.5",
                 "hover:bg-muted/50 active:bg-muted transition-colors",
                 "focus:outline-none focus:ring-2 focus:ring-ring"
               )}
             >
-              <span className="text-3xl font-mono font-bold tabular-nums">{displayValue}</span>
-              {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
+              <span className="text-2xl font-mono font-bold tabular-nums">{displayValue}</span>
+              {unit && <span className="text-[10px] text-muted-foreground -mt-0.5">{unit}</span>}
             </button>
           )}
         </div>
@@ -141,7 +141,7 @@ export function SetStepper({
           type="button"
           variant="outline"
           size="lg"
-          className="h-14 w-14 text-2xl font-bold"
+          className="h-11 w-11 text-xl font-bold"
           onClick={handleIncrement}
           disabled={value >= max}
         >
