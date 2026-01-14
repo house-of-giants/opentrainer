@@ -97,6 +97,7 @@ export function WeeklyStatsGrid({
   currentWeek = [],
   onEditGoal,
 }: WeeklyStatsGridProps) {
+  // Show duration for cardio-only weeks (no lifting volume), volume otherwise
   const showDurationInsteadOfVolume = totalVolume === 0 && totalDuration > 0;
   return (
     <div className="space-y-4 rounded-lg border bg-card p-4">

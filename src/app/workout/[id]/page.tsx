@@ -210,33 +210,42 @@ export default function WorkoutDetailsPage() {
                 </p>
               </div>
             )}
-            {(workout.summary?.totalVolume ?? 0) > 0 && (
-              <div>
-                <p className="text-muted-foreground">Volume</p>
-                <p className="font-medium font-mono tabular-nums flex items-center gap-1">
-                  <Weight className="h-4 w-4" />
-                  {workout.summary!.totalVolume} lb
-                </p>
-              </div>
-            )}
-            {(workout.summary?.totalCardioDurationSeconds ?? 0) > 0 && (
-              <div>
-                <p className="text-muted-foreground">Cardio</p>
-                <p className="font-medium font-mono tabular-nums flex items-center gap-1">
-                  <Timer className="h-4 w-4" />
-                  {formatCardioSummaryDuration(workout.summary!.totalCardioDurationSeconds!)}
-                </p>
-              </div>
-            )}
-            {(workout.summary?.totalDistanceKm ?? 0) > 0 && (
-              <div>
-                <p className="text-muted-foreground">Distance</p>
-                <p className="font-medium font-mono tabular-nums flex items-center gap-1">
-                  <Route className="h-4 w-4" />
-                  {formatDistance(workout.summary!.totalDistanceKm!)}
-                </p>
-              </div>
-            )}
+            {(() => {
+              const volume = workout.summary?.totalVolume;
+              return volume && volume > 0 ? (
+                <div>
+                  <p className="text-muted-foreground">Volume</p>
+                  <p className="font-medium font-mono tabular-nums flex items-center gap-1">
+                    <Weight className="h-4 w-4" />
+                    {volume.toLocaleString()} lb
+                  </p>
+                </div>
+              ) : null;
+            })()}
+            {(() => {
+              const cardioDuration = workout.summary?.totalCardioDurationSeconds;
+              return cardioDuration && cardioDuration > 0 ? (
+                <div>
+                  <p className="text-muted-foreground">Cardio</p>
+                  <p className="font-medium font-mono tabular-nums flex items-center gap-1">
+                    <Timer className="h-4 w-4" />
+                    {formatCardioSummaryDuration(cardioDuration)}
+                  </p>
+                </div>
+              ) : null;
+            })()}
+            {(() => {
+              const distance = workout.summary?.totalDistanceKm;
+              return distance && distance > 0 ? (
+                <div>
+                  <p className="text-muted-foreground">Distance</p>
+                  <p className="font-medium font-mono tabular-nums flex items-center gap-1">
+                    <Route className="h-4 w-4" />
+                    {formatDistance(distance)}
+                  </p>
+                </div>
+              ) : null;
+            })()}
           </div>
           {workout.notes && (
             <div className="mt-4 border-t pt-4">

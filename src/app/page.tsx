@@ -249,7 +249,7 @@ export default function Home() {
 							<SignedIn>
 								<Link href="/dashboard" className="mt-8">
 									<Button variant="outline" className="w-full" size="lg">
-										{isPro ? "Go to Dashboard" : "Current Plan"}
+										Go to Dashboard
 									</Button>
 								</Link>
 							</SignedIn>

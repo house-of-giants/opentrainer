@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalQuery } from "./_generated/server";
 import { getCurrentUser } from "./auth";
+import type { Id } from "./_generated/dataModel";
 
 const liftingDataValidator = v.object({
   setNumber: v.number(),
@@ -364,27 +365,23 @@ export const getExerciseHistory = query({
       return [];
     }
 
-    const sessionMap = new Map<string, typeof entries>();
+    const sessionMap = new Map<Id<"workouts">, (typeof entries)[number][]>();
     for (const entry of entries) {
-      const workoutId = entry.workoutId.toString();
-      const existing = sessionMap.get(workoutId);
+      const existing = sessionMap.get(entry.workoutId);
       if (existing) {
         existing.push(entry);
       } else {
-        sessionMap.set(workoutId, [entry]);
+        sessionMap.set(entry.workoutId, [entry]);
       }
     }
 
     const workoutIds = Array.from(sessionMap.keys());
     const workouts = await Promise.all(
-      workoutIds.map(async (id) => {
-        const workout = await ctx.db.get(id as unknown as import("./_generated/dataModel").Id<"workouts">);
-        return workout;
-      })
+      workoutIds.map((id) => ctx.db.get(id))
     );
 
     type ExerciseSession = {
-      workoutId: string;
+      workoutId: Id<"workouts">;
       date: string;
       sets: Array<{
         setNumber: number;
@@ -469,27 +466,23 @@ export const getExerciseHistoryInternal = internalQuery({
       return [];
     }
 
-    const sessionMap = new Map<string, typeof entries>();
+    const sessionMap = new Map<Id<"workouts">, (typeof entries)[number][]>();
     for (const entry of entries) {
-      const workoutId = entry.workoutId.toString();
-      const existing = sessionMap.get(workoutId);
+      const existing = sessionMap.get(entry.workoutId);
       if (existing) {
         existing.push(entry);
       } else {
-        sessionMap.set(workoutId, [entry]);
+        sessionMap.set(entry.workoutId, [entry]);
       }
     }
 
     const workoutIds = Array.from(sessionMap.keys());
     const workouts = await Promise.all(
-      workoutIds.map(async (id) => {
-        const workout = await ctx.db.get(id as unknown as import("./_generated/dataModel").Id<"workouts">);
-        return workout;
-      })
+      workoutIds.map((id) => ctx.db.get(id))
     );
 
     type ExerciseSession = {
-      workoutId: string;
+      workoutId: Id<"workouts">;
       date: string;
       sets: Array<{
         setNumber: number;
