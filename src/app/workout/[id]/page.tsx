@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, Download, Dumbbell, MessageSquare, Weight } from "lucide-react";
+import { ArrowLeft, Clock, Download, Dumbbell, MessageSquare, Route, Timer, Weight } from "lucide-react";
 import Link from "next/link";
 import { ExportWorkoutDialog } from "@/components/workout/export-workout-dialog";
 
@@ -84,6 +84,22 @@ export default function WorkoutDetailsPage() {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return secs > 0 ? `${mins}:${String(secs).padStart(2, "0")}` : `${mins}m`;
+  };
+
+  const formatCardioSummaryDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) {
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+    return `${mins}m`;
+  };
+
+  const formatDistance = (km: number) => {
+    if (km >= 1) {
+      return `${km.toFixed(1)} km`;
+    }
+    return `${Math.round(km * 1000)} m`;
   };
 
   const groupEntriesByExercise = (entries: Entry[]): GroupedExercise[] => {
@@ -194,15 +210,42 @@ export default function WorkoutDetailsPage() {
                 </p>
               </div>
             )}
-            {workout.summary?.totalVolume && workout.summary.totalVolume > 0 && (
-              <div>
-                <p className="text-muted-foreground">Volume</p>
-                <p className="font-medium font-mono tabular-nums flex items-center gap-1">
-                  <Weight className="h-4 w-4" />
-                  {workout.summary.totalVolume.toLocaleString()} lb
-                </p>
-              </div>
-            )}
+            {(() => {
+              const volume = workout.summary?.totalVolume;
+              return volume && volume > 0 ? (
+                <div>
+                  <p className="text-muted-foreground">Volume</p>
+                  <p className="font-medium font-mono tabular-nums flex items-center gap-1">
+                    <Weight className="h-4 w-4" />
+                    {volume.toLocaleString()} lb
+                  </p>
+                </div>
+              ) : null;
+            })()}
+            {(() => {
+              const cardioDuration = workout.summary?.totalCardioDurationSeconds;
+              return cardioDuration && cardioDuration > 0 ? (
+                <div>
+                  <p className="text-muted-foreground">Cardio</p>
+                  <p className="font-medium font-mono tabular-nums flex items-center gap-1">
+                    <Timer className="h-4 w-4" />
+                    {formatCardioSummaryDuration(cardioDuration)}
+                  </p>
+                </div>
+              ) : null;
+            })()}
+            {(() => {
+              const distance = workout.summary?.totalDistanceKm;
+              return distance && distance > 0 ? (
+                <div>
+                  <p className="text-muted-foreground">Distance</p>
+                  <p className="font-medium font-mono tabular-nums flex items-center gap-1">
+                    <Route className="h-4 w-4" />
+                    {formatDistance(distance)}
+                  </p>
+                </div>
+              ) : null;
+            })()}
           </div>
           {workout.notes && (
             <div className="mt-4 border-t pt-4">
@@ -304,6 +347,6 @@ export default function WorkoutDetailsPage() {
         onOpenChange={setShowExportDialog}
         workoutId={workoutId}
       />
-    </div>
+    </div >
   );
 }

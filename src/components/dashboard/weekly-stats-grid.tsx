@@ -9,6 +9,7 @@ interface WeeklyStatsGridProps {
   workoutGoal: number;
   totalSets: number;
   totalVolume: number;
+  totalDuration: number;
   unit: "kg" | "lb";
   currentWeek?: Array<{ date: string; dayName: string; hasWorkout: boolean }>;
   onEditGoal?: () => void;
@@ -19,6 +20,15 @@ function formatVolume(volume: number): string {
     return `${(volume / 1000).toFixed(1)}k`;
   }
   return volume.toLocaleString();
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
+  }
+  return `${minutes}m`;
 }
 
 function SegmentedProgress({ current, goal }: { current: number; goal: number }) {
@@ -82,10 +92,13 @@ export function WeeklyStatsGrid({
   workoutGoal,
   totalSets,
   totalVolume,
+  totalDuration,
   unit,
   currentWeek = [],
   onEditGoal,
 }: WeeklyStatsGridProps) {
+  // Show duration for cardio-only weeks (no lifting volume), volume otherwise
+  const showDurationInsteadOfVolume = totalVolume === 0 && totalDuration > 0;
   return (
     <div className="space-y-4 rounded-lg border bg-card p-4">
       <div className="flex items-center justify-between">
@@ -127,9 +140,11 @@ export function WeeklyStatsGrid({
 
           <div className="text-right">
             <div className="text-2xl font-mono font-semibold tabular-nums">
-              {formatVolume(totalVolume)}
+              {showDurationInsteadOfVolume ? formatDuration(totalDuration) : formatVolume(totalVolume)}
             </div>
-            <div className="text-xs text-muted-foreground">{unit}</div>
+            <div className="text-xs text-muted-foreground">
+              {showDurationInsteadOfVolume ? "time" : unit}
+            </div>
           </div>
         </div>
       </div>

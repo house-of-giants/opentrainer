@@ -125,10 +125,15 @@ export default defineSchema({
     
     // Cached summary for quick display
     summary: v.optional(v.object({
-      totalVolume: v.optional(v.number()), // total weight lifted
-      totalSets: v.optional(v.number()),
-      totalDurationMinutes: v.optional(v.number()),
+      totalVolume: v.optional(v.number()), // total weight lifted (lbs)
+      totalSets: v.optional(v.number()), // lifting sets only
+      totalDurationMinutes: v.optional(v.number()), // total workout duration
       exerciseCount: v.optional(v.number()),
+      // Cardio-specific stats
+      totalCardioDurationSeconds: v.optional(v.number()), // total cardio time
+      totalDistanceKm: v.optional(v.number()), // total distance in km
+      hasCardio: v.optional(v.boolean()), // quick check for cardio-only display logic
+      hasMobility: v.optional(v.boolean()), // quick check for mobility-only display logic
     })),
     
     // Per-exercise notes within this workout

@@ -21,11 +21,14 @@ export default function PricingPage() {
 
       <main className="flex flex-1 flex-col items-center px-4 py-12">
         <div className="mb-10 max-w-xl text-center">
+          <span className="mb-4 inline-block rounded-full bg-violet-500/10 px-4 py-1.5 text-sm font-semibold text-violet-600">
+            Alpha — Pro is Free for Everyone
+          </span>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
             Train smarter, not harder
           </h1>
           <p className="mt-3 text-lg text-muted-foreground">
-            Free forever for logging workouts. Upgrade for AI-powered insights that help you break plateaus.
+            All Pro features are free while we&apos;re in alpha. Help us build the best workout tracker.
           </p>
         </div>
 

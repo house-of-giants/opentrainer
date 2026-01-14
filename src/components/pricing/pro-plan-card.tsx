@@ -1,12 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { CheckoutButton } from "@clerk/nextjs/experimental";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FlaskConical, Sparkles, TrendingUp, Shield } from "lucide-react";
-
-const PLAN_ID = process.env.NEXT_PUBLIC_CLERK_PRO_PLAN_ID;
+import Link from "next/link";
 
 const features = [
 	{
@@ -32,33 +29,18 @@ const features = [
 	},
 ];
 
-const pricing = {
-	month: { price: 8, period: "month" as const, label: "Monthly" },
-	annual: {
-		price: 72,
-		period: "annual" as const,
-		label: "Annual",
-		monthlyEquiv: 6,
-		savings: "Save 25%",
-	},
-};
-
 export function ProPlanCard() {
-	const [billingPeriod, setBillingPeriod] = useState<"month" | "annual">(
-		"month"
-	);
-	const selected = pricing[billingPeriod];
-
-	if (!PLAN_ID) {
-		console.error("NEXT_PUBLIC_CLERK_PRO_PLAN_ID is not set");
-		return null;
-	}
-
 	return (
 		<Card className="relative w-full max-w-sm overflow-hidden p-6">
 			<div className="absolute inset-0 bg-linear-to-br from-violet-500/5 to-purple-500/10" />
 
 			<div className="relative">
+				<div className="mb-4 flex justify-center">
+					<span className="rounded-full bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-600">
+						Alpha — Free for Everyone
+					</span>
+				</div>
+
 				<div className="mb-6 text-center">
 					<h3 className="text-2xl font-bold">OpenTrainer Pro</h3>
 					<p className="mt-1 text-sm text-muted-foreground max-w-xs mx-auto">
@@ -66,51 +48,14 @@ export function ProPlanCard() {
 					</p>
 				</div>
 
-				<div className="mb-4 flex justify-center">
-					<div className="inline-flex rounded-lg bg-muted p-1">
-						<button
-							type="button"
-							onClick={() => setBillingPeriod("month")}
-							className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-								billingPeriod === "month"
-									? "bg-background text-foreground shadow-sm"
-									: "text-muted-foreground hover:text-foreground"
-							}`}
-						>
-							Monthly
-						</button>
-						<button
-							type="button"
-							onClick={() => setBillingPeriod("annual")}
-							className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-								billingPeriod === "annual"
-									? "bg-background text-foreground shadow-sm"
-									: "text-muted-foreground hover:text-foreground"
-							}`}
-						>
-							Annual
-						</button>
-					</div>
-				</div>
-
 				<div className="mb-6 text-center">
-					{billingPeriod === "month" ? (
-						<div className="flex items-baseline justify-center gap-1">
-							<span className="text-4xl font-bold">$8</span>
-							<span className="text-muted-foreground">/month</span>
-						</div>
-					) : (
-						<>
-							<div className="flex items-baseline justify-center gap-1">
-								<span className="text-4xl font-bold">$6</span>
-								<span className="text-muted-foreground">/month</span>
-							</div>
-							<p className="mt-1 text-sm text-muted-foreground">
-								$72 billed annually ·{" "}
-								<span className="font-medium text-green-600">Save 25%</span>
-							</p>
-						</>
-					)}
+					<div className="flex items-baseline justify-center gap-2">
+						<span className="text-4xl font-bold">$0</span>
+						<span className="text-muted-foreground line-through">$8/mo</span>
+					</div>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Free while we&apos;re in alpha
+					</p>
 				</div>
 
 				<ul className="mb-6 space-y-4">
@@ -129,15 +74,15 @@ export function ProPlanCard() {
 					))}
 				</ul>
 
-				<CheckoutButton planId={PLAN_ID} planPeriod={selected.period}>
-					<Button className="w-full gap-2 bg-violet-600 text-white hover:bg-violet-700">
+				<Button className="w-full gap-2 bg-violet-600 text-white hover:bg-violet-700" asChild>
+					<Link href="/dashboard">
 						<Sparkles className="h-4 w-4" />
-						Get Started
-					</Button>
-				</CheckoutButton>
+						Get Started Free
+					</Link>
+				</Button>
 
 				<p className="mt-3 text-center text-xs text-muted-foreground">
-					Cancel anytime. No questions asked.
+					No credit card required during alpha.
 				</p>
 			</div>
 		</Card>

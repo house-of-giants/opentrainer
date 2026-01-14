@@ -23,6 +23,10 @@ type Workout = {
     totalSets?: number;
     totalDurationMinutes?: number;
     exerciseCount?: number;
+    totalCardioDurationSeconds?: number;
+    totalDistanceKm?: number;
+    hasCardio?: boolean;
+    hasMobility?: boolean;
   };
 };
 
@@ -46,6 +50,15 @@ export default function HistoryPage() {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  };
+
+  const formatCardioDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) {
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+    return `${mins}m`;
   };
 
   const groupWorkoutsByMonth = (workoutList: Workout[]) => {
@@ -158,10 +171,18 @@ export default function HistoryPage() {
                             {workout.summary && (
                               <>
                                 <p className="font-mono font-medium tabular-nums">
-                                  {workout.summary.totalSets ?? 0} sets
+                                  {(workout.summary.totalSets ?? 0) > 0
+                                    ? `${workout.summary.totalSets} sets`
+                                    : workout.summary.totalCardioDurationSeconds
+                                      ? formatCardioDuration(workout.summary.totalCardioDurationSeconds)
+                                      : `${workout.summary.exerciseCount ?? 0} exercises`}
                                 </p>
                                 <p className="text-xs text-muted-foreground font-mono tabular-nums">
-                                  {workout.summary.exerciseCount ?? 0} exercises
+                                  {(workout.summary.totalSets ?? 0) > 0
+                                    ? `${workout.summary.exerciseCount ?? 0} exercises`
+                                    : workout.summary.totalCardioDurationSeconds
+                                      ? "cardio"
+                                      : ""}
                                 </p>
                               </>
                             )}

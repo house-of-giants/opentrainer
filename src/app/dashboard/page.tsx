@@ -83,6 +83,15 @@ export default function DashboardPage() {
 		return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 	};
 
+	const formatCardioDuration = (seconds: number) => {
+		const hours = Math.floor(seconds / 3600);
+		const mins = Math.floor((seconds % 3600) / 60);
+		if (hours > 0) {
+			return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+		}
+		return `${mins}m`;
+	};
+
 	const handleSaveGoal = async (newGoal: number) => {
 		await updateWeeklyGoal({ weeklyGoal: newGoal });
 	};
@@ -143,6 +152,7 @@ export default function DashboardPage() {
 						workoutGoal={dashboardStats.weeklyGoal}
 						totalSets={dashboardStats.weeklyTotalSets}
 						totalVolume={dashboardStats.weeklyTotalVolume}
+						totalDuration={dashboardStats.weeklyTotalDuration}
 						unit={dashboardStats.preferredUnits}
 						currentWeek={dashboardStats.currentWeek}
 						onEditGoal={() => setShowGoalDialog(true)}
@@ -202,12 +212,21 @@ export default function DashboardPage() {
 													)}
 												</p>
 											</div>
-											<div>
-												<p className="text-xs text-muted-foreground">Sets</p>
-												<p className="font-mono font-medium">
-													{workout.summary?.totalSets ?? 0}
-												</p>
-											</div>
+											{(workout.summary?.totalSets ?? 0) > 0 ? (
+												<div>
+													<p className="text-xs text-muted-foreground">Sets</p>
+													<p className="font-mono font-medium">
+														{workout.summary?.totalSets}
+													</p>
+												</div>
+											) : workout.summary?.totalCardioDurationSeconds ? (
+												<div>
+													<p className="text-xs text-muted-foreground">Cardio</p>
+													<p className="font-mono font-medium">
+														{formatCardioDuration(workout.summary.totalCardioDurationSeconds)}
+													</p>
+												</div>
+											) : null}
 											<div>
 												<p className="text-xs text-muted-foreground">
 													Exercises
