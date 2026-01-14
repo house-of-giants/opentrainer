@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import Marquee from "react-fast-marquee";
 import { Button } from "@/components/ui/button";
 import { SetStepper } from "./set-stepper";
+import { RpeSelector } from "./rpe-selector";
 import { NoteSheet } from "./note-sheet";
 import { useHaptic } from "@/hooks/use-haptic";
 import {
@@ -25,6 +27,7 @@ interface SetData {
 	weight: number;
 	unit: "lb" | "kg";
 	isBodyweight?: boolean;
+	rpe?: number | null;
 }
 
 type WeightMode = "weighted-only" | "bodyweight-only" | "bodyweight-optional";
@@ -73,7 +76,7 @@ interface ExerciseAccordionProps {
 	note?: string;
 	lastSession?: GhostSetData;
 	progressionSuggestion?: ProgressionSuggestionData;
-	onAddSet: (set: Omit<SetData, "setNumber" | "entryId">) => void;
+	onAddSet: (set: Omit<SetData, "setNumber" | "entryId"> & { rpe?: number | null }) => void;
 	onEditSet?: (set: SetData) => void;
 	onSwap?: () => void;
 	onNoteChange?: (note: string) => void;
@@ -180,39 +183,23 @@ function GhostSetBox({
 	);
 
 	if (isCompact) {
-		const lastLoggedSet =
-			loggedSets && loggedSets.length > 0
-				? loggedSets[loggedSets.length - 1]
-				: null;
-		const setsSummary = lastLoggedSet
-			? `Set ${lastLoggedSet.setNumber}: ${formatWeight(lastLoggedSet.weight, lastLoggedSet.unit, lastLoggedSet.isBodyweight)}×${lastLoggedSet.reps}`
-			: null;
-
 		return (
 			<button
 				type="button"
 				onClick={onToggle}
 				className={cn(
-					"w-full rounded-md border border-dashed border-muted-foreground/20 bg-muted/10 px-3 py-2 mb-3",
+					"w-full rounded border border-dashed border-muted-foreground/20 bg-muted/10 px-2 py-1.5 mb-2",
 					"flex items-center justify-between gap-2 text-xs",
 					"hover:bg-muted/20 transition-colors"
 				)}
 			>
-				<div className="flex items-center gap-2 min-w-0">
+				<div className="flex items-center gap-1.5 min-w-0">
 					<span className={cn("font-medium shrink-0", typeColor)}>Goal</span>
 					<span className="font-mono tabular-nums text-foreground">
 						{goalDisplay}
 					</span>
-					{setsSummary && (
-						<>
-							<span className="text-muted-foreground/50">•</span>
-							<span className="font-mono tabular-nums text-muted-foreground truncate">
-								{setsSummary}
-							</span>
-						</>
-					)}
 				</div>
-				<ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+				<ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
 			</button>
 		);
 	}
@@ -226,38 +213,96 @@ function GhostSetBox({
 	return (
 		<div
 			className={cn(
-				"rounded-md border border-dashed border-muted-foreground/30 bg-muted/20 p-3 mb-3",
+				"rounded border border-dashed border-muted-foreground/30 bg-muted/20 px-2.5 py-2 mb-2",
 				onToggle && "cursor-pointer hover:bg-muted/30 transition-colors"
 			)}
 			onClick={onToggle}
 		>
-			<div className="flex items-center justify-between">
-				<div className="flex items-center gap-2 text-xs text-muted-foreground">
-					<span className="opacity-60">
-						Last ({formatDate(lastSession.date)}):
-					</span>
+			<div className="flex items-center justify-between text-[11px]">
+				<div className="flex items-center gap-1.5 text-muted-foreground">
+					<span className="opacity-70">Last:</span>
 					<span className="font-mono tabular-nums">
-						{lastSession.weight} {lastSession.unit} × {lastSession.reps}{" "}
-						{rpeDisplay}
+						{lastSession.weight}{lastSession.unit} × {lastSession.reps}
+						{rpeDisplay && <span className="opacity-70"> {rpeDisplay}</span>}
 					</span>
+					<span className="opacity-50">({formatDate(lastSession.date)})</span>
 				</div>
 				{onToggle && (
-					<ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+					<ChevronUp className="h-3 w-3 text-muted-foreground" />
 				)}
 			</div>
 			{targetDisplay && suggestion && (
-				<div className="flex items-center gap-2 text-xs mt-1">
+				<div className="flex items-center gap-1.5 text-[11px] mt-1">
 					<span className={cn("font-medium", typeColor)}>Goal:</span>
 					<span className="font-mono tabular-nums text-foreground">
 						{targetDisplay}
 					</span>
+					{suggestion.reasoning && (
+						<span className="text-muted-foreground/60 truncate">
+							— {suggestion.reasoning}
+						</span>
+					)}
 				</div>
 			)}
-			{suggestion?.reasoning && (
-				<p className="text-xs text-muted-foreground/70 mt-1.5 italic">
-					{suggestion.reasoning}
-				</p>
-			)}
+		</div>
+	);
+}
+
+function ExerciseTitle({
+	name,
+	status,
+	animate,
+}: {
+	name: string;
+	status: ExerciseStatus;
+	animate?: boolean;
+}) {
+	const textRef = useRef<HTMLHeadingElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [isTruncated, setIsTruncated] = useState(false);
+
+	useEffect(() => {
+		const checkTruncation = () => {
+			if (textRef.current && containerRef.current) {
+				setIsTruncated(
+					textRef.current.scrollWidth > containerRef.current.clientWidth
+				);
+			}
+		};
+		checkTruncation();
+		window.addEventListener("resize", checkTruncation);
+		return () => window.removeEventListener("resize", checkTruncation);
+	}, [name]);
+
+	const textClassName = cn(
+		"font-semibold whitespace-nowrap transition-all duration-200",
+		status === "current" && "text-lg",
+		status === "completed" && "text-sm text-muted-foreground",
+		status === "upcoming" && "text-base"
+	);
+
+	if (animate && isTruncated) {
+		return (
+			<div ref={containerRef} className="min-w-0 flex-1 overflow-hidden">
+				<Marquee
+					speed={30}
+					delay={1}
+					pauseOnHover
+					gradient
+					gradientWidth={20}
+					gradientColor="var(--card)"
+				>
+					<h3 className={cn(textClassName, "pr-8")}>{name}</h3>
+				</Marquee>
+			</div>
+		);
+	}
+
+	return (
+		<div ref={containerRef} className="min-w-0 flex-1 overflow-hidden">
+			<h3 ref={textRef} className={cn(textClassName, "truncate")}>
+				{name}
+			</h3>
 		</div>
 	);
 }
@@ -275,18 +320,24 @@ function GoalBadge({
 	const repsDiff = suggestion.targetReps - lastSession.reps;
 
 	let badgeText: string;
+	let badgeLabel: string;
+	
 	if (suggestion.type === "deload") {
-		badgeText = `−${Math.abs(weightDiff)} ${lastSession.unit}`;
-	} else if (weightDiff > 0) {
+		badgeText = `${Math.abs(weightDiff)} ${lastSession.unit}`;
+		badgeLabel = "Ease up";
+	} else if (suggestion.type === "increase_weight" && weightDiff > 0) {
 		badgeText = `+${weightDiff} ${lastSession.unit}`;
-	} else if (repsDiff > 0) {
-		badgeText = `+${repsDiff} rep${repsDiff > 1 ? "s" : ""}`;
+		badgeLabel = "Add weight";
+	} else if (suggestion.type === "increase_reps" && repsDiff > 0) {
+		badgeText = `+${repsDiff}`;
+		badgeLabel = repsDiff > 1 ? "More reps" : "One more";
 	} else {
-		badgeText = "Hold";
+		badgeText = "=";
+		badgeLabel = "Maintain";
 	}
 
 	const badgeColor = cn(
-		"text-[10px] font-medium px-1.5 py-0.5 rounded",
+		"inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded",
 		suggestion.type === "increase_weight" &&
 			"bg-green-500/10 text-green-600 dark:text-green-400",
 		suggestion.type === "increase_reps" &&
@@ -296,7 +347,12 @@ function GoalBadge({
 			"bg-orange-500/10 text-orange-600 dark:text-orange-400"
 	);
 
-	return <span className={badgeColor}>{badgeText}</span>;
+	return (
+		<span className={badgeColor} title={suggestion.reasoning ?? undefined}>
+			<span className="opacity-70">{badgeLabel}</span>
+			<span className="font-bold">{badgeText}</span>
+		</span>
+	);
 }
 
 export function ExerciseAccordion({
@@ -338,6 +394,7 @@ export function ExerciseAccordion({
 
 	const [weight, setWeight] = useState(getInitialWeight());
 	const [reps, setReps] = useState(getInitialReps());
+	const [rpe, setRpe] = useState<number | null>(null);
 	const [isBodyweight, setIsBodyweight] = useState(
 		weightMode === "bodyweight-only" ||
 			(sets.length > 0 && sets[sets.length - 1].isBodyweight === true)
@@ -354,7 +411,8 @@ export function ExerciseAccordion({
 	const handleAddSet = () => {
 		vibrate("success");
 		const effectiveWeight = isBodyweight && !showAddedWeight ? 0 : weight;
-		onAddSet({ reps, weight: effectiveWeight, unit, isBodyweight });
+		onAddSet({ reps, weight: effectiveWeight, unit, isBodyweight, rpe });
+		setRpe(null);
 	};
 
 	const handleBodyweightToggle = () => {
@@ -420,16 +478,11 @@ export function ExerciseAccordion({
 
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center gap-2">
-							<h3
-								className={cn(
-									"font-semibold truncate transition-all duration-200",
-									status === "current" && "text-lg",
-									status === "completed" && "text-sm text-muted-foreground",
-									status === "upcoming" && "text-base"
-								)}
-							>
-								{exerciseName}
-							</h3>
+							<ExerciseTitle
+								name={exerciseName}
+								status={status}
+								animate={status === "current"}
+							/>
 							{status === "current" && lastSession && progressionSuggestion && (
 								<GoalBadge
 									lastSession={lastSession}
@@ -511,7 +564,7 @@ export function ExerciseAccordion({
 				)}
 			>
 				<div className="overflow-hidden">
-					<div className="space-y-3 px-4 pb-4 pt-2">
+					<div className="space-y-2 px-3 pb-3 pt-1">
 						{lastSession && (
 							<GhostSetBox
 								lastSession={lastSession}
@@ -529,7 +582,7 @@ export function ExerciseAccordion({
 							/>
 						)}
 						{targetSets !== undefined ? (
-							<div className="space-y-1.5">
+							<div className="space-y-1">
 								{Array.from({ length: targetSets }, (_, i) => i + 1).map(
 									(setNumber) => {
 										const loggedSet = sets.find(
@@ -547,25 +600,25 @@ export function ExerciseAccordion({
 													}
 													disabled={!onEditSet || !loggedSet.entryId}
 													className={cn(
-														"flex w-full items-center justify-between rounded px-3 py-2",
-														"bg-muted/40 text-sm transition-colors duration-150",
+														"flex w-full items-center justify-between rounded px-2.5 py-1.5",
+														"bg-muted/40 text-xs transition-colors duration-150",
 														"border border-transparent",
 														onEditSet &&
 															loggedSet.entryId &&
 															"hover:bg-muted hover:border-border cursor-pointer"
 													)}
 												>
-													<span className="font-mono text-muted-foreground">
-														{String(setNumber).padStart(2, "0")}
+													<span className="font-mono text-muted-foreground text-[11px]">
+														{setNumber}
 													</span>
 													<span className="font-mono tabular-nums">
 														{loggedSet.isBodyweight && loggedSet.weight === 0
-															? `BW x ${loggedSet.reps}`
+															? `BW × ${loggedSet.reps}`
 															: loggedSet.isBodyweight && loggedSet.weight > 0
-																? `BW+${loggedSet.weight} ${loggedSet.unit} x ${loggedSet.reps}`
-																: `${loggedSet.weight} ${loggedSet.unit} x ${loggedSet.reps}`}
+																? `BW+${loggedSet.weight}${loggedSet.unit} × ${loggedSet.reps}`
+																: `${loggedSet.weight}${loggedSet.unit} × ${loggedSet.reps}`}
 													</span>
-													<Check className="h-4 w-4 text-primary" />
+													<Check className="h-3.5 w-3.5 text-primary" />
 												</button>
 											);
 										} else {
@@ -575,18 +628,18 @@ export function ExerciseAccordion({
 												<div
 													key={setNumber}
 													className={cn(
-														"flex items-center justify-between rounded px-3 py-2",
-														"border border-dashed border-muted-foreground/20 text-sm",
+														"flex items-center justify-between rounded px-2.5 py-1.5",
+														"border border-dashed border-muted-foreground/20 text-xs",
 														"text-muted-foreground/50"
 													)}
 												>
-													<span className="font-mono">
-														{String(setNumber).padStart(2, "0")}
+													<span className="font-mono text-[11px]">
+														{setNumber}
 													</span>
 													<span className="font-mono tabular-nums">
-														— x {displayReps}
+														— × {displayReps}
 													</span>
-													<div className="h-4 w-4" />
+													<div className="h-3.5 w-3.5" />
 												</div>
 											);
 										}
@@ -594,7 +647,7 @@ export function ExerciseAccordion({
 								)}
 							</div>
 						) : sets.length > 0 ? (
-							<div className="space-y-1.5">
+							<div className="space-y-1">
 								{sets.map((set) => (
 									<button
 										key={set.setNumber}
@@ -602,100 +655,94 @@ export function ExerciseAccordion({
 										onClick={() => onEditSet && set.entryId && onEditSet(set)}
 										disabled={!onEditSet || !set.entryId}
 										className={cn(
-											"flex w-full items-center justify-between rounded px-3 py-2",
-											"bg-muted/40 text-sm transition-colors duration-150",
+											"flex w-full items-center justify-between rounded px-2.5 py-1.5",
+											"bg-muted/40 text-xs transition-colors duration-150",
 											"border border-transparent",
 											onEditSet &&
 												set.entryId &&
 												"hover:bg-muted hover:border-border cursor-pointer"
 										)}
 									>
-										<span className="font-mono text-muted-foreground">
-											{String(set.setNumber).padStart(2, "0")}
+										<span className="font-mono text-muted-foreground text-[11px]">
+											{set.setNumber}
 										</span>
 										<span className="font-mono tabular-nums">
 											{set.isBodyweight && set.weight === 0
-												? `BW x ${set.reps}`
+												? `BW × ${set.reps}`
 												: set.isBodyweight && set.weight > 0
-													? `BW+${set.weight} ${set.unit} x ${set.reps}`
-													: `${set.weight} ${set.unit} x ${set.reps}`}
+													? `BW+${set.weight}${set.unit} × ${set.reps}`
+													: `${set.weight}${set.unit} × ${set.reps}`}
 										</span>
-										<Check className="h-4 w-4 text-primary" />
+										<Check className="h-3.5 w-3.5 text-primary" />
 									</button>
 								))}
 							</div>
 						) : null}
 
 						{weightMode === "bodyweight-optional" && (
-							<div className="pt-2">
-								<div className="flex rounded-md border bg-muted/20 p-0.5">
-									<button
-										type="button"
-										onClick={() => {
-											if (isBodyweight) handleBodyweightToggle();
-										}}
-										className={cn(
-											"flex flex-1 items-center justify-center gap-2 rounded-sm px-3 py-2",
-											"text-xs font-medium transition-all duration-200",
-											!isBodyweight
-												? "bg-background text-foreground shadow-sm"
-												: "text-muted-foreground hover:text-foreground"
-										)}
-									>
-										<Dumbbell className="h-3.5 w-3.5" />
-										WEIGHTED
-									</button>
-									<button
-										type="button"
-										onClick={() => {
-											if (!isBodyweight) handleBodyweightToggle();
-										}}
-										className={cn(
-											"flex flex-1 items-center justify-center gap-2 rounded-sm px-3 py-2",
-											"text-xs font-medium transition-all duration-200",
-											isBodyweight
-												? "bg-background text-foreground shadow-sm"
-												: "text-muted-foreground hover:text-foreground"
-										)}
-									>
-										<User className="h-3.5 w-3.5" />
-										BODYWEIGHT
-									</button>
-								</div>
-							</div>
-						)}
-
-						{weightMode === "bodyweight-only" && (
-							<div className="pt-2">
+							<div className="flex rounded border bg-muted/20 p-0.5">
 								<button
 									type="button"
 									onClick={() => {
-										vibrate("light");
-										setShowAddedWeight(!showAddedWeight);
-										if (showAddedWeight) setWeight(0);
+										if (isBodyweight) handleBodyweightToggle();
 									}}
 									className={cn(
-										"flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2",
-										"text-xs font-medium transition-all duration-200",
-										showAddedWeight
-											? "border-primary/30 bg-primary/5 text-primary"
-											: "border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50"
+										"flex flex-1 items-center justify-center gap-1.5 rounded-sm px-2 py-1.5",
+										"text-[11px] font-medium transition-all duration-200",
+										!isBodyweight
+											? "bg-background text-foreground shadow-sm"
+											: "text-muted-foreground hover:text-foreground"
 									)}
 								>
-									<Dumbbell className="h-3.5 w-3.5" />
-									{showAddedWeight
-										? "ADDED WEIGHT"
-										: "+ ADD WEIGHT (VEST/BELT)"}
-									{showAddedWeight ? (
-										<ChevronUp className="h-3.5 w-3.5 ml-auto" />
-									) : (
-										<ChevronDown className="h-3.5 w-3.5 ml-auto" />
+									<Dumbbell className="h-3 w-3" />
+									Weighted
+								</button>
+								<button
+									type="button"
+									onClick={() => {
+										if (!isBodyweight) handleBodyweightToggle();
+									}}
+									className={cn(
+										"flex flex-1 items-center justify-center gap-1.5 rounded-sm px-2 py-1.5",
+										"text-[11px] font-medium transition-all duration-200",
+										isBodyweight
+											? "bg-background text-foreground shadow-sm"
+											: "text-muted-foreground hover:text-foreground"
 									)}
+								>
+									<User className="h-3 w-3" />
+									Bodyweight
 								</button>
 							</div>
 						)}
 
-						<div className="flex flex-wrap items-end justify-center gap-4 pt-3">
+						{weightMode === "bodyweight-only" && (
+							<button
+								type="button"
+								onClick={() => {
+									vibrate("light");
+									setShowAddedWeight(!showAddedWeight);
+									if (showAddedWeight) setWeight(0);
+								}}
+								className={cn(
+									"flex w-full items-center justify-center gap-1.5 rounded border px-2 py-1.5",
+									"text-[11px] font-medium transition-all duration-200",
+									showAddedWeight
+										? "border-primary/30 bg-primary/5 text-primary"
+										: "border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50"
+								)}
+							>
+								<Dumbbell className="h-3 w-3" />
+								{showAddedWeight ? "Added weight" : "+ Add weight (vest/belt)"}
+								{showAddedWeight ? (
+									<ChevronUp className="h-3 w-3 ml-auto" />
+								) : (
+									<ChevronDown className="h-3 w-3 ml-auto" />
+								)}
+							</button>
+						)}
+
+						<div className="flex items-end justify-center gap-6 pt-2">
 							{(weightMode === "weighted-only" ||
 								(weightMode === "bodyweight-optional" && !isBodyweight) ||
 								(weightMode === "bodyweight-only" && showAddedWeight)) && (
@@ -718,10 +765,14 @@ export function ExerciseAccordion({
 							/>
 						</div>
 
+						<div className="pt-2">
+							<RpeSelector value={rpe} onChange={setRpe} />
+						</div>
+
 						<Button
 							size="lg"
 							className={cn(
-								"mt-4 h-14 w-full text-base font-semibold tracking-wide",
+								"mt-3 h-12 w-full text-base font-semibold tracking-wide",
 								"transition-all duration-200"
 							)}
 							onClick={handleAddSet}

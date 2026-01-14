@@ -45,6 +45,7 @@ type EntryData = {
 
 function ExerciseAccordionWithHistory({
 	exerciseName,
+	targetReps,
 	...props
 }: Omit<
 	React.ComponentProps<typeof ExerciseAccordion>,
@@ -54,12 +55,13 @@ function ExerciseAccordionWithHistory({
 
 	const ghostData = useMemo(() => {
 		if (!history || history.length === 0) return null;
-		return calculateProgressionSuggestion(history);
-	}, [history]);
+		return calculateProgressionSuggestion(history, targetReps);
+	}, [history, targetReps]);
 
 	return (
 		<ExerciseAccordion
 			exerciseName={exerciseName}
+			targetReps={targetReps}
 			lastSession={ghostData?.lastSession}
 			progressionSuggestion={ghostData?.suggestion}
 			{...props}
@@ -312,6 +314,7 @@ export default function ActiveWorkoutPage() {
 			weight: number;
 			unit: "lb" | "kg";
 			isBodyweight?: boolean;
+			rpe?: number | null;
 		}
 	) => {
 		const group = exerciseGroups.get(exerciseName);
@@ -329,10 +332,10 @@ export default function ActiveWorkoutPage() {
 					weight: set.weight,
 					unit: set.unit,
 					isBodyweight: set.isBodyweight,
+					rpe: set.rpe ?? undefined,
 				},
 			});
 			setShowRestTimer(true);
-			// Don't remove from pendingExercises - we need to preserve order and metadata (targetSets, targetReps)
 		} catch (error) {
 			toast.error("Failed to log set");
 			console.error(error);
@@ -626,12 +629,13 @@ export default function ActiveWorkoutPage() {
 									targetSets={meta.targetSets}
 									targetReps={meta.targetReps}
 									note={getExerciseNote(name)}
-									onAddSet={(set: {
-										reps: number;
-										weight: number;
-										unit: "lb" | "kg";
-										isBodyweight?: boolean;
-									}) => handleAddSet(name, set)}
+								onAddSet={(set: {
+									reps: number;
+									weight: number;
+									unit: "lb" | "kg";
+									isBodyweight?: boolean;
+									rpe?: number | null;
+								}) => handleAddSet(name, set)}
 									onEditSet={(set: {
 										entryId?: string;
 										setNumber: number;
