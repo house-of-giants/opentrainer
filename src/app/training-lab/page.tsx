@@ -377,7 +377,7 @@ export default function TrainingLabPage() {
                     />
                     <ScoreCard
                       label="Recovery"
-                      score={latestReport.scores.recoverySignals}
+                      score={latestReport.scores.recoveryBalance}
                       description="Fatigue signals"
                     />
                   </div>
