@@ -157,3 +157,76 @@ export const getByClerkId = internalQuery({
       .first();
   },
 });
+
+export const deleteAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const workouts = await ctx.db
+      .query("workouts")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const workout of workouts) {
+      const entries = await ctx.db
+        .query("entries")
+        .withIndex("by_workout", (q) => q.eq("workoutId", workout._id))
+        .collect();
+
+      for (const entry of entries) {
+        await ctx.db.delete(entry._id);
+      }
+      await ctx.db.delete(workout._id);
+    }
+
+    const routines = await ctx.db
+      .query("routines")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const routine of routines) {
+      await ctx.db.delete(routine._id);
+    }
+
+    const assessments = await ctx.db
+      .query("assessments")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const assessment of assessments) {
+      const details = await ctx.db
+        .query("assessmentDetails")
+        .withIndex("by_assessment", (q) => q.eq("assessmentId", assessment._id))
+        .collect();
+
+      for (const detail of details) {
+        await ctx.db.delete(detail._id);
+      }
+      await ctx.db.delete(assessment._id);
+    }
+
+    const swaps = await ctx.db
+      .query("exerciseSwaps")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const swap of swaps) {
+      await ctx.db.delete(swap._id);
+    }
+
+    const feedback = await ctx.db
+      .query("feedback")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const fb of feedback) {
+      await ctx.db.delete(fb._id);
+    }
+
+    await ctx.db.delete(user._id);
+
+    return { success: true };
+  },
+});

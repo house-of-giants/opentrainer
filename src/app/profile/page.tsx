@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import {
   Monitor,
   CreditCard,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -30,6 +31,7 @@ import { EditExperienceDialog } from "@/components/profile/edit-experience-dialo
 import { EditEquipmentDialog } from "@/components/profile/edit-equipment-dialog";
 import { EditAvailabilityDialog } from "@/components/profile/edit-availability-dialog";
 import { EditBodyweightDialog } from "@/components/profile/edit-bodyweight-dialog";
+import { DeleteAccountDialog } from "@/components/profile/delete-account-dialog";
 
 const GOAL_LABELS: Record<string, string> = {
   strength: "Strength",
@@ -58,13 +60,14 @@ export default function ProfilePage() {
   const [showEquipmentDialog, setShowEquipmentDialog] = useState(false);
   const [showAvailabilityDialog, setShowAvailabilityDialog] = useState(false);
   const [showBodyweightDialog, setShowBodyweightDialog] = useState(false);
-  
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    () => () => { },
+    () => true,
+    () => false
+  );
 
   if (!isLoaded || user === undefined) {
     return (
@@ -280,9 +283,8 @@ export default function ProfilePage() {
                 {["light", "dark", "system"].map((t) => (
                   <div
                     key={t}
-                    className={`h-2 w-2 rounded-full ${
-                      theme === t ? "bg-primary" : "bg-muted"
-                    }`}
+                    className={`h-2 w-2 rounded-full ${theme === t ? "bg-primary" : "bg-muted"
+                      }`}
                   />
                 ))}
               </div>
@@ -334,18 +336,32 @@ export default function ProfilePage() {
           <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-3 px-1">
             Account
           </h3>
-          <Card className="p-4">
-            <button
-              type="button"
-              className="flex w-full items-center justify-between text-destructive"
-              onClick={() => signOut()}
-            >
-              <div className="flex items-center gap-3">
-                <LogOut className="h-5 w-5" />
-                <span className="font-medium">Sign Out</span>
-              </div>
-            </button>
-          </Card>
+          <div className="space-y-2">
+            <Card className="p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between"
+                onClick={() => signOut()}
+              >
+                <div className="flex items-center gap-3">
+                  <LogOut className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium">Sign Out</span>
+                </div>
+              </button>
+            </Card>
+            <Card className="p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-destructive"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <div className="flex items-center gap-3">
+                  <Trash2 className="h-5 w-5" />
+                  <span className="font-medium">Delete Account</span>
+                </div>
+              </button>
+            </Card>
+          </div>
         </section>
       </main>
 
@@ -382,6 +398,10 @@ export default function ProfilePage() {
         onOpenChange={setShowBodyweightDialog}
         currentWeight={user?.bodyweight}
         currentUnit={bodyweightUnit}
+      />
+      <DeleteAccountDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
       />
     </div>
   );
