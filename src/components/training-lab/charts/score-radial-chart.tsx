@@ -12,7 +12,7 @@ interface Scores {
   volumeAdherence: number;
   intensityManagement: number;
   muscleBalance: number;
-  recoverySignals: number;
+  recoveryBalance: number;
 }
 
 interface ScoreRadialChartProps {
@@ -32,7 +32,7 @@ export function ScoreRadialChart({ scores, className }: ScoreRadialChartProps) {
     { category: "Volume", score: scores.volumeAdherence, fullMark: 100 },
     { category: "Intensity", score: scores.intensityManagement, fullMark: 100 },
     { category: "Balance", score: scores.muscleBalance, fullMark: 100 },
-    { category: "Recovery", score: scores.recoverySignals, fullMark: 100 },
+    { category: "Recovery", score: scores.recoveryBalance, fullMark: 100 },
   ];
 
   return (
