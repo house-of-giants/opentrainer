@@ -17,6 +17,8 @@ function buildTrainingLabPayload(
   previousSummary?: string
 ) {
   const hist = aggregated.historicalContext;
+  const cardio = aggregated.cardioSummary;
+  const load = aggregated.trainingLoad;
   
   return {
     user: {
@@ -30,11 +32,31 @@ function buildTrainingLabPayload(
       end: aggregated.period.end,
       n: aggregated.period.workouts,
     },
+    load: load ? {
+      total: load.totalLoad,
+      lifting: load.liftingLoad,
+      cardio: load.cardioLoad,
+      liftPct: load.liftingPercent,
+      cardioPct: load.cardioPercent,
+      profile: load.profile,
+    } : undefined,
     vol: aggregated.volumeByMuscle.slice(0, 10).map((v) => ({
       m: v.muscle,
       s: v.sets,
       r: v.avgRpe,
     })),
+    cardio: cardio ? {
+      mins: cardio.totalMinutes,
+      dist: cardio.totalDistance,
+      load: cardio.totalLoad,
+      rpe: cardio.avgRpe,
+      byMod: cardio.byModality.slice(0, 5).map((m) => ({
+        mod: m.modality,
+        mins: m.minutes,
+        dist: m.distance,
+        sess: m.sessions,
+      })),
+    } : undefined,
     trends: aggregated.exerciseTrends.slice(0, 8).map((t) => ({
       ex: t.exercise,
       k: t.kind === "lifting" ? "l" : "c",
@@ -110,11 +132,8 @@ export const generateReport = action({
     })) as AggregatedWorkoutData;
 
     const workoutCount = aggregated.period.workouts;
-    if (args.reportType === "full" && workoutCount < 5) {
-      throw new Error("Full report requires 5+ workouts");
-    }
-    if (args.reportType === "snapshot" && workoutCount < 3) {
-      throw new Error("Snapshot requires 3+ workouts");
+    if (workoutCount === 0) {
+      throw new Error("No workouts to analyze");
     }
 
     const systemPrompt =

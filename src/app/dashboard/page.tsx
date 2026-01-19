@@ -14,6 +14,7 @@ import { StartWorkoutSheet } from "@/components/workout/start-workout-sheet";
 import { Play, Plus } from "lucide-react";
 import { WeeklyStatsGrid, GoalSettingDialog } from "@/components/dashboard";
 import { TrainingLabCard } from "@/components/training-lab/training-lab-card";
+import { AsciiLogo } from "@/components/ui/ascii-logo";
 
 export default function DashboardPage() {
 	const router = useRouter();
@@ -101,9 +102,7 @@ export default function DashboardPage() {
 			<header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
 				<div className="flex h-14 items-center justify-between px-4">
 					<div className="flex items-center gap-2">
-						<Link href="/" className="text-xl font-bold">
-							OpenTrainer
-						</Link>
+						<AsciiLogo />
 						<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
 							Alpha
 						</span>

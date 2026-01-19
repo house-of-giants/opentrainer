@@ -66,8 +66,11 @@ export interface TrainingLabCTAState {
   show: boolean;
   isPro: boolean;
   workoutsSinceLastReport: number;
-  reportType: "none" | "snapshot" | "full";
+  totalWorkouts: number;
+  hasReport: boolean;
+  canGenerate: boolean;
   message: string;
+  dataRangeDays: number;
 }
 
 export interface ProgressionSuggestion {
@@ -85,4 +88,40 @@ export interface ProgressionSuggestion {
     targetReps: number | null;
     reasoning: string | null;
   };
+}
+
+export type TrainingProfile = 
+  | "strength_focused"
+  | "cardio_focused"
+  | "hybrid"
+  | "general_fitness";
+
+export interface TrainingLabDashboardStats {
+  workoutsThisWeek: number;
+  weeklyTarget: number;
+  totalSetsThisWeek: number;
+  currentStreakWeeks: number;
+  longestStreakWeeks: number;
+  volumeChangePercent: number | null;
+  recentPRs: Array<{
+    exercise: string;
+    weight: number;
+    date: string;
+  }>;
+  trainingProfile: TrainingProfile;
+  trainingLoad: {
+    total: number;
+    liftingLoad: number;
+    cardioLoad: number;
+    liftingPercent: number;
+    cardioPercent: number;
+    changePercent: number | null;
+  };
+  cardioSummary: {
+    totalMinutes: number;
+    totalDistance: number;
+    distanceUnit: "km" | "mi";
+    avgRpe: number;
+    topModality: string | null;
+  } | null;
 }
