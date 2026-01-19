@@ -4,7 +4,6 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FlaskConical, Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -50,8 +49,7 @@ export function TrainingLabCard() {
 		);
 	}
 
-	if (ctaState.reportType === "none") {
-		const progress = (ctaState.workoutsSinceLastReport / 3) * 100;
+	if (!ctaState.canGenerate && ctaState.totalWorkouts === 0) {
 		return (
 			<Card className="p-4">
 				<div className="mb-2 flex items-center gap-2">
@@ -61,18 +59,10 @@ export function TrainingLabCard() {
 						ALPHA
 					</span>
 				</div>
-				<p className="mb-3 text-sm text-muted-foreground">{ctaState.message}</p>
-				<div className="flex items-center gap-2">
-					<Progress value={progress} className="h-2" />
-					<span className="text-xs font-mono text-muted-foreground">
-						{ctaState.workoutsSinceLastReport}/3
-					</span>
-				</div>
+				<p className="text-sm text-muted-foreground">{ctaState.message}</p>
 			</Card>
 		);
 	}
-
-	const isSnapshot = ctaState.reportType === "snapshot";
 
 	return (
 		<Card className="relative overflow-hidden p-4">
@@ -86,21 +76,10 @@ export function TrainingLabCard() {
 					</span>
 				</div>
 				<p className="mb-3 text-sm">{ctaState.message}</p>
-				{isSnapshot && (
-					<div className="mb-3 flex items-center gap-2">
-						<Progress
-							value={(ctaState.workoutsSinceLastReport / 5) * 100}
-							className="h-2"
-						/>
-						<span className="text-xs font-mono text-muted-foreground">
-							{ctaState.workoutsSinceLastReport}/5
-						</span>
-					</div>
-				)}
-				<Button size="sm" className="w-full gap-2" asChild>
+				<Button size="sm" className="w-full gap-2" asChild disabled={!ctaState.canGenerate}>
 					<Link href="/training-lab">
 						<Sparkles className="h-4 w-4" />
-						{isSnapshot ? "Generate Snapshot" : "Generate Full Report"}
+						{ctaState.hasReport ? "View Analysis" : "Generate Analysis"}
 					</Link>
 				</Button>
 			</div>

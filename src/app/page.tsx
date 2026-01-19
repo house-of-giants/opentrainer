@@ -10,6 +10,7 @@ import {
 } from "@clerk/nextjs";
 import Link from "next/link";
 import { useState } from "react";
+import { AsciiLogo } from "@/components/ui/ascii-logo";
 
 export default function Home() {
   return (
@@ -17,9 +18,7 @@ export default function Home() {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center space-x-2">
-            <span className="font-bold text-xl">OpenTrainer</span>
-          </Link>
+          <AsciiLogo />
           <nav className="flex items-center gap-2">
             <SignedOut>
               <SignInButton mode="modal">
@@ -54,8 +53,8 @@ export default function Home() {
                 <span className="text-muted-foreground">not minutes.</span>
               </h1>
               <p className="max-w-xl text-lg text-muted-foreground">
-                A minimal workout tracker built for the gym floor. Big buttons,
-                fast logging, AI that actually helps. No bloat.
+                2 taps to log a set. Works with sweaty hands, bad signal, and
+                the 45 seconds you have before your next set.
               </p>
               <div className="flex flex-wrap gap-4">
                 <SignedOut>
@@ -100,11 +99,11 @@ export default function Home() {
         <section className="border-y bg-muted/20">
           <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-center gap-4 px-4 py-8 sm:flex-row sm:gap-12 sm:px-6 lg:px-8">
             <p className="text-sm text-muted-foreground">
-              Built by lifters, for lifters
+              Open source on GitHub
             </p>
-            <p className="text-sm text-muted-foreground">Privacy-first analytics</p>
+            <p className="text-sm text-muted-foreground">No tracking pixels</p>
             <p className="text-sm text-muted-foreground">
-              Export your data anytime
+              Export everything as JSON
             </p>
           </div>
         </section>
@@ -122,18 +121,18 @@ export default function Home() {
           </div>
           <div className="grid gap-8 md:grid-cols-3">
             <FeatureCard
-              title="Gym-Floor Fast"
-              description="Log sets between reps, not after your session. Works with sweaty hands, bad signal, and zero patience."
+              title="2 Taps Per Set"
+              description="Log sets between reps. Works with sweaty hands, bad signal, and the 45 seconds you have before your next set."
               imageSrc="/images/app/active-workout.webp"
             />
             <FeatureCard
-              title="AI That Helps"
-              description="Generate routines based on your goals and equipment. Not AI that makes you watch ads."
+              title="AI That Knows Your Gym"
+              description="Tell it what equipment you have. Get a program that actually uses it — not one that assumes you have a full commercial gym."
               imageSrc="/images/app/routine-create.webp"
             />
             <FeatureCard
-              title="Your Data, Always"
-              description="Export everything as JSON. No lock-in, no hostage data. Switch anytime."
+              title="No Data Hostage"
+              description="Full JSON export. Every workout, every set, every note. Leave anytime and take everything with you."
               imageSrc="/images/app/export.webp"
             />
           </div>
@@ -153,18 +152,18 @@ export default function Home() {
             <div className="grid gap-8 md:grid-cols-3">
               <StepCard
                 step="1"
-                title="Sign up"
-                description="Create an account in seconds. No credit card, no commitment."
+                title="Sign up (30 seconds)"
+                description="No credit card. No 47-screen onboarding quiz."
               />
               <StepCard
                 step="2"
-                title="Start a workout"
-                description="Tap an exercise, set your weight and reps, start logging."
+                title="Tell us your gym"
+                description={`"Home gym with rack and dumbbells" — AI figures out the rest.`}
               />
               <StepCard
                 step="3"
-                title="Track progress"
-                description="See your history, PRs, and trends. Export anytime."
+                title="Start lifting"
+                description="Tap. Log. Done. See your progress build over time."
               />
             </div>
           </div>

@@ -24,6 +24,7 @@ import {
   Plus,
   Save,
   Search,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -420,6 +421,31 @@ export default function NewRoutinePage() {
 
       <main className="flex-1 p-4 pb-24">
         <div className="space-y-6">
+          <Link href="/routines/new/ai">
+            <Card className="p-4 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-500/20 hover:border-violet-500/40 transition-colors cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/20">
+                  <Sparkles className="h-5 w-5 text-violet-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-sm">Generate with AI</p>
+                  <p className="text-xs text-muted-foreground">
+                    Create a personalized routine based on your goals and equipment
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </Link>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">or build manually</span>
+            </div>
+          </div>
+
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Routine Name</Label>

@@ -331,6 +331,7 @@ export default defineSchema({
       overallProgress: v.optional(v.number()),
       volumeAdherence: v.optional(v.number()),
       intensityManagement: v.optional(v.number()),
+      muscleBalance: v.optional(v.number()),
       recoveryBalance: v.optional(v.number()),
     })),
     

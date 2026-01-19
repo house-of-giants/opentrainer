@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AsciiLogo } from "@/components/ui/ascii-logo";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -11,9 +12,7 @@ export default function TermsPage() {
 		<div className="flex min-h-screen flex-col">
 			<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
 				<div className="mx-auto flex h-14 w-full max-w-4xl items-center justify-between px-4 sm:px-6 lg:px-8">
-					<Link href="/" className="flex items-center space-x-2">
-						<span className="font-bold text-xl">OpenTrainer</span>
-					</Link>
+					<AsciiLogo />
 				</div>
 			</header>
 

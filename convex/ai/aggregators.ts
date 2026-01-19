@@ -60,6 +60,28 @@ export interface CardioSummary {
   avgRpe: number;
 }
 
+export type TrainingProfile = 
+  | "strength_focused"
+  | "cardio_focused"
+  | "hybrid"
+  | "general_fitness";
+
+export interface TrainingLoadSummary {
+  totalLoad: number;
+  liftingLoad: number;
+  cardioLoad: number;
+  liftingPercent: number;
+  cardioPercent: number;
+  profile: TrainingProfile;
+  loadChangePercent: number | null;
+  byWorkout: Array<{
+    date: string;
+    liftingLoad: number;
+    cardioLoad: number;
+    totalLoad: number;
+  }>;
+}
+
 export interface HistoricalContext {
   totalWorkouts: number;
   totalSets: number;
@@ -134,6 +156,7 @@ export interface AggregatedWorkoutData {
   }>;
   exerciseNotes: ExerciseNote[];
   cardioSummary?: CardioSummary;
+  trainingLoad?: TrainingLoadSummary;
   historicalContext?: HistoricalContext;
 }
 
@@ -198,6 +221,8 @@ export const aggregateWorkoutData = internalQuery({
       : DEFAULT_BODYWEIGHT_KG;
     
     const cardioSummary = aggregateCardioSummary(entries, exerciseMap, userBodyweightKg);
+    
+    const trainingLoad = aggregateTrainingLoad(entries, workouts, exerciseMap, userBodyweightKg);
 
     const exerciseNotes: ExerciseNote[] = [];
     for (const workout of workouts) {
@@ -280,6 +305,7 @@ export const aggregateWorkoutData = internalQuery({
       swapSummary,
       exerciseNotes,
       cardioSummary,
+      trainingLoad,
       historicalContext,
     };
   },
@@ -734,6 +760,141 @@ function aggregateCardioSummary(
       .sort((a, b) => b.load - a.load),
     vestedMinutes: Math.round(vestedMinutes),
     avgRpe: rpeCount > 0 ? Math.round((totalRpe / rpeCount) * 10) / 10 : 0,
+  };
+}
+
+const LIFTING_LOAD_MULTIPLIER = 0.8;
+const MIN_LOAD_FOR_PROFILE = 100;
+
+function calculateLiftingLoad(
+  entries: Doc<"entries">[],
+  workouts: Doc<"workouts">[]
+): { total: number; byWorkout: Map<string, number> } {
+  const workoutDurations = new Map<string, { start: number; end: number }>();
+  
+  for (const workout of workouts) {
+    workoutDurations.set(workout._id.toString(), {
+      start: workout.startedAt,
+      end: workout.completedAt ?? workout.startedAt + 60 * 60 * 1000,
+    });
+  }
+  
+  const workoutStats = new Map<string, { totalRpe: number; rpeCount: number; sets: number }>();
+  
+  for (const entry of entries) {
+    if (entry.kind !== "lifting" || !entry.lifting) continue;
+    
+    const workoutId = entry.workoutId.toString();
+    const existing = workoutStats.get(workoutId) ?? { totalRpe: 0, rpeCount: 0, sets: 0 };
+    existing.sets++;
+    if (entry.lifting.rpe) {
+      existing.totalRpe += entry.lifting.rpe;
+      existing.rpeCount++;
+    }
+    workoutStats.set(workoutId, existing);
+  }
+  
+  let totalLoad = 0;
+  const byWorkout = new Map<string, number>();
+  
+  for (const [workoutId, stats] of workoutStats) {
+    const duration = workoutDurations.get(workoutId);
+    if (!duration || stats.sets === 0) continue;
+    
+    const durationMinutes = (duration.end - duration.start) / (1000 * 60);
+    const avgRpe = stats.rpeCount > 0 ? stats.totalRpe / stats.rpeCount : 6;
+    const load = Math.round(durationMinutes * avgRpe * LIFTING_LOAD_MULTIPLIER);
+    
+    totalLoad += load;
+    byWorkout.set(workoutId, load);
+  }
+  
+  return { total: totalLoad, byWorkout };
+}
+
+function aggregateTrainingLoad(
+  entries: Doc<"entries">[],
+  workouts: Doc<"workouts">[],
+  exerciseMap: Map<string, Doc<"exercises">>,
+  userBodyweightKg: number,
+  previousPeriodLoad?: number
+): TrainingLoadSummary {
+  const liftingResult = calculateLiftingLoad(entries, workouts);
+  
+  const cardioLoadByWorkout = new Map<string, number>();
+  let totalCardioLoad = 0;
+  
+  for (const entry of entries) {
+    if (entry.kind !== "cardio" || !entry.cardio) continue;
+    
+    const exercise = exerciseMap.get(entry.exerciseName);
+    const modality = exercise?.modality ?? "other";
+    const durationMinutes = entry.cardio.durationSeconds / 60;
+    const rpe = entry.cardio.rpe ?? entry.cardio.intensity;
+    const vestWeightKg = entry.cardio.vestWeight
+      ? convertToKg(entry.cardio.vestWeight, entry.cardio.vestWeightUnit)
+      : 0;
+    
+    const load = calculateCardioLoad(durationMinutes, rpe, modality, userBodyweightKg, vestWeightKg);
+    totalCardioLoad += load;
+    
+    const workoutId = entry.workoutId.toString();
+    cardioLoadByWorkout.set(workoutId, (cardioLoadByWorkout.get(workoutId) ?? 0) + load);
+  }
+  
+  const totalLoad = liftingResult.total + totalCardioLoad;
+  const liftingPercent = totalLoad > 0 ? Math.round((liftingResult.total / totalLoad) * 100) : 0;
+  const cardioPercent = totalLoad > 0 ? Math.round((totalCardioLoad / totalLoad) * 100) : 0;
+  
+  let profile: TrainingProfile;
+  if (totalLoad < MIN_LOAD_FOR_PROFILE) {
+    profile = "general_fitness";
+  } else if (liftingPercent >= 70) {
+    profile = "strength_focused";
+  } else if (cardioPercent >= 70) {
+    profile = "cardio_focused";
+  } else {
+    profile = "hybrid";
+  }
+  
+  const loadChangePercent = previousPeriodLoad && previousPeriodLoad > 0
+    ? Math.round(((totalLoad - previousPeriodLoad) / previousPeriodLoad) * 100)
+    : null;
+  
+  const byWorkout: TrainingLoadSummary["byWorkout"] = [];
+  const workoutDateMap = new Map(workouts.map((w) => [w._id.toString(), w.startedAt]));
+  
+  const allWorkoutIds = new Set([
+    ...liftingResult.byWorkout.keys(),
+    ...cardioLoadByWorkout.keys(),
+  ]);
+  
+  for (const workoutId of allWorkoutIds) {
+    const date = workoutDateMap.get(workoutId);
+    if (!date) continue;
+    
+    const lifting = liftingResult.byWorkout.get(workoutId) ?? 0;
+    const cardio = cardioLoadByWorkout.get(workoutId) ?? 0;
+    
+    byWorkout.push({
+      date: new Date(date).toISOString().split("T")[0],
+      liftingLoad: lifting,
+      cardioLoad: cardio,
+      totalLoad: lifting + cardio,
+    });
+  }
+  
+  byWorkout.sort((a, b) => a.date.localeCompare(b.date));
+  
+  return {
+    totalLoad,
+    liftingLoad: liftingResult.total,
+    cardioLoad: totalCardioLoad,
+    liftingPercent,
+    cardioPercent,
+    profile,
+    loadChangePercent,
+    byWorkout,
   };
 }
 

@@ -32,7 +32,7 @@
     "react-circular-progressbar": "^2.2.0",
     "react-dom": "19.2.3",
     "react-fast-marquee": "^1.6.5",
-    "recharts": "^3.6.0",
+    "recharts": "2.15.4",
     "sonner": "^2.0.7",
     "svix": "^1.82.0",
     "tailwind-merge": "^3.4.0",
