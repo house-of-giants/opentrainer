@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "convex/react";
-import { useClerk } from "@clerk/nextjs";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { api } from "../../../convex/_generated/api";
 import {
   Dialog,
@@ -30,15 +30,17 @@ export function DeleteAccountDialog({
   const [isDeleting, setIsDeleting] = useState(false);
   const deleteAccount = useMutation(api.users.deleteAccount);
   const { signOut } = useClerk();
+  const { user } = useUser();
 
   const isConfirmed = confirmation === "DELETE";
 
   const handleDelete = async () => {
-    if (!isConfirmed) return;
+    if (!isConfirmed || !user) return;
 
     setIsDeleting(true);
     try {
       await deleteAccount({});
+      await user.delete();
       toast.success("Account deleted successfully");
       onOpenChange(false);
       await signOut();
