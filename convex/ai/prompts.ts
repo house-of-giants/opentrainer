@@ -11,7 +11,7 @@ SCHEMA:
     "volumeAdherence": number (0-100),
     "intensityManagement": number (0-100),
     "muscleBalance": number (0-100),
-    "recoverySignals": number (0-100)
+    "recoveryBalance": number (0-100)
   },
   "insights": [
     {
@@ -89,7 +89,7 @@ SCORING RUBRIC:
 - volumeAdherence: Are they hitting reasonable weekly targets for their goals? (For cardio: 150+ min/week is good)
 - intensityManagement: Is RPE consistent and appropriate? Avoiding constant 10s?
 - muscleBalance: For lifters: push/pull ratio. For cardio: modality variety. For hybrid: cross-training balance.
-- recoverySignals: Are there signs of fatigue accumulation (rising RPE, dropping volume)?`;
+- recoveryBalance: Are there signs of fatigue accumulation (rising RPE, dropping volume)?`;
 
 export const TRAINING_LAB_SNAPSHOT_PROMPT = `You are a sports performance analyst with expertise equivalent to a CSCS (Certified Strength and Conditioning Specialist) and exercise physiologist.
 

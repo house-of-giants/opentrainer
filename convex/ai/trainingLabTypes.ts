@@ -5,7 +5,7 @@ export interface TrainingLabReport {
     volumeAdherence: number;
     intensityManagement: number;
     muscleBalance: number;
-    recoverySignals: number;
+    recoveryBalance: number;
   };
   insights: Array<{
     category: "volume" | "intensity" | "balance" | "recovery" | "progression" | "technique";

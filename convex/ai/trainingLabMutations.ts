@@ -15,7 +15,7 @@ export const storeAssessment = internalMutation({
         volumeAdherence: v.number(),
         intensityManagement: v.number(),
         muscleBalance: v.number(),
-        recoverySignals: v.number(),
+        recoveryBalance: v.number(),
       })
     ),
     insights: v.optional(
@@ -47,7 +47,8 @@ export const storeAssessment = internalMutation({
         ? {
             volumeAdherence: args.scores.volumeAdherence,
             intensityManagement: args.scores.intensityManagement,
-            recoveryBalance: args.scores.recoverySignals,
+            muscleBalance: args.scores.muscleBalance,
+            recoveryBalance: args.scores.recoveryBalance,
           }
         : undefined,
       insights: args.insights,
