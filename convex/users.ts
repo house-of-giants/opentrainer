@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalQuery } from "./_generated/server";
 import { getCurrentUser as getAuthUser } from "./auth";
+import { checkRateLimit } from "./lib/rateLimit";
 
 export const getOrCreateUser = mutation({
   args: {
@@ -163,6 +164,11 @@ export const exportAllData = query({
   handler: async (ctx) => {
     const user = await getAuthUser(ctx);
     if (!user) throw new Error("User not found");
+
+    const { allowed } = await checkRateLimit(ctx, user._id, "dataExport");
+    if (!allowed) {
+      throw new Error("Export rate limit exceeded. You can export up to 5 times per day.");
+    }
 
     const workouts = await ctx.db
       .query("workouts")

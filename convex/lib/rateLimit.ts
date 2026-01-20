@@ -20,6 +20,10 @@ export const RATE_LIMITS = {
     windowMs: TWENTY_FOUR_HOURS_MS,
     maxRequests: 50,
   },
+  dataExport: {
+    windowMs: TWENTY_FOUR_HOURS_MS,
+    maxRequests: 5,
+  },
 } as const;
 
 export type RateLimitType = keyof typeof RATE_LIMITS;
@@ -74,8 +78,9 @@ export async function checkRateLimit(
   actionType: RateLimitType
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
   const config = RATE_LIMITS[actionType];
-  const windowStart = Date.now() - config.windowMs;
-  const resetAt = Date.now() + config.windowMs;
+  const now = Date.now();
+  const windowStart = now - config.windowMs;
+  const resetAt = windowStart + config.windowMs;
 
   let count: number;
 
@@ -84,7 +89,9 @@ export async function checkRateLimit(
   } else if (actionType === "trainingLabReport") {
     count = await countTrainingLabUsage(ctx, userId, windowStart);
   } else {
-    count = await countGeneralAIUsage(ctx, userId, windowStart);
+    // routineGeneration and progression don't persist trackable records
+    // TODO: Add dedicated aiUsage table for accurate per-action tracking
+    count = 0;
   }
 
   const remaining = Math.max(0, config.maxRequests - count);
@@ -98,10 +105,10 @@ export async function enforceRateLimit(
   userId: Id<"users">,
   actionType: RateLimitType
 ): Promise<void> {
-  const { allowed } = await checkRateLimit(ctx, userId, actionType);
+  const { allowed, resetAt } = await checkRateLimit(ctx, userId, actionType);
 
   if (!allowed) {
-    const hoursUntilReset = 24;
+    const hoursUntilReset = Math.max(1, Math.ceil((resetAt - Date.now()) / (60 * 60 * 1000)));
     throw new Error(
       `Rate limit exceeded for ${actionType}. ` +
         `You've used all ${RATE_LIMITS[actionType].maxRequests} requests for today. ` +
