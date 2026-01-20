@@ -8,7 +8,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Minus, Trophy } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface ExerciseTrend {
   exercise: string;
@@ -44,13 +44,6 @@ function ExerciseHistoryContent({ exercise }: { exercise: ExerciseTrend }) {
       : exercise.trend === "down"
         ? TrendingDown
         : Minus;
-
-  const trendColor =
-    exercise.trend === "up"
-      ? "text-green-500"
-      : exercise.trend === "down"
-        ? "text-red-500"
-        : "text-muted-foreground";
 
   return (
     <div className="py-4 space-y-6">

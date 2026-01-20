@@ -130,26 +130,14 @@ function SetRowCompact({ sets }: { sets: SetData[] }) {
 	);
 }
 
-function formatWeight(
-	weight: number,
-	unit: string,
-	isBodyweight?: boolean
-): string {
-	if (isBodyweight && weight === 0) return "BW";
-	if (isBodyweight && weight > 0) return `BW+${weight} ${unit}`;
-	return `${weight} ${unit}`;
-}
-
 function GhostSetBox({
 	lastSession,
 	suggestion,
-	loggedSets,
 	isCompact,
 	onToggle,
 }: {
 	lastSession: GhostSetData;
 	suggestion?: ProgressionSuggestionData;
-	loggedSets?: SetData[];
 	isCompact?: boolean;
 	onToggle?: () => void;
 }) {
@@ -569,7 +557,6 @@ export function ExerciseAccordion({
 							<GhostSetBox
 								lastSession={lastSession}
 								suggestion={progressionSuggestion}
-								loggedSets={sets}
 								isCompact={sets.length > 0 && !ghostExpanded}
 								onToggle={
 									sets.length > 0

@@ -76,12 +76,6 @@ export function ScoreCard({ label, score, description }: ScoreCardProps) {
     return "text-red-500";
   };
 
-  const getScoreBg = (s: number) => {
-    if (s >= 80) return "bg-green-500";
-    if (s >= 60) return "bg-yellow-500";
-    return "bg-red-500";
-  };
-
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;

@@ -19,7 +19,7 @@ export function RestTimerOverlay({
 }: RestTimerOverlayProps) {
   const [startedAt] = useState(() => Date.now());
   const [totalDuration, setTotalDuration] = useState(durationSeconds);
-  const [tick, setTick] = useState(0);
+  const [, forceUpdate] = useState(0);
   const [hasCompleted, setHasCompleted] = useState(false);
   const { vibrate } = useHaptic();
   const completedRef = useRef(false);
@@ -55,7 +55,7 @@ export function RestTimerOverlay({
         vibrate("light");
       }
 
-      setTick((t) => t + 1);
+      forceUpdate((n) => n + 1);
     }, 100);
 
     return () => clearInterval(interval);

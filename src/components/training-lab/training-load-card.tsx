@@ -10,8 +10,6 @@ type TrainingProfile = "strength_focused" | "cardio_focused" | "hybrid" | "gener
 
 interface TrainingLoadCardProps {
   total: number;
-  liftingLoad: number;
-  cardioLoad: number;
   liftingPercent: number;
   cardioPercent: number;
   changePercent: number | null;
@@ -43,8 +41,6 @@ const profileConfig: Record<TrainingProfile, { label: string; color: string; bgC
 
 export function TrainingLoadCard({
   total,
-  liftingLoad,
-  cardioLoad,
   liftingPercent,
   cardioPercent,
   changePercent,

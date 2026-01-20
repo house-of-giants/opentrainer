@@ -1,7 +1,5 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import {
   Drawer,
   DrawerContent,
@@ -9,7 +7,6 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface MuscleDrawerProps {
   muscle: string | null;

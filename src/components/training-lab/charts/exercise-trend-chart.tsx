@@ -1,10 +1,8 @@
 "use client";
 
-import { Line, LineChart, XAxis, YAxis, CartesianGrid, ReferenceLine } from "recharts";
+import { Line, LineChart } from "recharts";
 import {
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
@@ -22,17 +20,6 @@ interface ExerciseTrendChartProps {
   className?: string;
   onExerciseClick?: (exercise: ExerciseTrendData) => void;
 }
-
-const chartConfig = {
-  topWeight: {
-    label: "Top Weight",
-    color: "var(--chart-1)",
-  },
-  avgRpe: {
-    label: "Avg RPE",
-    color: "var(--chart-2)",
-  },
-} satisfies ChartConfig;
 
 function TrendIcon({ trend }: { trend: "up" | "down" | "flat" }) {
   if (trend === "up") return <TrendingUp className="h-4 w-4 text-green-500" />;
