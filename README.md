@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OpenTrainer
+
+A workout tracker that respects your time. Log sets in 2 taps, not 5 screens.
+
+**[Try it free](https://opentrainer.app)** | **[Report a bug](https://github.com/house-of-giants/opentrainer/issues)**
+
+## Why OpenTrainer?
+
+Most workout apps are bloated. You're between sets, sweaty, 45 seconds on the clock, and the app wants you to tap through menus.
+
+OpenTrainer is different:
+- **2 taps per set.** Log and get back to lifting.
+- **AI that knows your gym.** Tell it what equipment you have. Get a program that actually uses it.
+- **Your data, your rules.** Full JSON export. No lock-in. Leave anytime.
+- **No tracking pixels.** We don't sell your data.
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **Database:** Convex
+- **Auth:** Clerk
+- **AI:** Google Gemini
+- **Styling:** Tailwind CSS
+- **Deployment:** Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18+
+- npm, yarn, pnpm, or bun
+- Convex account (free tier works)
+- Clerk account (free tier works)
+
+### Setup
+
+1. Clone the repo
+   ```bash
+   git clone https://github.com/house-of-giants/opentrainer.git
+   cd opentrainer
+   ```
+
+2. Install dependencies
+   ```bash
+   npm install
+   ```
+
+3. Set up environment variables
+   ```bash
+   cp .env.example .env.local
+   ```
+   
+   Fill in your Convex and Clerk credentials. See `.env.example` for required variables.
+
+4. Start Convex (in a separate terminal)
+   ```bash
+   npx convex dev
+   ```
+
+5. Start the dev server
+   ```bash
+   npm run dev
+   ```
+
+6. Open [http://localhost:3000](http://localhost:3000)
+
+## Project Structure
+
+```
+src/
+├── app/           # Next.js App Router pages
+├── components/    # React components
+│   ├── ui/        # Base UI components (buttons, dialogs, etc.)
+│   ├── workout/   # Workout-specific components
+│   └── ...
+├── lib/           # Utilities and helpers
+convex/
+├── schema.ts      # Database schema
+├── *.ts           # Backend functions (queries, mutations)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Contributing
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## License
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[Apache 2.0](LICENSE)
