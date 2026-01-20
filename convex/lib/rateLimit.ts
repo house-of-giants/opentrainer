@@ -59,19 +59,6 @@ async function countTrainingLabUsage(
   return assessments.length;
 }
 
-async function countGeneralAIUsage(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-  windowStart: number
-): Promise<number> {
-  const assessments = await ctx.db
-    .query("assessments")
-    .withIndex("by_user_created", (q) => q.eq("userId", userId))
-    .filter((q) => q.gte(q.field("createdAt"), windowStart))
-    .collect();
-  return assessments.length;
-}
-
 export async function checkRateLimit(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,

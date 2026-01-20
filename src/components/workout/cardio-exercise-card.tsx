@@ -69,16 +69,10 @@ function EditableValue({
     }
   }, [isEditing]);
 
-  useEffect(() => {
-    if (!isEditing) {
-      setInputValue(value.toString());
-    }
-  }, [value, isEditing]);
-
   const handleClick = useCallback(() => {
     vibrate("light");
-    setIsEditing(true);
     setInputValue(value.toString());
+    setIsEditing(true);
   }, [vibrate, value]);
 
   const commitValue = useCallback(() => {
@@ -96,9 +90,8 @@ function EditableValue({
       commitValue();
     } else if (e.key === "Escape") {
       setIsEditing(false);
-      setInputValue(value.toString());
     }
-  }, [commitValue, value]);
+  }, [commitValue]);
 
   const handleDecrement = useCallback(() => {
     const newValue = Math.max(min, value - step);

@@ -27,8 +27,7 @@ OpenTrainer is different:
 
 ### Prerequisites
 
-- Node.js 18+
-- npm, yarn, pnpm, or bun
+- [Bun](https://bun.sh) (recommended) or Node.js 18+
 - Convex account (free tier works)
 - Clerk account (free tier works)
 
@@ -42,7 +41,7 @@ OpenTrainer is different:
 
 2. Install dependencies
    ```bash
-   npm install
+   bun install
    ```
 
 3. Set up environment variables
@@ -54,12 +53,12 @@ OpenTrainer is different:
 
 4. Start Convex (in a separate terminal)
    ```bash
-   npx convex dev
+   bunx convex dev
    ```
 
 5. Start the dev server
    ```bash
-   npm run dev
+   bun run dev
    ```
 
 6. Open [http://localhost:3000](http://localhost:3000)

@@ -39,12 +39,6 @@ export function SetStepper({
     }
   }, [isEditing]);
 
-  useEffect(() => {
-    if (!isEditing) {
-      setInputValue(value.toString());
-    }
-  }, [value, isEditing]);
-
   const handleDecrement = () => {
     const newValue = Math.max(min, value - step);
     if (newValue !== value) {
@@ -63,8 +57,8 @@ export function SetStepper({
 
   const handleValueClick = () => {
     vibrate("light");
-    setIsEditing(true);
     setInputValue(value.toString());
+    setIsEditing(true);
   };
 
   const commitValue = () => {
@@ -86,7 +80,6 @@ export function SetStepper({
       commitValue();
     } else if (e.key === "Escape") {
       setIsEditing(false);
-      setInputValue(value.toString());
     }
   };
 

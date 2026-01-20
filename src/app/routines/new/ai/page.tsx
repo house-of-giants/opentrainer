@@ -22,7 +22,6 @@ import {
   Save,
   Sparkles,
   Wand2,
-  X,
 } from "lucide-react";
 import {
   Drawer,

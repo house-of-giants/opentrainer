@@ -233,8 +233,6 @@ export default function TrainingLabPage() {
         {dashboardStats && dashboardStats.trainingLoad.total > 0 && (
           <TrainingLoadCard
             total={dashboardStats.trainingLoad.total}
-            liftingLoad={dashboardStats.trainingLoad.liftingLoad}
-            cardioLoad={dashboardStats.trainingLoad.cardioLoad}
             liftingPercent={dashboardStats.trainingLoad.liftingPercent}
             cardioPercent={dashboardStats.trainingLoad.cardioPercent}
             changePercent={dashboardStats.trainingLoad.changePercent}

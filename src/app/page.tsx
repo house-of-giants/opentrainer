@@ -488,38 +488,6 @@ function StepCard({
   );
 }
 
-function TestimonialCard({
-  quote,
-  name,
-  role,
-  avatarSrc,
-}: {
-  quote: string;
-  name: string;
-  role: string;
-  avatarSrc: string;
-}) {
-  return (
-    <div className="flex flex-col rounded-lg border bg-card p-6">
-      <p className="flex-1 text-sm italic text-muted-foreground">
-        &ldquo;{quote}&rdquo;
-      </p>
-      <div className="mt-6 flex items-center gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={avatarSrc}
-          alt={name}
-          className="h-10 w-10 rounded-full bg-muted"
-        />
-        <div>
-          <p className="text-sm font-medium">{name}</p>
-          <p className="text-xs text-muted-foreground">{role}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
