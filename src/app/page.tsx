@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -96,18 +97,17 @@ export default function Home() {
               </div>
             </div>
             {/* Device Mockup */}
-            {/* TODO: Replace static image with a looping GIF or short video showing the 2-tap logging flow.
-                Speed is your key differentiator. Show it in action! */}
+            {/* TODO: Replace static image with a looping GIF or short video showing the 2-tap logging flow. */}
             <div className="flex justify-center lg:justify-end">
               <div className="relative">
                 <div className="rounded-[2.5rem] border-8 border-foreground/10 bg-background p-2 shadow-2xl">
                   {/* Phone frame */}
-                  <div className="h-[500px] w-[250px] overflow-hidden rounded-[2rem] bg-muted sm:h-[600px] sm:w-[300px]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                  <div className="relative h-[500px] w-[250px] overflow-hidden rounded-[2rem] bg-muted sm:h-[600px] sm:w-[300px]">
+                    <Image
                       src="/images/app/dashboard.webp"
                       alt="OpenTrainer app screenshot"
-                      className="h-full w-full object-cover"
+                      className="object-cover"
+                      fill
                     />
                   </div>
                 </div>
@@ -452,13 +452,8 @@ function FeatureCard({
 }) {
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
-      <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageSrc}
-          alt={title}
-          className="h-full w-full object-cover"
-        />
+      <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
+        <Image src={imageSrc} alt={title} fill className="object-cover" />
       </div>
       <div className="p-6">
         <h3 className="mb-2 font-semibold">{title}</h3>
@@ -515,7 +510,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 function CheckIcon() {
   return (
     <svg
-      className="h-5 w-5 flex-shrink-0 text-primary"
+      className="h-5 w-5 shrink-0 text-primary"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
