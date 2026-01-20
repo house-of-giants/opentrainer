@@ -52,15 +52,17 @@ export default function Home() {
                 <br />
                 <span className="text-muted-foreground">not minutes.</span>
               </h1>
-              <p className="max-w-xl text-lg text-muted-foreground">
-                2 taps to log a set. Works with sweaty hands, bad signal, and
-                the 45 seconds you have before your next set.
+              <p className="max-w-xl text-xl text-muted-foreground">
+                Most apps need 5 screens to log one set. We need 2 taps.
+                <span className="mt-2 block text-base">
+                  Built for sweaty hands, bad gym WiFi, and the 45 seconds you have before your next set.
+                </span>
               </p>
               <div className="flex flex-wrap gap-4">
                 <SignedOut>
                   <SignUpButton mode="modal">
                     <Button size="lg" className="min-h-12 px-8">
-                      Start Logging — Free
+                      Start Free
                     </Button>
                   </SignUpButton>
                 </SignedOut>
@@ -72,11 +74,30 @@ export default function Home() {
                   </Link>
                 </SignedIn>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Works on any device. No app install required.
-              </p>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  No credit card required
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  No app install
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Export anytime
+                </span>
+              </div>
             </div>
             {/* Device Mockup */}
+            {/* TODO: Replace static image with a looping GIF or short video showing the 2-tap logging flow.
+                Speed is your key differentiator. Show it in action! */}
             <div className="flex justify-center lg:justify-end">
               <div className="relative">
                 <div className="rounded-[2.5rem] border-8 border-foreground/10 bg-background p-2 shadow-2xl">
@@ -98,12 +119,28 @@ export default function Home() {
         {/* Trust Bar */}
         <section className="border-y bg-muted/20">
           <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-center gap-4 px-4 py-8 sm:flex-row sm:gap-12 sm:px-6 lg:px-8">
-            <p className="text-sm text-muted-foreground">
-              Open source on GitHub
+            <a
+              href="https://github.com/house-of-giants/opentrainer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+              </svg>
+              100% open source
+            </a>
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+              </svg>
+              Zero tracking pixels
             </p>
-            <p className="text-sm text-muted-foreground">No tracking pixels</p>
-            <p className="text-sm text-muted-foreground">
-              Export everything as JSON
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              Full data export
             </p>
           </div>
         </section>
@@ -122,17 +159,17 @@ export default function Home() {
           <div className="grid gap-8 md:grid-cols-3">
             <FeatureCard
               title="2 Taps Per Set"
-              description="Log sets between reps. Works with sweaty hands, bad signal, and the 45 seconds you have before your next set."
+              description="Finish logging before your rest timer ends. No fumbling through menus while your muscles cool down."
               imageSrc="/images/app/active-workout.webp"
             />
             <FeatureCard
               title="AI That Knows Your Gym"
-              description="Tell it what equipment you have. Get a program that actually uses it — not one that assumes you have a full commercial gym."
+              description="Get programs that actually fit YOUR equipment. No more routines that assume you have a full commercial gym."
               imageSrc="/images/app/routine-create.webp"
             />
             <FeatureCard
-              title="No Data Hostage"
-              description="Full JSON export. Every workout, every set, every note. Leave anytime and take everything with you."
+              title="Your Data, Your Rules"
+              description="Leave anytime and take everything with you. Full JSON export of every workout, set, and note. No lock-in, ever."
               imageSrc="/images/app/export.webp"
             />
           </div>
@@ -158,7 +195,7 @@ export default function Home() {
               <StepCard
                 step="2"
                 title="Tell us your gym"
-                description={`"Home gym with rack and dumbbells" — AI figures out the rest.`}
+                description={`"Home gym with rack and dumbbells." AI figures out the rest.`}
               />
               <StepCard
                 step="3"
@@ -194,7 +231,7 @@ export default function Home() {
           <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
               <span className="mb-4 inline-block rounded-full bg-violet-500/10 px-4 py-1.5 text-sm font-semibold text-violet-600">
-                Alpha — Pro is Free for Everyone
+                Alpha: Pro is Free for Everyone
               </span>
               <h2 className="text-3xl font-bold tracking-tight">
                 Simple pricing
@@ -326,15 +363,27 @@ export default function Home() {
             />
             <FAQItem
               question="Can I export my data?"
-              answer="Absolutely. You can export your complete workout history as JSON. We believe in data portability—no lock-in."
+              answer="Absolutely. You can export your complete workout history as JSON. No lock-in."
             />
             <FAQItem
               question="What makes the AI different?"
-              answer="Our AI generates routines based on your actual goals, experience level, and available equipment. Not generic templates—personalized programs."
+              answer="Our AI generates routines based on your actual goals, experience level, and available equipment. Not generic templates."
             />
             <FAQItem
               question="Is everything really free during alpha?"
               answer="Yes! During our alpha period, all Pro features are completely free. This includes unlimited AI routines, Training Lab insights, and Smart Swap. No credit card required."
+            />
+            <FAQItem
+              question="Does it work offline?"
+              answer="The app works best with an internet connection for syncing, but you can continue logging workouts if you lose signal mid-session. Your data syncs automatically when you're back online."
+            />
+            <FAQItem
+              question="Can I import my data from other apps?"
+              answer="Not yet, but it's on our roadmap. For now you start fresh. We'll announce import support when it's ready."
+            />
+            <FAQItem
+              question="What happens after alpha ends?"
+              answer="We'll introduce paid Pro plans, but alpha users will get special pricing as a thank-you for helping us build. The free tier will always exist with generous limits."
             />
           </div>
         </section>
@@ -373,7 +422,7 @@ export default function Home() {
       <footer className="border-t py-8">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row lg:px-8">
           <p className="text-sm text-muted-foreground">
-            © 2025 OpenTrainer. Pro is free during alpha.
+            © {new Date().getFullYear()} OpenTrainer. Pro is free during alpha.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <Link href="/privacy" className="hover:text-foreground">
