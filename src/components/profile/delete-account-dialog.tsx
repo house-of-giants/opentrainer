@@ -92,7 +92,7 @@ export function DeleteAccountDialog({
           />
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-3 pt-4">
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}

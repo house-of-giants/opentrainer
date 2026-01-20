@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useConvex } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +21,8 @@ import {
   CreditCard,
   Sparkles,
   Trash2,
+  Download,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -61,6 +63,8 @@ export default function ProfilePage() {
   const [showAvailabilityDialog, setShowAvailabilityDialog] = useState(false);
   const [showBodyweightDialog, setShowBodyweightDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const convex = useConvex();
 
   const { theme, setTheme, resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(
@@ -105,6 +109,26 @@ export default function ProfilePage() {
   const bodyweightDisplay = user?.bodyweight
     ? `${user.bodyweight} ${bodyweightUnit}`
     : "Not set";
+
+  const handleExportData = async () => {
+    setIsExporting(true);
+    try {
+      const data = await convex.query(api.users.exportAllData, {});
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `opentrainer-export-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export failed:", error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -337,6 +361,26 @@ export default function ProfilePage() {
             Account
           </h3>
           <div className="space-y-2">
+            <Card className="p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between"
+                onClick={handleExportData}
+                disabled={isExporting}
+              >
+                <div className="flex items-center gap-3">
+                  {isExporting ? (
+                    <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+                  ) : (
+                    <Download className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <div className="text-left">
+                    <span className="font-medium">Export All Data</span>
+                    <p className="text-sm text-muted-foreground">Download your workouts, routines & more</p>
+                  </div>
+                </div>
+              </button>
+            </Card>
             <Card className="p-4">
               <button
                 type="button"
