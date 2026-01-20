@@ -7,7 +7,7 @@ Thanks for your interest in contributing! Here's how to get involved.
 1. Fork the repo
 2. Create a branch (`git checkout -b fix/thing-you-fixed`)
 3. Make your changes
-4. Run `npm run lint` and fix any issues
+4. Run `bun run lint` and fix any issues
 5. Open a PR
 
 ## What We're Looking For

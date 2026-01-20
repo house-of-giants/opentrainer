@@ -15,5 +15,5 @@ Steps to verify this works:
 ## Checklist
 
 - [ ] I've tested this locally
-- [ ] `npm run lint` passes
+- [ ] `bun run lint` passes
 - [ ] I've updated docs if needed
