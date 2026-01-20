@@ -224,6 +224,14 @@ export const getProgressionSuggestion = action({
       return calculateRuleBasedProgression(sessions, args.exerciseName, args.targetRepRange);
     }
 
+    const rateLimitCheck = await ctx.runQuery(internal.ai.rateLimitQueries.checkAIRateLimit, {
+      userId: user._id,
+      actionType: "progression",
+    }) as { allowed: boolean; remaining: number };
+    if (!rateLimitCheck.allowed) {
+      return calculateRuleBasedProgression(sessions, args.exerciseName, args.targetRepRange);
+    }
+
     const payload = {
       exercise: args.exerciseName,
       history: sessions.map((s) => ({

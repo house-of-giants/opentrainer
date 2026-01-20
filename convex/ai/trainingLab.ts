@@ -125,6 +125,16 @@ export const generateReport = action({
     if (!user) throw new Error("User not found");
     if (user.tier !== "pro") throw new Error("Pro subscription required");
 
+    const rateLimitCheck = await ctx.runQuery(internal.ai.rateLimitQueries.checkAIRateLimit, {
+      userId: user._id,
+      actionType: "trainingLabReport",
+    }) as { allowed: boolean; remaining: number };
+    if (!rateLimitCheck.allowed) {
+      throw new Error(
+        `Rate limit exceeded. You've used all 10 Training Lab reports for today. Try again tomorrow.`
+      );
+    }
+
     const aggregated = (await ctx.runQuery(internal.ai.aggregators.aggregateWorkoutData, {
       userId: user._id,
       days: args.periodDays ?? 7,

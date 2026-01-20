@@ -55,6 +55,16 @@ export const getAlternatives = action({
     if (!user) throw new Error("User not found");
     if (user.tier !== "pro") throw new Error("Pro subscription required");
 
+    const rateLimitCheck = await ctx.runQuery(internal.ai.rateLimitQueries.checkAIRateLimit, {
+      userId: user._id,
+      actionType: "smartSwap",
+    }) as { allowed: boolean; remaining: number };
+    if (!rateLimitCheck.allowed) {
+      throw new Error(
+        `Rate limit exceeded. You've used all 30 Smart Swap requests for today. Try again tomorrow.`
+      );
+    }
+
     const exerciseContext = await ctx.runQuery(
       internal.ai.aggregators.getExerciseContext,
       {

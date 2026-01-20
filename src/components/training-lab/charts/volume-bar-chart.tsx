@@ -76,8 +76,9 @@ export function VolumeBarChart({ data, className, onMuscleClick }: VolumeBarChar
           radius={[0, 4, 4, 0]}
           className={onMuscleClick ? "cursor-pointer" : ""}
           onClick={(data) => {
-            if (onMuscleClick && data?.muscle) {
-              onMuscleClick(data.muscle.toLowerCase());
+            const payload = data?.payload as VolumeData | undefined;
+            if (onMuscleClick && payload?.muscle) {
+              onMuscleClick(payload.muscle.toLowerCase());
             }
           }}
         />

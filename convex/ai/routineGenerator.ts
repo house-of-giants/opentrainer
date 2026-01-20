@@ -84,6 +84,16 @@ export const generateRoutine = action({
     if (!user) throw new Error("User not found");
     if (user.tier !== "pro") throw new Error("Pro subscription required");
 
+    const rateLimitCheck = await ctx.runQuery(internal.ai.rateLimitQueries.checkAIRateLimit, {
+      userId: user._id,
+      actionType: "routineGeneration",
+    }) as { allowed: boolean; remaining: number };
+    if (!rateLimitCheck.allowed) {
+      throw new Error(
+        `Rate limit exceeded. You've used all 10 routine generation requests for today. Try again tomorrow.`
+      );
+    }
+
     const sanitizedNotes = args.additionalNotes
       ?.slice(0, MAX_ADDITIONAL_NOTES_LENGTH)
       .trim();
@@ -174,6 +184,16 @@ export const getRoutineSwapAlternatives = action({
     })) as Doc<"users"> | null;
     if (!user) throw new Error("User not found");
     if (user.tier !== "pro") throw new Error("Pro subscription required");
+
+    const rateLimitCheck = await ctx.runQuery(internal.ai.rateLimitQueries.checkAIRateLimit, {
+      userId: user._id,
+      actionType: "routineGeneration",
+    }) as { allowed: boolean; remaining: number };
+    if (!rateLimitCheck.allowed) {
+      throw new Error(
+        `Rate limit exceeded. You've used all 10 routine swap requests for today. Try again tomorrow.`
+      );
+    }
 
     const sanitizedNotes = args.userNotes?.slice(0, 200).trim();
 

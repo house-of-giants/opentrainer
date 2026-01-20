@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalQuery } from "./_generated/server";
 import { getCurrentUser as getAuthUser } from "./auth";
+import { checkRateLimit } from "./lib/rateLimit";
 
 export const getOrCreateUser = mutation({
   args: {
@@ -155,6 +156,148 @@ export const getByClerkId = internalQuery({
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .first();
+  },
+});
+
+export const exportAllData = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const { allowed } = await checkRateLimit(ctx, user._id, "dataExport");
+    if (!allowed) {
+      throw new Error("Export rate limit exceeded. You can export up to 5 times per day.");
+    }
+
+    const workouts = await ctx.db
+      .query("workouts")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const workoutsWithEntries = await Promise.all(
+      workouts.map(async (workout) => {
+        const entries = await ctx.db
+          .query("entries")
+          .withIndex("by_workout", (q) => q.eq("workoutId", workout._id))
+          .collect();
+
+        return {
+          id: workout._id,
+          title: workout.title,
+          status: workout.status,
+          startedAt: new Date(workout.startedAt).toISOString(),
+          completedAt: workout.completedAt
+            ? new Date(workout.completedAt).toISOString()
+            : null,
+          summary: workout.summary,
+          notes: workout.notes,
+          exerciseNotes: workout.exerciseNotes,
+          entries: entries.map((entry) => ({
+            exerciseName: entry.exerciseName,
+            kind: entry.kind,
+            lifting: entry.lifting,
+            cardio: entry.cardio,
+            mobility: entry.mobility,
+            notes: entry.notes,
+            createdAt: new Date(entry.createdAt).toISOString(),
+          })),
+        };
+      })
+    );
+
+    const routines = await ctx.db
+      .query("routines")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const routinesExport = routines.map((routine) => ({
+      id: routine._id,
+      name: routine.name,
+      description: routine.description,
+      source: routine.source,
+      days: routine.days,
+      tags: routine.tags,
+      isActive: routine.isActive,
+      createdAt: new Date(routine.createdAt).toISOString(),
+      updatedAt: new Date(routine.updatedAt).toISOString(),
+    }));
+
+    const assessments = await ctx.db
+      .query("assessments")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const assessmentsWithDetails = await Promise.all(
+      assessments.map(async (assessment) => {
+        const details = await ctx.db
+          .query("assessmentDetails")
+          .withIndex("by_assessment", (q) => q.eq("assessmentId", assessment._id))
+          .first();
+
+        return {
+          id: assessment._id,
+          subjectType: assessment.subjectType,
+          summary: assessment.summary,
+          scores: assessment.scores,
+          insights: assessment.insights,
+          createdAt: new Date(assessment.createdAt).toISOString(),
+          content: details?.contentMarkdown,
+        };
+      })
+    );
+
+    const exerciseSwaps = await ctx.db
+      .query("exerciseSwaps")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const swapsExport = exerciseSwaps.map((swap) => ({
+      originalExercise: swap.originalExercise,
+      substitutedExercise: swap.substitutedExercise,
+      reason: swap.reason,
+      createdAt: new Date(swap.createdAt).toISOString(),
+    }));
+
+    const feedback = await ctx.db
+      .query("feedback")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const feedbackExport = feedback.map((fb) => ({
+      type: fb.type,
+      message: fb.message,
+      context: fb.context,
+      createdAt: new Date(fb.createdAt).toISOString(),
+    }));
+
+    return {
+      exportedAt: new Date().toISOString(),
+      version: "1.0",
+      user: {
+        name: user.name,
+        email: user.email,
+        goals: user.goals,
+        experienceLevel: user.experienceLevel,
+        equipment: user.equipment,
+        equipmentDescription: user.equipmentDescription,
+        preferredUnits: user.preferredUnits,
+        weeklyAvailability: user.weeklyAvailability,
+        sessionDuration: user.sessionDuration,
+        bodyweight: user.bodyweight,
+        bodyweightUnit: user.bodyweightUnit,
+        tier: user.tier,
+        onboardingCompletedAt: user.onboardingCompletedAt
+          ? new Date(user.onboardingCompletedAt).toISOString()
+          : null,
+        createdAt: new Date(user.createdAt).toISOString(),
+      },
+      workouts: workoutsWithEntries,
+      routines: routinesExport,
+      assessments: assessmentsWithDetails,
+      exerciseSwaps: swapsExport,
+      feedback: feedbackExport,
+    };
   },
 });
 
