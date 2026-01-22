@@ -11,7 +11,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
-import Image from "next/image";
+
 
 export default function Home() {
   return (
@@ -44,73 +44,82 @@ export default function Home() {
       </header>
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 md:py-24 lg:px-8">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
-            <div className="flex flex-col gap-6">
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-                Log workouts in seconds,
-                <br />
-                <span className="text-muted-foreground">not minutes.</span>
-              </h1>
-              <p className="max-w-xl text-xl text-muted-foreground">
-                Most apps need 5 screens to log one set. We need 2 taps.
-                <span className="mt-2 block text-base">
-                  Built for sweaty hands, bad gym WiFi, and the 45 seconds you have before your next set.
-                </span>
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <SignedOut>
-                  <SignUpButton mode="modal">
-                    <Button size="lg" className="min-h-12 px-8">
-                      Start Free
-                    </Button>
-                  </SignUpButton>
-                </SignedOut>
-                <SignedIn>
-                  <Link href="/dashboard">
-                    <Button size="lg" className="min-h-12 px-8">
-                      Go to Dashboard
-                    </Button>
-                  </Link>
-                </SignedIn>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  No credit card required
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  No app install
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  Export anytime
-                </span>
-              </div>
-            </div>
-            {/* Device Mockup */}
-            {/* TODO: Replace static image with a looping GIF or short video showing the 2-tap logging flow. */}
-            <div className="flex justify-center lg:justify-end">
-              <div className="relative">
-                <div className="rounded-[2.5rem] border-8 border-foreground/10 bg-background p-2 shadow-2xl">
-                  {/* Phone frame */}
-                  <div className="relative h-[500px] w-[250px] overflow-hidden rounded-[2rem] bg-muted sm:h-[600px] sm:w-[300px]">
-                    <Image
-                      src="/images/app/dashboard.webp"
-                      alt="OpenTrainer app screenshot"
-                      className="object-cover"
-                      fill
-                    />
-                  </div>
+        {/* Hero Section - Mobile: video background, Desktop: side-by-side */}
+        <section className="relative lg:static">
+          {/* Mobile video background */}
+          <div className="absolute inset-0 overflow-hidden lg:hidden">
+            <video
+              src="/videos/hero-dashboard.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="h-full w-full scale-150 object-cover opacity-15 blur-[2px]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
+          </div>
+
+          <div className="relative mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-20 md:py-24 lg:px-8">
+            <div className="flex flex-col items-center gap-6 text-center lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:text-left">
+              <div className="flex flex-col items-center gap-5 lg:items-start lg:gap-6">
+                <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+                  Log workouts in seconds,
+                  <br />
+                  <span className="text-muted-foreground">not minutes.</span>
+                </h1>
+                <p className="max-w-md text-lg text-muted-foreground sm:text-xl lg:max-w-xl">
+                  Most apps need 5 screens to log one set. We need 2 taps.
+                  <span className="mt-2 block text-base">
+                    Built for sweaty hands, bad gym WiFi, and the 45 seconds you have before your next set.
+                  </span>
+                </p>
+                <div className="flex flex-wrap justify-center gap-4 lg:justify-start">
+                  <SignedOut>
+                    <SignUpButton mode="modal">
+                      <Button size="lg" className="min-h-12 px-8">
+                        Start Free
+                      </Button>
+                    </SignUpButton>
+                  </SignedOut>
+                  <SignedIn>
+                    <Link href="/dashboard">
+                      <Button size="lg" className="min-h-12 px-8">
+                        Go to Dashboard
+                      </Button>
+                    </Link>
+                  </SignedIn>
                 </div>
+                <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground sm:flex-row sm:gap-6 lg:justify-start">
+                  <span className="flex items-center gap-1.5">
+                    <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    No credit card required
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    No app install
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Export anytime
+                  </span>
+                </div>
+              </div>
+              {/* Desktop video - hidden on mobile */}
+              <div className="hidden lg:flex lg:justify-end">
+                <video
+                  src="/videos/hero-dashboard.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="h-[550px] w-auto rounded-2xl shadow-2xl"
+                />
               </div>
             </div>
           </div>
@@ -160,17 +169,17 @@ export default function Home() {
             <FeatureCard
               title="2 Taps Per Set"
               description="Finish logging before your rest timer ends. No fumbling through menus while your muscles cool down."
-              imageSrc="/images/app/active-workout.webp"
+              videoSrc="/videos/feature-log-set.mp4"
             />
             <FeatureCard
               title="AI That Knows Your Gym"
               description="Get programs that actually fit YOUR equipment. No more routines that assume you have a full commercial gym."
-              imageSrc="/images/app/routine-create.webp"
+              videoSrc="/videos/feature-ai.mp4"
             />
             <FeatureCard
               title="Your Data, Your Rules"
               description="Leave anytime and take everything with you. Full JSON export of every workout, set, and note. No lock-in, ever."
-              imageSrc="/images/app/export.webp"
+              videoSrc="/videos/feature-export.mp4"
             />
           </div>
         </section>
@@ -186,7 +195,7 @@ export default function Home() {
                 From zero to lifting in under a minute.
               </p>
             </div>
-            <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
               <StepCard
                 step="1"
                 title="Sign up (30 seconds)"
@@ -444,16 +453,23 @@ export default function Home() {
 function FeatureCard({
   title,
   description,
-  imageSrc,
+  videoSrc,
 }: {
   title: string;
   description: string;
-  imageSrc: string;
+  videoSrc: string;
 }) {
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
       <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
-        <Image src={imageSrc} alt={title} fill className="object-cover" />
+        <video
+          src={videoSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="h-full w-full object-cover"
+        />
       </div>
       <div className="p-6">
         <h3 className="mb-2 font-semibold">{title}</h3>
