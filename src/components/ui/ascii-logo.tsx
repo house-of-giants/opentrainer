@@ -19,15 +19,21 @@ export function AsciiLogo({
   href = "/",
   className = "" 
 }: AsciiLogoProps) {
-  const logo = variant === "full" ? ASCII_LOGO : COMPACT_LOGO;
-  
   const content = (
-    <pre 
-      className={`font-mono text-[0.5rem] leading-[0.6rem] sm:text-[0.6rem] sm:leading-[0.7rem] tracking-tighter select-none ${className}`}
-      aria-label="OpenTrainer"
-    >
-      {logo}
-    </pre>
+    <>
+      <pre 
+        className={`hidden sm:block font-mono text-[0.6rem] leading-[0.7rem] tracking-tighter select-none ${className}`}
+        aria-label="OpenTrainer"
+      >
+        {variant === "full" ? ASCII_LOGO : COMPACT_LOGO}
+      </pre>
+      <pre 
+        className={`sm:hidden font-mono text-[0.5rem] leading-[0.6rem] tracking-tighter select-none ${className}`}
+        aria-label="OpenTrainer"
+      >
+        {COMPACT_LOGO}
+      </pre>
+    </>
   );
 
   if (href) {
