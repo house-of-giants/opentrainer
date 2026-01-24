@@ -616,6 +616,24 @@ export default function NewRoutinePage() {
             )}
 
             <div className="flex-1 overflow-y-auto space-y-2">
+              {searchQuery.trim() && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start h-auto py-3 mb-2 bg-primary/5 border-primary/20 hover:bg-primary/10 text-primary hover:text-primary"
+                  onClick={() => {
+                    addExerciseToDay(searchQuery.trim());
+                  }}
+                >
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">
+                      Add &quot;{searchQuery}&quot; as custom exercise
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Create a new exercise
+                    </span>
+                  </div>
+                </Button>
+              )}
               {filteredExercises?.map((exercise) => (
                 <Button
                   key={exercise._id}
@@ -640,7 +658,7 @@ export default function NewRoutinePage() {
                 </Button>
               ))}
 
-              {filteredExercises?.length === 0 && !needsSeeding && (
+              {filteredExercises?.length === 0 && !needsSeeding && !searchQuery.trim() && (
                 <p className="text-center text-sm text-muted-foreground py-8">
                   No exercises found
                 </p>

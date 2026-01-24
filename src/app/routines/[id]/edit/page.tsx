@@ -699,6 +699,24 @@ export default function EditRoutinePage() {
 						)}
 
 						<div className="flex-1 overflow-y-auto -mx-4 px-4 space-y-1">
+							{searchQuery.trim() && (
+								<button
+									className="w-full flex items-center justify-between p-3 rounded-lg text-left bg-primary/5 border border-primary/20 hover:bg-primary/10 active:bg-primary/15 transition-colors mb-2"
+									onClick={() => {
+										addExerciseToDay(searchQuery.trim());
+									}}
+								>
+									<div className="min-w-0 flex-1">
+										<span className="font-medium truncate block text-primary">
+											Add &quot;{searchQuery}&quot; as custom exercise
+										</span>
+										<span className="text-xs text-muted-foreground">
+											Create a new exercise
+										</span>
+									</div>
+									<Plus className="h-5 w-5 text-primary shrink-0 ml-2" />
+								</button>
+							)}
 							{filteredExercises?.map((exercise) => (
 								<button
 									key={exercise._id}
@@ -728,22 +746,12 @@ export default function EditRoutinePage() {
 									<Plus className="h-5 w-5 text-muted-foreground shrink-0 ml-2" />
 								</button>
 							))}
-							{filteredExercises?.length === 0 && !needsSeeding && (
+							{filteredExercises?.length === 0 && !needsSeeding && !searchQuery.trim() && (
 								<div className="text-center py-8">
 									<p className="text-muted-foreground">No exercises found</p>
-									<Button
-										variant="outline"
-										className="mt-4"
-										onClick={() => {
-											if (searchQuery.trim()) {
-												addExerciseToDay(searchQuery.trim());
-											}
-										}}
-										disabled={!searchQuery.trim()}
-									>
-										<Plus className="mr-2 h-4 w-4" />
-										Add &quot;{searchQuery}&quot; as custom
-									</Button>
+									<p className="text-xs text-muted-foreground mt-2">
+										Try adjusting your filters or search for a different exercise
+									</p>
 								</div>
 							)}
 						</div>
