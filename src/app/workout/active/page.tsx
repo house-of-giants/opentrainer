@@ -32,6 +32,7 @@ type EntryData = {
 		weight?: number;
 		unit: "kg" | "lb";
 		isBodyweight?: boolean;
+		rpe?: number;
 	};
 	cardio?: {
 		durationSeconds: number;
@@ -470,6 +471,7 @@ export default function ActiveWorkoutPage() {
 			weight: number;
 			unit: "lb" | "kg";
 			isBodyweight?: boolean;
+			rpe?: number | null;
 		}
 	) => {
 		if (!set.entryId) return;
@@ -481,12 +483,13 @@ export default function ActiveWorkoutPage() {
 			weight: set.weight,
 			unit: set.unit,
 			isBodyweight: set.isBodyweight,
+			rpe: set.rpe,
 		});
 	};
 
 	const handleUpdateSet = async (
 		entryId: string,
-		data: { reps: number; weight: number }
+		data: { reps: number; weight: number; rpe?: number | null }
 	) => {
 		if (!editingSet) return;
 		try {
@@ -499,6 +502,7 @@ export default function ActiveWorkoutPage() {
 					weight: data.weight,
 					unit: editingSet.unit,
 					isBodyweight: editingSet.isBodyweight,
+					rpe: data.rpe ?? undefined,
 				},
 			});
 			vibrate("success");
@@ -601,6 +605,7 @@ export default function ActiveWorkoutPage() {
 								weight: e.lifting!.weight ?? 0,
 								unit: (e.lifting!.unit ?? "lb") as "lb" | "kg",
 								isBodyweight: e.lifting!.isBodyweight,
+								rpe: e.lifting!.rpe ?? null,
 							}));
 
 						const parseTargetReps = (
@@ -643,6 +648,7 @@ export default function ActiveWorkoutPage() {
 										weight: number;
 										unit: "lb" | "kg";
 										isBodyweight?: boolean;
+										rpe?: number | null;
 									}) => handleEditSet(name, set)}
 									onSwap={() => setSwapExercise(name)}
 									onNoteChange={(note: string) => handleNoteChange(name, note)}
