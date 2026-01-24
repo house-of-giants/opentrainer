@@ -75,7 +75,6 @@ export default function Home() {
                 </p>
                 <div className="flex flex-wrap justify-center gap-4 lg:justify-start">
                   <SignedOut>
-                  <SignedOut>
                     <Link href="/demo">
                       <Button size="lg" variant="outline" className="min-h-12 px-8">
                         Live Demo
@@ -86,7 +85,6 @@ export default function Home() {
                         Start Free
                       </Button>
                     </SignUpButton>
-                  </SignedOut>
                   </SignedOut>
                   <SignedIn>
                     <Link href="/dashboard">
