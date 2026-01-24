@@ -75,6 +75,11 @@ export default function Home() {
                 </p>
                 <div className="flex flex-wrap justify-center gap-4 lg:justify-start">
                   <SignedOut>
+                    <Link href="/demo">
+                      <Button size="lg" variant="outline" className="min-h-12 px-8">
+                        Live Demo
+                      </Button>
+                    </Link>
                     <SignUpButton mode="modal">
                       <Button size="lg" className="min-h-12 px-8">
                         Start Free
@@ -187,51 +192,89 @@ export default function Home() {
         {/* How It Works */}
         <section className="border-y bg-muted/20">
           <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
-            <div className="mb-12 text-center">
+            <div className="mb-16 text-center">
               <h2 className="text-3xl font-bold tracking-tight">
-                How it works
+                Start logging in under a minute
               </h2>
-              <p className="mt-2 text-muted-foreground">
-                From zero to lifting in under a minute.
+              <p className="mt-3 text-lg text-muted-foreground">
+                Most apps force you through 20 screens before your first workout. We don't.
               </p>
             </div>
-          <div className="grid gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
-              <StepCard
-                step="1"
-                title="Sign up (30 seconds)"
-                description="No credit card. No 47-screen onboarding quiz."
-              />
-              <StepCard
-                step="2"
-                title="Tell us your gym"
-                description={`"Home gym with rack and dumbbells." AI figures out the rest.`}
-              />
-              <StepCard
-                step="3"
-                title="Start lifting"
-                description="Tap. Log. Done. See your progress build over time."
-              />
+            <div className="relative">
+              {/* Connection line - hidden on mobile */}
+              <div className="absolute left-0 right-0 top-6 hidden h-px bg-gradient-to-r from-transparent via-border to-transparent lg:block" />
+              
+              <div className="grid gap-12 lg:grid-cols-3 lg:gap-16">
+                <div className="relative flex flex-col text-center lg:text-left">
+                  <div className="relative z-10 mb-6 flex items-center justify-center lg:justify-start">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/20 bg-background">
+                      <span className="text-xl font-mono font-semibold text-primary">01</span>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-semibold">Create your account</h3>
+                  <p className="mt-3 text-muted-foreground leading-relaxed">
+                    No credit card. No personality quiz asking if you're a "morning person." Pick your sign-in method and you're in.
+                  </p>
+                </div>
+
+                <div className="relative flex flex-col text-center lg:text-left">
+                  <div className="relative z-10 mb-6 flex items-center justify-center lg:justify-start">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/20 bg-background">
+                      <span className="text-xl font-mono font-semibold text-primary">02</span>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-semibold">Describe what you have</h3>
+                  <p className="mt-3 text-muted-foreground leading-relaxed">
+                    Type "home gym, dumbbells, bench" and we'll generate a program that actually fits your equipment. Not a generic plan that assumes you own a cable machine.
+                  </p>
+                </div>
+
+                <div className="relative flex flex-col text-center lg:text-left">
+                  <div className="relative z-10 mb-6 flex items-center justify-center lg:justify-start">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/20 bg-background">
+                      <span className="text-xl font-mono font-semibold text-primary">03</span>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-semibold">Log your first set</h3>
+                  <p className="mt-3 text-muted-foreground leading-relaxed">
+                    Two taps and you're done. No navigating through five screens or typing notes about "how it felt." Just reps, weight, and back to lifting.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Why OpenTrainer */}
         <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mb-12 text-center">
-            <h2 className="text-3xl font-bold tracking-tight">
-              Why we built this
-            </h2>
-          </div>
-          <div className="mx-auto max-w-2xl space-y-6 text-center">
-            <p className="text-lg text-muted-foreground">
-              We got tired of workout apps that felt like tax software. Five
-              taps to log a set. Subscriptions for basic features. Data locked
-              behind paywalls.
-            </p>
-            <p className="text-lg text-muted-foreground">
-              OpenTrainer is the app we wanted to use. Fast, focused, and
-              respectful of your time and data.
-            </p>
+          <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-muted/50 to-muted/20 p-12 sm:p-16">
+            <div className="absolute -right-32 -top-32 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
+            <div className="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-violet-500/5 blur-3xl" />
+            
+            <div className="relative mx-auto max-w-3xl">
+              <div className="mb-8 inline-flex items-center gap-2 rounded-full border bg-background/50 px-4 py-1.5 text-sm font-medium backdrop-blur">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+                </span>
+                Built in public, free during alpha
+              </div>
+              
+              <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl">
+                Made by lifters who were tired of terrible apps
+              </h2>
+              
+              <div className="space-y-4 text-lg leading-relaxed text-muted-foreground">
+                <p>
+                  Every workout app wants you to journal about "how you felt" and track your water intake. 
+                  We just wanted to log our sets without missing our rest timer.
+                </p>
+                <p>
+                  After trying everything on the market, we built the app we actually wanted to use: 
+                  Fast enough for the gym. Smart enough to help you progress. Honest enough to let you leave with your data.
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -479,25 +522,7 @@ function FeatureCard({
   );
 }
 
-function StepCard({
-  step,
-  title,
-  description,
-}: {
-  step: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex flex-col items-center text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
-        {step}
-      </div>
-      <h3 className="mt-4 font-semibold">{title}</h3>
-      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-    </div>
-  );
-}
+
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false);
