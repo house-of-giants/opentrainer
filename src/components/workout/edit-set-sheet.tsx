@@ -11,6 +11,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { SetStepper } from "./set-stepper";
+import { RpeSelector } from "./rpe-selector";
 import { Trash2 } from "lucide-react";
 
 export interface EditableSet {
@@ -21,12 +22,13 @@ export interface EditableSet {
   weight: number;
   unit: "lb" | "kg";
   isBodyweight?: boolean;
+  rpe?: number | null;
 }
 
 interface EditSetSheetProps {
   set: EditableSet | null;
   onOpenChange: (open: boolean) => void;
-  onSave: (entryId: string, data: { reps: number; weight: number }) => void;
+  onSave: (entryId: string, data: { reps: number; weight: number; rpe?: number | null }) => void;
   onDelete: (entryId: string) => void;
 }
 
@@ -38,14 +40,15 @@ function EditSetContent({
 }: {
   set: EditableSet;
   onOpenChange: (open: boolean) => void;
-  onSave: (entryId: string, data: { reps: number; weight: number }) => void;
+  onSave: (entryId: string, data: { reps: number; weight: number; rpe?: number | null }) => void;
   onDelete: (entryId: string) => void;
 }) {
   const [weight, setWeight] = useState(set.weight);
   const [reps, setReps] = useState(set.reps);
+  const [rpe, setRpe] = useState<number | null>(set.rpe ?? null);
 
   const handleSave = () => {
-    onSave(set.entryId, { reps, weight });
+    onSave(set.entryId, { reps, weight, rpe });
     onOpenChange(false);
   };
 
@@ -93,6 +96,10 @@ function EditSetContent({
             min={1}
             max={100}
           />
+        </div>
+
+        <div className="mt-6">
+          <RpeSelector value={rpe} onChange={setRpe} />
         </div>
 
         <Button
