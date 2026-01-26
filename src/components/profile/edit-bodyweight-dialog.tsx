@@ -14,33 +14,36 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-
-type WeightUnit = "lb" | "kg";
+import { displayWeight, type WeightUnit } from "@/lib/units";
 
 interface EditBodyweightDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentWeight: number | undefined;
-  currentUnit: WeightUnit | undefined;
+  storedUnit: WeightUnit | undefined;
+  preferredUnit: WeightUnit;
 }
 
 export function EditBodyweightDialog({
   open,
   onOpenChange,
   currentWeight,
-  currentUnit,
+  storedUnit,
+  preferredUnit,
 }: EditBodyweightDialogProps) {
-  const [weight, setWeight] = useState(currentWeight?.toString() ?? "");
+  const [weight, setWeight] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const updatePreferences = useMutation(api.users.updatePreferences);
 
-  const unit: WeightUnit = currentUnit ?? "lb";
-
   useEffect(() => {
-    if (open) {
-      setWeight(currentWeight?.toString() ?? "");
+    if (open && currentWeight !== undefined) {
+      const fromUnit = storedUnit ?? "lb";
+      const converted = displayWeight(currentWeight, fromUnit, preferredUnit);
+      setWeight(converted.toString());
+    } else if (open) {
+      setWeight("");
     }
-  }, [open, currentWeight]);
+  }, [open, currentWeight, storedUnit, preferredUnit]);
 
   const handleSave = async () => {
     const weightValue = parseFloat(weight);
@@ -53,7 +56,7 @@ export function EditBodyweightDialog({
     try {
       await updatePreferences({
         bodyweight: weightValue,
-        bodyweightUnit: unit,
+        bodyweightUnit: preferredUnit,
       });
       toast.success("Bodyweight updated");
       onOpenChange(false);
@@ -75,18 +78,18 @@ export function EditBodyweightDialog({
         </DialogHeader>
 
         <div className="py-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center gap-3">
             <Input
               type="number"
               inputMode="decimal"
               placeholder="Enter weight"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="h-14 text-2xl font-mono text-center"
+              className="h-14 w-32 text-2xl font-mono text-center"
               autoFocus
             />
-            <span className="text-lg text-muted-foreground font-medium w-10">
-              {unit}
+            <span className="text-lg text-muted-foreground font-medium">
+              {preferredUnit}
             </span>
           </div>
         </div>
