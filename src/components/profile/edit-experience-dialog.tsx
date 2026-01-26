@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import {
@@ -12,8 +12,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 type ExperienceLevel = "beginner" | "intermediate" | "advanced";
 
@@ -50,6 +51,12 @@ export function EditExperienceDialog({
   const [isSaving, setIsSaving] = useState(false);
   const updateOnboarding = useMutation(api.users.updateOnboarding);
 
+  useEffect(() => {
+    if (open) {
+      setSelected(currentLevel);
+    }
+  }, [open, currentLevel]);
+
   const handleSave = async () => {
     if (!selected) {
       toast.error("Select an experience level");
@@ -78,24 +85,23 @@ export function EditExperienceDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 py-4">
+        <RadioGroup
+          value={selected}
+          onValueChange={(value) => setSelected(value as ExperienceLevel)}
+          className="py-4"
+        >
           {LEVELS.map((level) => (
-            <button
-              key={level.id}
-              type="button"
-              onClick={() => setSelected(level.id)}
-              className={cn(
-                "w-full rounded-lg border p-4 text-left transition-colors",
-                selected === level.id
-                  ? "border-primary bg-primary/10"
-                  : "border-border hover:bg-muted/50"
-              )}
-            >
-              <div className="font-medium">{level.label}</div>
-              <div className="text-sm text-muted-foreground">{level.description}</div>
-            </button>
+            <FieldLabel key={level.id}>
+              <Field orientation="horizontal">
+                <RadioGroupItem value={level.id} />
+                <FieldContent>
+                  <FieldTitle>{level.label}</FieldTitle>
+                  <FieldDescription>{level.description}</FieldDescription>
+                </FieldContent>
+              </Field>
+            </FieldLabel>
           ))}
-        </div>
+        </RadioGroup>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

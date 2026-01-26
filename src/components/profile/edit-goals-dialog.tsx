@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import {
@@ -12,6 +12,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -48,6 +50,12 @@ export function EditGoalsDialog({
   const [isSaving, setIsSaving] = useState(false);
   const updateOnboarding = useMutation(api.users.updateOnboarding);
 
+  useEffect(() => {
+    if (open) {
+      setSelected(currentGoals);
+    }
+  }, [open, currentGoals]);
+
   const toggleGoal = (goal: Goal) => {
     setSelected((prev) =>
       prev.includes(goal) ? prev.filter((g) => g !== goal) : [...prev, goal]
@@ -83,22 +91,30 @@ export function EditGoalsDialog({
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-2 py-4">
-          {GOALS.map((goal) => (
-            <button
-              key={goal.id}
-              type="button"
-              onClick={() => toggleGoal(goal.id)}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-lg border p-4 transition-colors",
-                selected.includes(goal.id)
-                  ? "border-primary bg-primary/10"
-                  : "border-border hover:bg-muted/50"
-              )}
-            >
-              <goal.icon className="h-6 w-6" />
-              <span className="text-sm font-medium">{goal.label}</span>
-            </button>
-          ))}
+          {GOALS.map((goal) => {
+            const isSelected = selected.includes(goal.id);
+            return (
+              <Label
+                key={goal.id}
+                htmlFor={goal.id}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-lg border p-4 cursor-pointer transition-colors",
+                  isSelected
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-muted/50"
+                )}
+              >
+                <Checkbox
+                  id={goal.id}
+                  checked={isSelected}
+                  onCheckedChange={() => toggleGoal(goal.id)}
+                  className="sr-only"
+                />
+                <goal.icon className="h-6 w-6" />
+                <span className="text-sm font-medium">{goal.label}</span>
+              </Label>
+            );
+          })}
         </div>
 
         <DialogFooter>

@@ -9,6 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -394,57 +396,54 @@ export default function AIRoutineGeneratorPage() {
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">Split type</Label>
-              <div className="grid grid-cols-1 gap-2">
+              <RadioGroup
+                value={splitType}
+                onValueChange={(value) => {
+                  vibrate("light");
+                  setSplitType(value as SplitType);
+                }}
+              >
                 {SPLIT_OPTIONS.map((option) => (
-                  <Card
-                    key={option.id}
-                    className={cn(
-                      "p-3 cursor-pointer transition-all",
-                      splitType === option.id
-                        ? "border-primary bg-primary/5"
-                        : "hover:bg-muted/50"
-                    )}
-                    onClick={() => {
-                      vibrate("light");
-                      setSplitType(option.id);
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">{option.label}</p>
-                        <p className="text-xs text-muted-foreground">{option.description}</p>
-                      </div>
-                      {splitType === option.id && (
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                  </Card>
+                  <FieldLabel key={option.id}>
+                    <Field orientation="horizontal">
+                      <RadioGroupItem value={option.id} />
+                      <FieldContent>
+                        <FieldTitle>{option.label}</FieldTitle>
+                        <FieldDescription>{option.description}</FieldDescription>
+                      </FieldContent>
+                    </Field>
+                  </FieldLabel>
                 ))}
-              </div>
+              </RadioGroup>
             </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">Primary goal</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <RadioGroup
+                value={primaryGoal}
+                onValueChange={(value) => {
+                  vibrate("light");
+                  setPrimaryGoal(value as PrimaryGoal);
+                }}
+                className="grid grid-cols-3 gap-2"
+              >
                 {GOAL_OPTIONS.map((option) => (
-                  <Card
+                  <Label
                     key={option.id}
+                    htmlFor={`goal-${option.id}`}
                     className={cn(
-                      "p-3 cursor-pointer transition-all text-center",
+                      "flex flex-col items-center gap-1 rounded-lg border p-3 cursor-pointer transition-all text-center",
                       primaryGoal === option.id
                         ? "border-primary bg-primary/5"
-                        : "hover:bg-muted/50"
+                        : "border-border hover:bg-muted/50"
                     )}
-                    onClick={() => {
-                      vibrate("light");
-                      setPrimaryGoal(option.id);
-                    }}
                   >
-                    <p className="font-medium text-sm">{option.label}</p>
-                    <p className="text-xs text-muted-foreground">{option.description}</p>
-                  </Card>
+                    <RadioGroupItem value={option.id} id={`goal-${option.id}`} className="sr-only" />
+                    <span className="font-medium text-sm">{option.label}</span>
+                    <span className="text-xs text-muted-foreground">{option.description}</span>
+                  </Label>
                 ))}
-              </div>
+              </RadioGroup>
             </div>
 
             <div className="space-y-2">

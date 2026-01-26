@@ -12,8 +12,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field";
 import { toast } from "sonner";
 
 type WeightUnit = "lb" | "kg";
@@ -69,20 +69,24 @@ export function EditUnitsDialog({
           onValueChange={(value) => setUnit(value as WeightUnit)}
           className="py-4"
         >
-          <div className="flex items-center space-x-3">
-            <RadioGroupItem value="lb" id="lb" />
-            <Label htmlFor="lb" className="flex-1 cursor-pointer">
-              <div className="font-medium">Imperial (lb)</div>
-              <div className="text-sm text-muted-foreground">Pounds</div>
-            </Label>
-          </div>
-          <div className="flex items-center space-x-3">
-            <RadioGroupItem value="kg" id="kg" />
-            <Label htmlFor="kg" className="flex-1 cursor-pointer">
-              <div className="font-medium">Metric (kg)</div>
-              <div className="text-sm text-muted-foreground">Kilograms</div>
-            </Label>
-          </div>
+          <FieldLabel>
+            <Field orientation="horizontal">
+              <RadioGroupItem value="lb" />
+              <FieldContent>
+                <FieldTitle>Imperial (lb)</FieldTitle>
+                <FieldDescription>Pounds</FieldDescription>
+              </FieldContent>
+            </Field>
+          </FieldLabel>
+          <FieldLabel>
+            <Field orientation="horizontal">
+              <RadioGroupItem value="kg" />
+              <FieldContent>
+                <FieldTitle>Metric (kg)</FieldTitle>
+                <FieldDescription>Kilograms</FieldDescription>
+              </FieldContent>
+            </Field>
+          </FieldLabel>
         </RadioGroup>
 
         <DialogFooter>
