@@ -23,6 +23,7 @@ import {
   Trash2,
   Download,
   Loader2,
+  Ruler,
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -33,6 +34,7 @@ import { EditExperienceDialog } from "@/components/profile/edit-experience-dialo
 import { EditEquipmentDialog } from "@/components/profile/edit-equipment-dialog";
 import { EditAvailabilityDialog } from "@/components/profile/edit-availability-dialog";
 import { EditBodyweightDialog } from "@/components/profile/edit-bodyweight-dialog";
+import { EditUnitsDialog } from "@/components/profile/edit-units-dialog";
 import { DeleteAccountDialog } from "@/components/profile/delete-account-dialog";
 
 const GOAL_LABELS: Record<string, string> = {
@@ -62,6 +64,7 @@ export default function ProfilePage() {
   const [showEquipmentDialog, setShowEquipmentDialog] = useState(false);
   const [showAvailabilityDialog, setShowAvailabilityDialog] = useState(false);
   const [showBodyweightDialog, setShowBodyweightDialog] = useState(false);
+  const [showUnitsDialog, setShowUnitsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const convex = useConvex();
@@ -277,43 +280,72 @@ export default function ProfilePage() {
           <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground mb-3 px-1">
             Preferences
           </h3>
-          <Card className="p-4">
-            <button
-              type="button"
-              className="flex w-full items-center justify-between"
-              onClick={() => {
-                const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
-                setTheme(next);
-              }}
-            >
-              <div className="flex items-center gap-3">
-                {mounted ? (
-                  resolvedTheme === "dark" ? (
-                    <Moon className="h-5 w-5 text-muted-foreground" />
+          <div className="space-y-2">
+            <Card className="p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between"
+                onClick={() => {
+                  const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
+                  setTheme(next);
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  {mounted ? (
+                    resolvedTheme === "dark" ? (
+                      <Moon className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <Sun className="h-5 w-5 text-muted-foreground" />
+                    )
                   ) : (
-                    <Sun className="h-5 w-5 text-muted-foreground" />
-                  )
-                ) : (
-                  <Monitor className="h-5 w-5 text-muted-foreground" />
-                )}
-                <div className="text-left">
-                  <span className="font-medium">Appearance</span>
-                  <p className="text-sm text-muted-foreground capitalize">
-                    {mounted ? theme : "system"}
-                  </p>
+                    <Monitor className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <div className="text-left">
+                    <span className="font-medium">Appearance</span>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {mounted ? theme : "system"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-1">
-                {["light", "dark", "system"].map((t) => (
-                  <div
-                    key={t}
-                    className={`h-2 w-2 rounded-full ${theme === t ? "bg-primary" : "bg-muted"
+                <div className="flex gap-1">
+                  {["light", "dark", "system"].map((t) => (
+                    <div
+                      key={t}
+                      className={`h-2 w-2 rounded-full ${theme === t ? "bg-primary" : "bg-muted"
+                        }`}
+                    />
+                  ))}
+                </div>
+              </button>
+            </Card>
+            <Card className="p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between"
+                onClick={() => setShowUnitsDialog(true)}
+              >
+                <div className="flex items-center gap-3">
+                  <Ruler className="h-5 w-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium">Units</span>
+                    <p className="text-sm text-muted-foreground">
+                      {user?.preferredUnits === "kg" ? "Metric (kg)" : "Imperial (lb)"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  {["lb", "kg"].map((u) => (
+                    <div
+                      key={u}
+                      className={`h-2 w-2 rounded-full ${
+                        (user?.preferredUnits ?? "lb") === u ? "bg-primary" : "bg-muted"
                       }`}
-                  />
-                ))}
-              </div>
-            </button>
-          </Card>
+                    />
+                  ))}
+                </div>
+              </button>
+            </Card>
+          </div>
         </section>
 
         <section>
@@ -442,6 +474,11 @@ export default function ProfilePage() {
         onOpenChange={setShowBodyweightDialog}
         currentWeight={user?.bodyweight}
         currentUnit={bodyweightUnit}
+      />
+      <EditUnitsDialog
+        open={showUnitsDialog}
+        onOpenChange={setShowUnitsDialog}
+        currentUnit={user?.preferredUnits as "lb" | "kg" | undefined}
       />
       <DeleteAccountDialog
         open={showDeleteDialog}

@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type WeightUnit = "lb" | "kg";
 
@@ -31,16 +32,16 @@ export function EditBodyweightDialog({
   currentUnit,
 }: EditBodyweightDialogProps) {
   const [weight, setWeight] = useState(currentWeight?.toString() ?? "");
+  const [unit, setUnit] = useState<WeightUnit>(currentUnit ?? "lb");
   const [isSaving, setIsSaving] = useState(false);
   const updatePreferences = useMutation(api.users.updatePreferences);
-
-  const unit: WeightUnit = currentUnit ?? "lb";
 
   useEffect(() => {
     if (open) {
       setWeight(currentWeight?.toString() ?? "");
+      setUnit(currentUnit ?? "lb");
     }
-  }, [open, currentWeight]);
+  }, [open, currentWeight, currentUnit]);
 
   const handleSave = async () => {
     const weightValue = parseFloat(weight);
@@ -74,7 +75,7 @@ export function EditBodyweightDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4">
+        <div className="py-4 space-y-4">
           <div className="flex items-center gap-3">
             <Input
               type="number"
@@ -85,9 +86,32 @@ export function EditBodyweightDialog({
               className="h-14 text-2xl font-mono text-center"
               autoFocus
             />
-            <span className="text-lg text-muted-foreground font-medium w-10">
-              {unit}
-            </span>
+            <div className="flex rounded-md border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setUnit("lb")}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium transition-colors",
+                  unit === "lb"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-muted"
+                )}
+              >
+                lb
+              </button>
+              <button
+                type="button"
+                onClick={() => setUnit("kg")}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium transition-colors",
+                  unit === "kg"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-muted"
+                )}
+              >
+                kg
+              </button>
+            </div>
           </div>
         </div>
 
