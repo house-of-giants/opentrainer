@@ -75,18 +75,18 @@ export function EditBodyweightDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 space-y-4">
-          <div className="flex items-center gap-3">
+        <div className="py-4">
+          <div className="flex items-center justify-center gap-3">
             <Input
               type="number"
               inputMode="decimal"
               placeholder="Enter weight"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="h-14 text-2xl font-mono text-center"
+              className="h-14 w-32 text-2xl font-mono text-center"
               autoFocus
             />
-            <div className="flex rounded-md border overflow-hidden">
+            <div className="flex rounded-md border overflow-hidden shrink-0">
               <button
                 type="button"
                 onClick={() => setUnit("lb")}
