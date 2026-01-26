@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -64,32 +65,30 @@ export function EditUnitsDialog({
         </DialogHeader>
 
         <div className="py-4 space-y-3">
-          <button
-            type="button"
-            onClick={() => setUnit("lb")}
+          <Card
             className={cn(
-              "w-full p-4 rounded-lg border text-left transition-colors",
+              "p-4 cursor-pointer transition-all",
               unit === "lb"
                 ? "border-primary bg-primary/5"
-                : "border-border hover:bg-muted"
+                : "hover:bg-muted/50"
             )}
+            onClick={() => setUnit("lb")}
           >
             <div className="font-medium">Imperial (lb)</div>
             <div className="text-sm text-muted-foreground">Pounds</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => setUnit("kg")}
+          </Card>
+          <Card
             className={cn(
-              "w-full p-4 rounded-lg border text-left transition-colors",
+              "p-4 cursor-pointer transition-all",
               unit === "kg"
                 ? "border-primary bg-primary/5"
-                : "border-border hover:bg-muted"
+                : "hover:bg-muted/50"
             )}
+            onClick={() => setUnit("kg")}
           >
             <div className="font-medium">Metric (kg)</div>
             <div className="text-sm text-muted-foreground">Kilograms</div>
-          </button>
+          </Card>
         </div>
 
         <DialogFooter>
