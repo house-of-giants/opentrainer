@@ -381,7 +381,7 @@ export default function NewRoutinePage() {
             exerciseId: e.exerciseId,
             exerciseName: e.exerciseName,
             kind: e.kind,
-            targetSets: e.targetSets,
+            targetSets: e.targetSets || 1,
             targetReps: e.targetReps,
           })),
         })),
