@@ -36,6 +36,7 @@ import { EditAvailabilityDialog } from "@/components/profile/edit-availability-d
 import { EditBodyweightDialog } from "@/components/profile/edit-bodyweight-dialog";
 import { EditUnitsDialog } from "@/components/profile/edit-units-dialog";
 import { DeleteAccountDialog } from "@/components/profile/delete-account-dialog";
+import { displayWeight } from "@/lib/units";
 
 const GOAL_LABELS: Record<string, string> = {
   strength: "Strength",
@@ -108,9 +109,10 @@ export default function ProfilePage() {
     user?.weeklyAvailability && user?.sessionDuration
       ? `${user.weeklyAvailability} days/week · ${user.sessionDuration} min`
       : "Not set";
-  const bodyweightUnit = (user?.bodyweightUnit ?? user?.preferredUnits ?? "lb") as "lb" | "kg";
+  const preferredUnit = (user?.preferredUnits ?? "lb") as "lb" | "kg";
+  const storedBodyweightUnit = (user?.bodyweightUnit ?? "lb") as "lb" | "kg";
   const bodyweightDisplay = user?.bodyweight
-    ? `${user.bodyweight} ${bodyweightUnit}`
+    ? `${displayWeight(user.bodyweight, storedBodyweightUnit, preferredUnit)} ${preferredUnit}`
     : "Not set";
 
   const handleExportData = async () => {
@@ -173,7 +175,7 @@ export default function ProfilePage() {
                 ? `${(totalVolume / 1000).toFixed(0)}k`
                 : totalVolume}
             </p>
-            <p className="text-xs text-muted-foreground">Volume ({bodyweightUnit})</p>
+            <p className="text-xs text-muted-foreground">Volume ({preferredUnit})</p>
           </Card>
         </div>
 
@@ -473,7 +475,8 @@ export default function ProfilePage() {
         open={showBodyweightDialog}
         onOpenChange={setShowBodyweightDialog}
         currentWeight={user?.bodyweight}
-        currentUnit={bodyweightUnit}
+        storedUnit={storedBodyweightUnit}
+        preferredUnit={preferredUnit}
       />
       <EditUnitsDialog
         open={showUnitsDialog}

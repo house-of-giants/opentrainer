@@ -14,34 +14,36 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-
-type WeightUnit = "lb" | "kg";
+import { displayWeight, type WeightUnit } from "@/lib/units";
 
 interface EditBodyweightDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentWeight: number | undefined;
-  currentUnit: WeightUnit | undefined;
+  storedUnit: WeightUnit | undefined;
+  preferredUnit: WeightUnit;
 }
 
 export function EditBodyweightDialog({
   open,
   onOpenChange,
   currentWeight,
-  currentUnit,
+  storedUnit,
+  preferredUnit,
 }: EditBodyweightDialogProps) {
-  const [weight, setWeight] = useState(currentWeight?.toString() ?? "");
-  const [unit, setUnit] = useState<WeightUnit>(currentUnit ?? "lb");
+  const [weight, setWeight] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const updatePreferences = useMutation(api.users.updatePreferences);
 
   useEffect(() => {
-    if (open) {
-      setWeight(currentWeight?.toString() ?? "");
-      setUnit(currentUnit ?? "lb");
+    if (open && currentWeight !== undefined) {
+      const fromUnit = storedUnit ?? "lb";
+      const converted = displayWeight(currentWeight, fromUnit, preferredUnit);
+      setWeight(converted.toString());
+    } else if (open) {
+      setWeight("");
     }
-  }, [open, currentWeight, currentUnit]);
+  }, [open, currentWeight, storedUnit, preferredUnit]);
 
   const handleSave = async () => {
     const weightValue = parseFloat(weight);
@@ -54,7 +56,7 @@ export function EditBodyweightDialog({
     try {
       await updatePreferences({
         bodyweight: weightValue,
-        bodyweightUnit: unit,
+        bodyweightUnit: preferredUnit,
       });
       toast.success("Bodyweight updated");
       onOpenChange(false);
@@ -86,32 +88,9 @@ export function EditBodyweightDialog({
               className="h-14 w-32 text-2xl font-mono text-center"
               autoFocus
             />
-            <div className="flex rounded-md border overflow-hidden shrink-0">
-              <button
-                type="button"
-                onClick={() => setUnit("lb")}
-                className={cn(
-                  "px-3 py-2 text-sm font-medium transition-colors",
-                  unit === "lb"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-muted"
-                )}
-              >
-                lb
-              </button>
-              <button
-                type="button"
-                onClick={() => setUnit("kg")}
-                className={cn(
-                  "px-3 py-2 text-sm font-medium transition-colors",
-                  unit === "kg"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-muted"
-                )}
-              >
-                kg
-              </button>
-            </div>
+            <span className="text-lg text-muted-foreground font-medium">
+              {preferredUnit}
+            </span>
           </div>
         </div>
 
