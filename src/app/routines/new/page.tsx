@@ -144,12 +144,18 @@ function SortableExerciseItem({
           <Label className="text-xs text-muted-foreground">Sets</Label>
           <Input
             type="number"
-            value={exercise.targetSets}
-            onChange={(e) =>
+            value={exercise.targetSets || ""}
+            onChange={(e) => {
+              const parsed = parseInt(e.target.value);
               onUpdate(dayId, exercise.id, {
-                targetSets: parseInt(e.target.value) || 1,
-              })
-            }
+                targetSets: isNaN(parsed) ? 0 : parsed,
+              });
+            }}
+            onBlur={() => {
+              if (!exercise.targetSets || exercise.targetSets < 1) {
+                onUpdate(dayId, exercise.id, { targetSets: 1 });
+              }
+            }}
             className="h-8 text-center"
             min={1}
             max={20}
@@ -172,12 +178,18 @@ function SortableExerciseItem({
           <Label className="text-xs text-muted-foreground">Rest (s)</Label>
           <Input
             type="number"
-            value={exercise.restSeconds}
-            onChange={(e) =>
+            value={exercise.restSeconds < 0 ? "" : exercise.restSeconds}
+            onChange={(e) => {
+              const parsed = parseInt(e.target.value);
               onUpdate(dayId, exercise.id, {
-                restSeconds: parseInt(e.target.value) || 60,
-              })
-            }
+                restSeconds: isNaN(parsed) ? -1 : parsed,
+              });
+            }}
+            onBlur={() => {
+              if (exercise.restSeconds < 0) {
+                onUpdate(dayId, exercise.id, { restSeconds: 60 });
+              }
+            }}
             className="h-8 text-center"
             min={0}
             step={15}
@@ -330,11 +342,11 @@ export default function NewRoutinePage() {
       days.map((d) =>
         d.id === dayId
           ? {
-              ...d,
-              exercises: d.exercises.map((e) =>
-                e.id === exerciseId ? { ...e, ...updates } : e
-              ),
-            }
+            ...d,
+            exercises: d.exercises.map((e) =>
+              e.id === exerciseId ? { ...e, ...updates } : e
+            ),
+          }
           : d
       )
     );
@@ -369,7 +381,7 @@ export default function NewRoutinePage() {
             exerciseId: e.exerciseId,
             exerciseName: e.exerciseName,
             kind: e.kind,
-            targetSets: e.targetSets,
+            targetSets: e.targetSets || 1,
             targetReps: e.targetReps,
           })),
         })),
