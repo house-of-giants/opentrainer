@@ -62,6 +62,9 @@ export default function Home() {
           <div className="relative mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-20 md:py-24 lg:px-8">
             <div className="flex flex-col items-center gap-6 text-center lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:text-left">
               <div className="flex flex-col items-center gap-5 lg:items-start lg:gap-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs sm:text-sm font-medium text-primary">
+                  Alpha Launch: First 1,000 users get Pro free for life
+                </div>
                 <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
                   Log workouts in seconds,
                   <br />
@@ -73,26 +76,33 @@ export default function Home() {
                     Built for sweaty hands, bad gym WiFi, and the 45 seconds you have before your next set.
                   </span>
                 </p>
-                <div className="flex flex-wrap justify-center gap-4 lg:justify-start">
+                <div className="flex flex-col items-center gap-3 lg:items-start">
+                  <div className="flex flex-wrap justify-center gap-4 lg:justify-start">
+                    <SignedOut>
+                      <Link href="/demo">
+                        <Button size="lg" variant="outline" className="min-h-12 px-8">
+                          Live Demo
+                        </Button>
+                      </Link>
+                      <SignUpButton mode="modal">
+                        <Button size="lg" className="min-h-12 px-8">
+                          Start Free
+                        </Button>
+                      </SignUpButton>
+                    </SignedOut>
+                    <SignedIn>
+                      <Link href="/dashboard">
+                        <Button size="lg" className="min-h-12 px-8">
+                          Go to Dashboard
+                        </Button>
+                      </Link>
+                    </SignedIn>
+                  </div>
                   <SignedOut>
-                    <Link href="/demo">
-                      <Button size="lg" variant="outline" className="min-h-12 px-8">
-                        Live Demo
-                      </Button>
-                    </Link>
-                    <SignUpButton mode="modal">
-                      <Button size="lg" className="min-h-12 px-8">
-                        Start Free
-                      </Button>
-                    </SignUpButton>
+                    <p className="text-xs text-muted-foreground">
+                      Claim your lifetime Pro seat before the Alpha ends.
+                    </p>
                   </SignedOut>
-                  <SignedIn>
-                    <Link href="/dashboard">
-                      <Button size="lg" className="min-h-12 px-8">
-                        Go to Dashboard
-                      </Button>
-                    </Link>
-                  </SignedIn>
                 </div>
                 <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground sm:flex-row sm:gap-6 lg:justify-start">
                   <span className="flex items-center gap-1.5">
@@ -450,13 +460,16 @@ export default function Home() {
               No tracking pixels. No selling your data. Just a workout log that
               works.
             </p>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col items-center gap-3">
               <SignedOut>
                 <SignUpButton mode="modal">
                   <Button size="lg" className="min-h-12 px-8">
                     Start Logging — Free
                   </Button>
                 </SignUpButton>
+                <p className="text-xs text-muted-foreground">
+                  Claim your lifetime Pro seat before the Alpha ends.
+                </p>
               </SignedOut>
               <SignedIn>
                 <Link href="/dashboard">
