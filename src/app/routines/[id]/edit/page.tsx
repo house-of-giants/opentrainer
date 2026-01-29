@@ -291,13 +291,13 @@ export default function EditRoutinePage() {
 		}
 		
 		try {
-			const exerciseId = await createExercise({
-				name: customExerciseName,
-				category: "lifting",
-				muscleGroups: customExerciseMuscles,
-			});
-			
-			addExerciseToDay(customExerciseName, undefined, "lifting");
+		const exerciseId = await createExercise({
+			name: customExerciseName,
+			category: "lifting",
+			muscleGroups: customExerciseMuscles,
+		});
+		
+		addExerciseToDay(customExerciseName, exerciseId, "lifting");
 			setShowMuscleGroupDialog(false);
 			setCustomExerciseName("");
 			setCustomExerciseMuscles([]);
