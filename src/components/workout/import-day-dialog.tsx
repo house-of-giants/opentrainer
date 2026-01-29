@@ -58,7 +58,10 @@ export function ImportDayDialog({
       onSuccess?.(result.dayIndex);
     } catch (error) {
       if (error instanceof Error) {
-        toast.error(error.message);
+        toast.error(error.message, {
+          duration: 10000,
+          style: { whiteSpace: "pre-wrap" },
+        });
       } else {
         toast.error("Failed to import day");
       }
