@@ -201,8 +201,23 @@ export const importRoutineFromJson = mutation({
 
     const data = parsed as {
       version?: number;
+      exportType?: string;
       name?: string;
       description?: string;
+      workout?: {
+        title?: string;
+        exercises?: Array<{
+          name?: string;
+          kind?: string;
+          sets?: Array<{
+            weight?: number;
+            reps?: number;
+            rpe?: number;
+            isWarmup?: boolean;
+          }>;
+          cardio?: unknown;
+        }>;
+      };
       days?: Array<{
         name?: string;
         exercises?: Array<{
@@ -219,6 +234,62 @@ export const importRoutineFromJson = mutation({
         }>;
       }>;
     };
+
+    // Handle workout export format by converting to routine format
+    if (data.exportType === "workout" && data.workout?.exercises) {
+      const workoutExercises = data.workout.exercises.map((ex) => {
+        if (!ex.name || typeof ex.name !== "string") {
+          throw new Error("Exercise is missing a name");
+        }
+
+        const kind = ex.kind === "cardio" ? "cardio" : (ex.kind === "mobility" ? "mobility" : "lifting");
+        
+        const exercise: {
+          name: string;
+          kind: string;
+          targetSets?: number;
+          targetReps?: string;
+          targetRpe?: number;
+          targetDuration?: number;
+        } = {
+          name: ex.name,
+          kind,
+        };
+
+        if (kind === "lifting" && ex.sets && Array.isArray(ex.sets)) {
+          // Calculate averages from actual sets (excluding warmups)
+          const workingSets = ex.sets.filter((s) => !s.isWarmup);
+          if (workingSets.length > 0) {
+            exercise.targetSets = workingSets.length;
+            const avgReps = Math.round(
+              workingSets.reduce((sum, s) => sum + (s.reps ?? 0), 0) / workingSets.length
+            );
+            exercise.targetReps = avgReps > 0 ? `${avgReps}` : "8-12";
+            const rpes = workingSets.map((s) => s.rpe).filter((r) => r !== undefined);
+            if (rpes.length > 0) {
+              exercise.targetRpe = Math.round(
+                rpes.reduce((sum, r) => sum + (r ?? 0), 0) / rpes.length
+              );
+            }
+          } else {
+            exercise.targetSets = ex.sets.length;
+            exercise.targetReps = "8-12";
+          }
+        } else if (kind === "cardio") {
+          exercise.targetDuration = 15; // Default cardio duration
+        }
+
+        return exercise;
+      });
+
+      // Convert workout to single-day routine
+      data.days = [
+        {
+          name: data.workout.title ?? data.name ?? "Workout Day",
+          exercises: workoutExercises,
+        },
+      ];
+    }
 
     if (!data.name || typeof data.name !== "string") {
       throw new Error("Missing or invalid routine name");
