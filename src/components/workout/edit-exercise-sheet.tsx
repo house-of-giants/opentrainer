@@ -103,6 +103,17 @@ function EditExerciseForm({
 	const [perSide, setPerSide] = useState(exercise.perSide ?? false);
 	const [rest, setRest] = useState(exercise.restSeconds);
 
+	useEffect(() => {
+		setName(exercise.exerciseName);
+		setKind(exercise.kind);
+		setSets(exercise.targetSets);
+		setReps(exercise.targetReps);
+		setDuration(exercise.targetDuration ?? 20);
+		setHoldSeconds(exercise.targetHoldSeconds ?? 30);
+		setPerSide(exercise.perSide ?? false);
+		setRest(exercise.restSeconds);
+	}, [exercise]);
+
 	const createExercise = useMutation(api.exercises.createExercise);
 	const updateExercise = useMutation(api.exercises.updateExercise);
 	const exerciseData = useQuery(
@@ -115,10 +126,15 @@ function EditExerciseForm({
 	useEffect(() => {
 		if (exerciseData?.muscleGroups) {
 			setMuscleGroups(exerciseData.muscleGroups);
+		} else {
+			setMuscleGroups([]);
 		}
-	}, [exerciseData]);
+	}, [exerciseData, exercise.exerciseId]);
 
 	const toggleMuscleGroup = (muscle: string) => {
+		if (exerciseData?.isSystemExercise) {
+			return;
+		}
 		setMuscleGroups((prev) =>
 			prev.includes(muscle)
 				? prev.filter((m) => m !== muscle)
@@ -126,15 +142,17 @@ function EditExerciseForm({
 		);
 	};
 
+	const isSystemExercise = exerciseData?.isSystemExercise ?? false;
+
 	const handleSave = async () => {
-		if (kind === "lifting" && muscleGroups.length === 0) {
+		if (kind === "lifting" && muscleGroups.length === 0 && !isSystemExercise) {
 			toast.error("Please select at least one muscle group for lifting exercises");
 			return;
 		}
 
 		let exerciseId = exercise.exerciseId;
 
-		if (kind === "lifting") {
+		if (kind === "lifting" && !isSystemExercise) {
 			if (exerciseId) {
 				try {
 					await updateExercise({
@@ -208,6 +226,7 @@ function EditExerciseForm({
 						onChange={(e) => setName(e.target.value)}
 						placeholder="Exercise name"
 						className="h-12 text-lg"
+						disabled={isSystemExercise}
 					/>
 				</div>
 
@@ -220,15 +239,15 @@ function EditExerciseForm({
 						}
 					>
 						<TabsList className="grid w-full grid-cols-3 h-12">
-							<TabsTrigger value="lifting" className="h-10 gap-2">
+							<TabsTrigger value="lifting" className="h-10 gap-2" disabled={isSystemExercise}>
 								<Dumbbell className="h-4 w-4" />
 								Lifting
 							</TabsTrigger>
-							<TabsTrigger value="cardio" className="h-10 gap-2">
+							<TabsTrigger value="cardio" className="h-10 gap-2" disabled={isSystemExercise}>
 								<Heart className="h-4 w-4" />
 								Cardio
 							</TabsTrigger>
-							<TabsTrigger value="mobility" className="h-10 gap-2">
+							<TabsTrigger value="mobility" className="h-10 gap-2" disabled={isSystemExercise}>
 								<Activity className="h-4 w-4" />
 								Mobility
 							</TabsTrigger>
@@ -239,25 +258,39 @@ function EditExerciseForm({
 				{kind === "lifting" ? (
 					<>
 						<div className="space-y-3">
-							<Label>Muscle Groups</Label>
+							<Label>
+								Muscle Groups
+								{isSystemExercise && (
+									<span className="ml-2 text-xs text-muted-foreground font-normal">
+										(read-only)
+									</span>
+								)}
+							</Label>
 							<div className="flex flex-wrap gap-2">
 								{MUSCLE_GROUPS.map((muscle) => (
 									<Badge
 										key={muscle}
 										variant={muscleGroups.includes(muscle) ? "default" : "outline"}
-										className="cursor-pointer capitalize h-10 px-4 text-sm font-medium"
+										className={`capitalize h-10 px-4 text-sm font-medium ${
+											isSystemExercise ? "opacity-60" : "cursor-pointer"
+										}`}
 										onClick={() => toggleMuscleGroup(muscle)}
 									>
 										{muscle}
-										{muscleGroups.includes(muscle) && (
+										{muscleGroups.includes(muscle) && !isSystemExercise && (
 											<X className="ml-1.5 h-3.5 w-3.5" />
 										)}
 									</Badge>
 								))}
 							</div>
-							{muscleGroups.length === 0 && (
+							{muscleGroups.length === 0 && !isSystemExercise && (
 								<p className="text-sm text-muted-foreground">
 									Select at least one muscle group
+								</p>
+							)}
+							{isSystemExercise && (
+								<p className="text-sm text-muted-foreground">
+									Muscle groups are predefined for this exercise
 								</p>
 							)}
 						</div>

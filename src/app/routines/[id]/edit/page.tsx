@@ -213,6 +213,7 @@ export default function EditRoutinePage() {
 					}
 					return {
 						id: crypto.randomUUID(),
+						exerciseId: ex.exerciseId,
 						exerciseName: ex.exerciseName,
 						kind: ex.kind,
 						targetSets: ex.targetSets || 3,

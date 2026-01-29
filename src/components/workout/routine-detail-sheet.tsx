@@ -15,6 +15,14 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Pencil, Play, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useHaptic } from "@/hooks/use-haptic";
@@ -46,6 +54,7 @@ export function RoutineDetailSheet({ routine, onOpenChange }: RoutineDetailSheet
 
   const [isStarting, setIsStarting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleStartWorkout = async (dayIndex: number) => {
     if (!routine) return;
@@ -75,10 +84,15 @@ export function RoutineDetailSheet({ routine, onOpenChange }: RoutineDetailSheet
     router.push(`/routines/${routine._id}/edit`);
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     if (!routine) return;
     
     setIsDeleting(true);
+    setShowDeleteConfirm(false);
     try {
       vibrate("medium");
       await deleteRoutine({ routineId: routine._id });
@@ -165,7 +179,7 @@ export function RoutineDetailSheet({ routine, onOpenChange }: RoutineDetailSheet
               <Button
                 variant="destructive"
                 className="flex-1"
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 disabled={isDeleting}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -175,6 +189,34 @@ export function RoutineDetailSheet({ routine, onOpenChange }: RoutineDetailSheet
           </>
         )}
       </DrawerContent>
+
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Routine?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &quot;{routine?.name}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Drawer>
   );
 }
