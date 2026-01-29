@@ -82,21 +82,6 @@ const DEFAULT_EXERCISE: Omit<RoutineExercise, "id" | "exerciseName" | "exerciseI
   restSeconds: 90,
 };
 
-const MUSCLE_GROUPS = [
-  "chest",
-  "back",
-  "shoulders",
-  "biceps",
-  "triceps",
-  "quads",
-  "hamstrings",
-  "glutes",
-  "calves",
-  "core",
-  "traps",
-  "forearms",
-];
-
 function SortableExerciseItem({
   exercise,
   dayId,
@@ -217,6 +202,7 @@ export default function NewRoutinePage() {
   const createExercise = useMutation(api.exercises.createExercise);
   const seedExercises = useMutation(api.exercises.seedSystemExercises);
   const exercises = useQuery(api.exercises.getExercises, {});
+  const muscleGroups = useQuery(api.exercises.getMuscleGroups, {});
 
   const [routineName, setRoutineName] = useState("");
   const [description, setDescription] = useState("");
@@ -648,18 +634,22 @@ export default function NewRoutinePage() {
               >
                 All
               </Badge>
-              {MUSCLE_GROUPS.map((muscle) => (
-                <Badge
-                  key={muscle}
-                  variant={selectedMuscle === muscle ? "default" : "outline"}
-                  className="cursor-pointer capitalize"
-                  onClick={() =>
-                    setSelectedMuscle(selectedMuscle === muscle ? null : muscle)
-                  }
-                >
-                  {muscle}
-                </Badge>
-              ))}
+              {!muscleGroups ? (
+                <p className="text-sm text-muted-foreground">Loading muscle groups...</p>
+              ) : (
+                muscleGroups.map((muscle) => (
+                  <Badge
+                    key={muscle}
+                    variant={selectedMuscle === muscle ? "default" : "outline"}
+                    className="cursor-pointer capitalize"
+                    onClick={() =>
+                      setSelectedMuscle(selectedMuscle === muscle ? null : muscle)
+                    }
+                  >
+                    {muscle}
+                  </Badge>
+                ))
+              )}
             </div>
 
             {needsSeeding && (
@@ -738,19 +728,23 @@ export default function NewRoutinePage() {
 
           <div className="flex flex-col gap-4 py-4">
             <div className="flex flex-wrap gap-2">
-              {MUSCLE_GROUPS.map((muscle) => (
-                <Badge
-                  key={muscle}
-                  variant={customExerciseMuscles.includes(muscle) ? "default" : "outline"}
-                  className="cursor-pointer capitalize h-10 px-4 text-sm font-medium"
-                  onClick={() => toggleCustomMuscleGroup(muscle)}
-                >
-                  {muscle}
-                  {customExerciseMuscles.includes(muscle) && (
-                    <X className="ml-1.5 h-3.5 w-3.5" />
-                  )}
-                </Badge>
-              ))}
+              {!muscleGroups ? (
+                <p className="text-sm text-muted-foreground">Loading muscle groups...</p>
+              ) : (
+                muscleGroups.map((muscle) => (
+                  <Badge
+                    key={muscle}
+                    variant={customExerciseMuscles.includes(muscle) ? "default" : "outline"}
+                    className="cursor-pointer capitalize h-10 px-4 text-sm font-medium"
+                    onClick={() => toggleCustomMuscleGroup(muscle)}
+                  >
+                    {muscle}
+                    {customExerciseMuscles.includes(muscle) && (
+                      <X className="ml-1.5 h-3.5 w-3.5" />
+                    )}
+                  </Badge>
+                ))
+              )}
             </div>
 
             {customExerciseMuscles.length === 0 && (

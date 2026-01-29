@@ -17,21 +17,6 @@ import { useHaptic } from "@/hooks/use-haptic";
 import { Dumbbell, Heart, Plus, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-const MUSCLE_GROUPS = [
-  "chest",
-  "back",
-  "shoulders",
-  "biceps",
-  "triceps",
-  "quads",
-  "hamstrings",
-  "glutes",
-  "calves",
-  "core",
-  "traps",
-  "forearms",
-];
-
 export interface ExerciseSelection {
   name: string;
   category: "lifting" | "cardio" | "mobility" | "other";
@@ -62,6 +47,7 @@ export function AddExerciseSheet({
     category: activeTab,
     search: searchQuery || undefined,
   });
+  const muscleGroups = useQuery(api.exercises.getMuscleGroups, {});
 
   const handleSelect = (exercise: ExerciseSelection) => {
     vibrate("medium");
@@ -178,19 +164,23 @@ export function AddExerciseSheet({
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                  {MUSCLE_GROUPS.map((muscle) => (
-                    <Badge
-                      key={muscle}
-                      variant={selectedMuscleGroups.includes(muscle) ? "default" : "outline"}
-                      className="cursor-pointer capitalize h-10 px-4 text-sm font-medium"
-                      onClick={() => toggleMuscleGroup(muscle)}
-                    >
-                      {muscle}
-                      {selectedMuscleGroups.includes(muscle) && (
-                        <X className="ml-1.5 h-3.5 w-3.5" />
-                      )}
-                    </Badge>
-                  ))}
+                  {!muscleGroups ? (
+                    <p className="text-sm text-muted-foreground">Loading muscle groups...</p>
+                  ) : (
+                    muscleGroups.map((muscle) => (
+                      <Badge
+                        key={muscle}
+                        variant={selectedMuscleGroups.includes(muscle) ? "default" : "outline"}
+                        className="cursor-pointer capitalize h-10 px-4 text-sm font-medium"
+                        onClick={() => toggleMuscleGroup(muscle)}
+                      >
+                        {muscle}
+                        {selectedMuscleGroups.includes(muscle) && (
+                          <X className="ml-1.5 h-3.5 w-3.5" />
+                        )}
+                      </Badge>
+                    ))
+                  )}
                 </div>
               </div>
             )}

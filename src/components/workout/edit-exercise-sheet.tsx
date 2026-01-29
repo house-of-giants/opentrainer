@@ -43,21 +43,6 @@ interface EditExerciseSheetProps {
 
 const REST_PRESETS = [60, 90, 120, 180];
 
-const MUSCLE_GROUPS = [
-	"chest",
-	"back",
-	"shoulders",
-	"biceps",
-	"triceps",
-	"quads",
-	"hamstrings",
-	"glutes",
-	"calves",
-	"core",
-	"traps",
-	"forearms",
-];
-
 export function EditExerciseSheet({
 	exercise,
 	onOpenChange,
@@ -120,6 +105,7 @@ function EditExerciseForm({
 		api.exercises.getExercise,
 		exercise.exerciseId ? { id: exercise.exerciseId } : "skip"
 	);
+	const availableMuscleGroups = useQuery(api.exercises.getMuscleGroups, {});
 
 	const [muscleGroups, setMuscleGroups] = useState<string[]>([]);
 
@@ -267,21 +253,25 @@ function EditExerciseForm({
 								)}
 							</Label>
 							<div className="flex flex-wrap gap-2">
-								{MUSCLE_GROUPS.map((muscle) => (
-									<Badge
-										key={muscle}
-										variant={muscleGroups.includes(muscle) ? "default" : "outline"}
-										className={`capitalize h-10 px-4 text-sm font-medium ${
-											isSystemExercise ? "opacity-60" : "cursor-pointer"
-										}`}
-										onClick={() => toggleMuscleGroup(muscle)}
-									>
-										{muscle}
-										{muscleGroups.includes(muscle) && !isSystemExercise && (
-											<X className="ml-1.5 h-3.5 w-3.5" />
-										)}
-									</Badge>
-								))}
+								{!availableMuscleGroups ? (
+									<p className="text-sm text-muted-foreground">Loading muscle groups...</p>
+								) : (
+									availableMuscleGroups.map((muscle) => (
+										<Badge
+											key={muscle}
+											variant={muscleGroups.includes(muscle) ? "default" : "outline"}
+											className={`capitalize h-10 px-4 text-sm font-medium ${
+												isSystemExercise ? "opacity-60" : "cursor-pointer"
+											}`}
+											onClick={() => toggleMuscleGroup(muscle)}
+										>
+											{muscle}
+											{muscleGroups.includes(muscle) && !isSystemExercise && (
+												<X className="ml-1.5 h-3.5 w-3.5" />
+											)}
+										</Badge>
+									))
+								)}
 							</div>
 							{muscleGroups.length === 0 && !isSystemExercise && (
 								<p className="text-sm text-muted-foreground">
