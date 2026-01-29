@@ -112,9 +112,9 @@ export function ImportDayDialog({
               </p>
             </div>
             <div>
-              <p className="font-medium mb-1">Convert a workout to a day</p>
+              <p className="font-medium mb-1">Convert your workout to a day</p>
               <p>
-                Export any completed workout, then paste it here. We&apos;ll add it as a new day to this routine.
+                Go to any completed workout, click Export, copy the JSON, then paste it here to add it as a new day.
               </p>
             </div>
           </div>

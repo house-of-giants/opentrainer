@@ -115,10 +115,9 @@ export function ImportRoutineDialog({
               </p>
             </div>
             <div>
-              <p className="font-medium mb-1">Convert a workout to a routine</p>
+              <p className="font-medium mb-1">Convert your workout to a routine</p>
               <p>
-                Export any completed workout, then paste it here. We&apos;ll
-                automatically convert it to a reusable routine.
+                Go to any completed workout, click Export, copy the JSON, then paste it here to turn it into a reusable routine.
               </p>
             </div>
           </div>
