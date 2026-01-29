@@ -21,6 +21,68 @@ const routineDayValidator = v.object({
   exercises: v.array(routineExerciseValidator),
 });
 
+type WorkoutExercise = {
+  name?: string;
+  kind?: string;
+  sets?: Array<{
+    weight?: number;
+    reps?: number;
+    rpe?: number;
+    isWarmup?: boolean;
+  }>;
+  cardio?: unknown;
+};
+
+type RoutineExercise = {
+  name: string;
+  kind: string;
+  targetSets?: number;
+  targetReps?: string;
+  targetRpe?: number;
+  targetDuration?: number;
+};
+
+function convertWorkoutExercisesToRoutineFormat(exercises: WorkoutExercise[]): RoutineExercise[] {
+  return exercises.map((ex) => {
+    if (!ex.name || typeof ex.name !== "string") {
+      throw new Error(
+        "Workout export contains an exercise without a name. This might be corrupted. Try exporting the workout again."
+      );
+    }
+
+    const kind = ex.kind === "cardio" ? "cardio" : (ex.kind === "mobility" ? "mobility" : "lifting");
+
+    const exercise: RoutineExercise = {
+      name: ex.name,
+      kind,
+    };
+
+    if (kind === "lifting" && ex.sets && Array.isArray(ex.sets)) {
+      const workingSets = ex.sets.filter((s) => !s.isWarmup);
+      if (workingSets.length > 0) {
+        exercise.targetSets = workingSets.length;
+        const avgReps = Math.round(
+          workingSets.reduce((sum, s) => sum + (s.reps ?? 0), 0) / workingSets.length
+        );
+        exercise.targetReps = avgReps > 0 ? `${avgReps}` : "8-12";
+        const rpes = workingSets.map((s) => s.rpe).filter((r) => r !== undefined);
+        if (rpes.length > 0) {
+          exercise.targetRpe = Math.round(
+            rpes.reduce((sum, r) => sum + (r ?? 0), 0) / rpes.length
+          );
+        }
+      } else {
+        exercise.targetSets = ex.sets.length;
+        exercise.targetReps = "8-12";
+      }
+    } else if (kind === "cardio") {
+      exercise.targetDuration = 15;
+    }
+
+    return exercise;
+  });
+}
+
 export const createRoutine = mutation({
   args: {
     name: v.string(),
@@ -244,54 +306,8 @@ export const importRoutineFromJson = mutation({
 
     // Handle workout export format by converting to routine format
     if (data.exportType === "workout" && data.workout?.exercises) {
-      const workoutExercises = data.workout.exercises.map((ex) => {
-        if (!ex.name || typeof ex.name !== "string") {
-          throw new Error(
-            "Workout export contains an exercise without a name. This might be corrupted. Try exporting the workout again."
-          );
-        }
+      const workoutExercises = convertWorkoutExercisesToRoutineFormat(data.workout.exercises);
 
-        const kind = ex.kind === "cardio" ? "cardio" : (ex.kind === "mobility" ? "mobility" : "lifting");
-        
-        const exercise: {
-          name: string;
-          kind: string;
-          targetSets?: number;
-          targetReps?: string;
-          targetRpe?: number;
-          targetDuration?: number;
-        } = {
-          name: ex.name,
-          kind,
-        };
-
-        if (kind === "lifting" && ex.sets && Array.isArray(ex.sets)) {
-          // Calculate averages from actual sets (excluding warmups)
-          const workingSets = ex.sets.filter((s) => !s.isWarmup);
-          if (workingSets.length > 0) {
-            exercise.targetSets = workingSets.length;
-            const avgReps = Math.round(
-              workingSets.reduce((sum, s) => sum + (s.reps ?? 0), 0) / workingSets.length
-            );
-            exercise.targetReps = avgReps > 0 ? `${avgReps}` : "8-12";
-            const rpes = workingSets.map((s) => s.rpe).filter((r) => r !== undefined);
-            if (rpes.length > 0) {
-              exercise.targetRpe = Math.round(
-                rpes.reduce((sum, r) => sum + (r ?? 0), 0) / rpes.length
-              );
-            }
-          } else {
-            exercise.targetSets = ex.sets.length;
-            exercise.targetReps = "8-12";
-          }
-        } else if (kind === "cardio") {
-          exercise.targetDuration = 15; // Default cardio duration
-        }
-
-        return exercise;
-      });
-
-      // Convert workout to single-day routine
       data.days = [
         {
           name: data.workout.title ?? data.name ?? "Workout Day",
@@ -456,51 +472,7 @@ export const importDayToRoutine = mutation({
     };
 
     if (data.exportType === "workout" && data.workout?.exercises) {
-      const workoutExercises = data.workout.exercises.map((ex) => {
-        if (!ex.name || typeof ex.name !== "string") {
-          throw new Error(
-            "Workout export contains an exercise without a name. This might be corrupted. Try exporting the workout again."
-          );
-        }
-
-        const kind = ex.kind === "cardio" ? "cardio" : (ex.kind === "mobility" ? "mobility" : "lifting");
-
-        const exercise: {
-          name: string;
-          kind: string;
-          targetSets?: number;
-          targetReps?: string;
-          targetRpe?: number;
-          targetDuration?: number;
-        } = {
-          name: ex.name,
-          kind,
-        };
-
-        if (kind === "lifting" && ex.sets && Array.isArray(ex.sets)) {
-          const workingSets = ex.sets.filter((s) => !s.isWarmup);
-          if (workingSets.length > 0) {
-            exercise.targetSets = workingSets.length;
-            const avgReps = Math.round(
-              workingSets.reduce((sum, s) => sum + (s.reps ?? 0), 0) / workingSets.length
-            );
-            exercise.targetReps = avgReps > 0 ? `${avgReps}` : "8-12";
-            const rpes = workingSets.map((s) => s.rpe).filter((r) => r !== undefined);
-            if (rpes.length > 0) {
-              exercise.targetRpe = Math.round(
-                rpes.reduce((sum, r) => sum + (r ?? 0), 0) / rpes.length
-              );
-            }
-          } else {
-            exercise.targetSets = ex.sets.length;
-            exercise.targetReps = "8-12";
-          }
-        } else if (kind === "cardio") {
-          exercise.targetDuration = 15;
-        }
-
-        return exercise;
-      });
+      const workoutExercises = convertWorkoutExercisesToRoutineFormat(data.workout.exercises);
 
       data.exercises = workoutExercises;
       data.name = data.workout.title ?? data.name ?? "Imported Workout";
