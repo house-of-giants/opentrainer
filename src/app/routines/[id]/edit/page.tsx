@@ -19,6 +19,14 @@ import {
 	SheetTitle,
 } from "@/components/ui/sheet";
 import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
 	ArrowLeft,
 	Check,
 	ChevronRight,
@@ -28,6 +36,7 @@ import {
 	Search,
 	Trash2,
 	Upload,
+	X,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -71,19 +80,6 @@ const DEFAULT_EXERCISE: Omit<RoutineExercise, "id" | "exerciseName"> = {
 	perSide: false,
 	restSeconds: 90,
 };
-
-const MUSCLE_GROUPS = [
-	"chest",
-	"back",
-	"shoulders",
-	"biceps",
-	"triceps",
-	"quads",
-	"hamstrings",
-	"glutes",
-	"calves",
-	"core",
-];
 
 function SortableExerciseItem({
 	exercise,
@@ -159,8 +155,10 @@ export default function EditRoutinePage() {
 	const routineId = params.id as Id<"routines">;
 	const routine = useQuery(api.routines.getRoutine, { routineId });
 	const updateRoutine = useMutation(api.routines.updateRoutine);
+	const createExercise = useMutation(api.exercises.createExercise);
 	const seedExercises = useMutation(api.exercises.seedSystemExercises);
 	const exercises = useQuery(api.exercises.getExercises, {});
+	const muscleGroups = useQuery(api.exercises.getMuscleGroups, {});
 
 	const [routineName, setRoutineName] = useState("");
 	const [description, setDescription] = useState("");
@@ -172,6 +170,9 @@ export default function EditRoutinePage() {
 	const [activeDayId, setActiveDayId] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
+	const [customExerciseName, setCustomExerciseName] = useState("");
+	const [customExerciseMuscles, setCustomExerciseMuscles] = useState<string[]>([]);
+	const [showMuscleGroupDialog, setShowMuscleGroupDialog] = useState(false);
 
 	const [editingExercise, setEditingExercise] = useState<{
 		dayId: string;
@@ -198,6 +199,7 @@ export default function EditRoutinePage() {
 					}
 					return {
 						id: crypto.randomUUID(),
+						exerciseId: ex.exerciseId,
 						exerciseName: ex.exerciseName,
 						kind: ex.kind,
 						targetSets: ex.targetSets || 3,
@@ -274,14 +276,48 @@ export default function EditRoutinePage() {
 		setSelectedMuscle(null);
 	};
 
+	const toggleCustomMuscleGroup = (muscle: string) => {
+		setCustomExerciseMuscles((prev) =>
+			prev.includes(muscle)
+				? prev.filter((m) => m !== muscle)
+				: [...prev, muscle]
+		);
+	};
+
+	const handleAddCustomExercise = async () => {
+		if (customExerciseMuscles.length === 0) {
+			toast.error("Please select at least one muscle group");
+			return;
+		}
+		
+		try {
+		const exerciseId = await createExercise({
+			name: customExerciseName,
+			category: "lifting",
+			muscleGroups: customExerciseMuscles,
+		});
+		
+		addExerciseToDay(customExerciseName, exerciseId, "lifting");
+			setShowMuscleGroupDialog(false);
+			setCustomExerciseName("");
+			setCustomExerciseMuscles([]);
+			setSearchQuery("");
+		} catch (error) {
+			toast.error("Failed to create exercise");
+			console.error(error);
+		}
+	};
+
 	const addExerciseToDay = (
 		exerciseName: string,
+		exerciseId?: Id<"exercises">,
 		kind: "lifting" | "cardio" | "mobility" = "lifting"
 	) => {
 		if (!activeDayId) return;
 		vibrate("medium");
 		const newExercise: RoutineExercise = {
 			id: crypto.randomUUID(),
+			exerciseId,
 			exerciseName,
 			...DEFAULT_EXERCISE,
 			kind,
@@ -347,6 +383,7 @@ export default function EditRoutinePage() {
 				days: days.map((d) => ({
 					name: d.name,
 					exercises: d.exercises.map((e) => ({
+						exerciseId: e.exerciseId,
 						exerciseName: e.exerciseName,
 						kind: e.kind,
 						targetSets:
@@ -655,27 +692,31 @@ export default function EditRoutinePage() {
 							/>
 						</div>
 
-						<div className="flex flex-wrap gap-2">
-							<Badge
-								variant={selectedMuscle === null ? "default" : "outline"}
-								className="cursor-pointer"
-								onClick={() => setSelectedMuscle(null)}
-							>
-								All
-							</Badge>
-							{MUSCLE_GROUPS.map((muscle) => (
+					<div className="flex flex-wrap gap-2">
+						<Badge
+							variant={selectedMuscle === null ? "default" : "outline"}
+							className="cursor-pointer"
+							onClick={() => setSelectedMuscle(null)}
+						>
+							All
+						</Badge>
+						{!muscleGroups ? (
+							<p className="text-sm text-muted-foreground">Loading muscle groups...</p>
+						) : (
+							muscleGroups.map((muscle) => (
 								<Badge
 									key={muscle}
 									variant={selectedMuscle === muscle ? "default" : "outline"}
-									className="cursor-pointer capitalize"
+									className="cursor-pointer capitalize h-10 px-4 text-sm font-medium"
 									onClick={() =>
 										setSelectedMuscle(selectedMuscle === muscle ? null : muscle)
 									}
 								>
 									{muscle}
 								</Badge>
-							))}
-						</div>
+							))
+						)}
+					</div>
 
 						{needsSeeding && (
 							<Card className="p-4 text-center">
@@ -703,7 +744,8 @@ export default function EditRoutinePage() {
 								<button
 									className="w-full flex items-center justify-between p-3 rounded-lg text-left bg-primary/5 border border-primary/20 hover:bg-primary/10 active:bg-primary/15 transition-colors mb-2"
 									onClick={() => {
-										addExerciseToDay(searchQuery.trim());
+										setCustomExerciseName(searchQuery.trim());
+										setShowMuscleGroupDialog(true);
 									}}
 								>
 									<div className="min-w-0 flex-1">
@@ -724,6 +766,7 @@ export default function EditRoutinePage() {
 									onClick={() =>
 										addExerciseToDay(
 											exercise.name,
+											exercise._id,
 											exercise.category === "cardio"
 												? "cardio"
 												: exercise.category === "mobility"
@@ -766,12 +809,70 @@ export default function EditRoutinePage() {
 				onDelete={handleExerciseDelete}
 			/>
 
-			<ImportDayDialog
-				routineId={routineId}
-				open={showImportDayDialog}
-				onOpenChange={setShowImportDayDialog}
-				onSuccess={() => setIsInitialized(false)}
-			/>
-		</div>
-	);
+		<ImportDayDialog
+			routineId={routineId}
+			open={showImportDayDialog}
+			onOpenChange={setShowImportDayDialog}
+			onSuccess={() => setIsInitialized(false)}
+		/>
+
+		<Dialog open={showMuscleGroupDialog} onOpenChange={setShowMuscleGroupDialog}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Select Muscle Groups</DialogTitle>
+					<DialogDescription>
+						Choose which muscles &quot;{customExerciseName}&quot; targets
+					</DialogDescription>
+				</DialogHeader>
+
+			<div className="flex flex-col gap-4 py-4">
+				<div className="flex flex-wrap gap-2">
+					{!muscleGroups ? (
+						<p className="text-sm text-muted-foreground">Loading muscle groups...</p>
+					) : (
+						muscleGroups.map((muscle) => (
+							<Badge
+								key={muscle}
+								variant={customExerciseMuscles.includes(muscle) ? "default" : "outline"}
+								className="cursor-pointer capitalize h-10 px-4 text-sm font-medium"
+								onClick={() => toggleCustomMuscleGroup(muscle)}
+							>
+								{muscle}
+								{customExerciseMuscles.includes(muscle) && (
+									<X className="ml-1.5 h-3.5 w-3.5" />
+								)}
+							</Badge>
+						))
+					)}
+				</div>
+
+				{customExerciseMuscles.length === 0 && (
+					<p className="text-sm text-muted-foreground">
+						Select at least one muscle group
+					</p>
+				)}
+			</div>
+
+				<DialogFooter>
+					<Button
+						variant="outline"
+						onClick={() => {
+							setShowMuscleGroupDialog(false);
+							setCustomExerciseName("");
+							setCustomExerciseMuscles([]);
+						}}
+					>
+						Cancel
+					</Button>
+					<Button
+						onClick={handleAddCustomExercise}
+						disabled={customExerciseMuscles.length === 0}
+					>
+						Add Exercise
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	</div>
+);
 }
