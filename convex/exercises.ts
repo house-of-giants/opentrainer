@@ -334,3 +334,48 @@ export const createExercise = mutation({
     return id;
   },
 });
+
+/**
+ * Update an existing exercise's muscle groups
+ * Only allows updating user-created exercises or name changes
+ */
+export const updateExercise = mutation({
+  args: {
+    id: v.id("exercises"),
+    muscleGroups: v.optional(v.array(v.string())),
+    name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const exercise = await ctx.db.get(args.id);
+    if (!exercise) throw new Error("Exercise not found");
+
+    // Only allow updating user's own exercises (not system exercises)
+    if (exercise.isSystemExercise) {
+      throw new Error("Cannot modify system exercises");
+    }
+
+    if (exercise.userId !== user._id) {
+      throw new Error("Unauthorized");
+    }
+
+    const updates: Partial<{
+      muscleGroups?: string[];
+      name?: string;
+    }> = {};
+
+    if (args.muscleGroups !== undefined) {
+      updates.muscleGroups = args.muscleGroups;
+    }
+
+    if (args.name !== undefined) {
+      updates.name = args.name;
+    }
+
+    await ctx.db.patch(args.id, updates);
+
+    return args.id;
+  },
+});

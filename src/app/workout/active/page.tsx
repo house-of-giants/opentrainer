@@ -78,6 +78,7 @@ type PendingExercise = {
 	targetReps?: string;
 	targetDurationMinutes?: number;
 	equipment?: string[];
+	muscleGroups?: string[];
 };
 
 function useDuration(startedAt: number | undefined) {
@@ -141,6 +142,7 @@ export default function ActiveWorkoutPage() {
 	const completeWorkout = useMutation(api.workouts.completeWorkout);
 	const cancelWorkout = useMutation(api.workouts.cancelWorkout);
 	const updateExerciseNote = useMutation(api.workouts.updateExerciseNote);
+	const createExercise = useMutation(api.exercises.createExercise);
 
 	const getExerciseNote = (exerciseName: string): string | undefined => {
 		return workout?.exerciseNotes?.find((n) => n.exerciseName === exerciseName)
@@ -384,8 +386,20 @@ export default function ActiveWorkoutPage() {
 		}
 	};
 
-	const handleAddExercise = (exercise: ExerciseSelection) => {
+	const handleAddExercise = async (exercise: ExerciseSelection) => {
 		if (!exerciseGroups.has(exercise.name)) {
+			if (exercise.muscleGroups && exercise.muscleGroups.length > 0) {
+				try {
+					await createExercise({
+						name: exercise.name,
+						category: exercise.category,
+						muscleGroups: exercise.muscleGroups,
+						primaryMetric: exercise.primaryMetric,
+					});
+				} catch (error) {
+					console.error("Failed to create exercise:", error);
+				}
+			}
 			setPendingExercises((prev) => [...prev, exercise]);
 		}
 		setShowAddExercise(false);

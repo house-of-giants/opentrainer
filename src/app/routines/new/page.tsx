@@ -15,6 +15,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
@@ -85,6 +93,8 @@ const MUSCLE_GROUPS = [
   "glutes",
   "calves",
   "core",
+  "traps",
+  "forearms",
 ];
 
 function SortableExerciseItem({
@@ -204,6 +214,7 @@ export default function NewRoutinePage() {
   const router = useRouter();
   const { vibrate } = useHaptic();
   const createRoutine = useMutation(api.routines.createRoutine);
+  const createExercise = useMutation(api.exercises.createExercise);
   const seedExercises = useMutation(api.exercises.seedSystemExercises);
   const exercises = useQuery(api.exercises.getExercises, {});
 
@@ -218,6 +229,9 @@ export default function NewRoutinePage() {
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
+  const [customExerciseName, setCustomExerciseName] = useState("");
+  const [customExerciseMuscles, setCustomExerciseMuscles] = useState<string[]>([]);
+  const [showMuscleGroupDialog, setShowMuscleGroupDialog] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -294,6 +308,38 @@ export default function NewRoutinePage() {
     setShowExercisePicker(true);
     setSearchQuery("");
     setSelectedMuscle(null);
+  };
+
+  const toggleCustomMuscleGroup = (muscle: string) => {
+    setCustomExerciseMuscles((prev) =>
+      prev.includes(muscle)
+        ? prev.filter((m) => m !== muscle)
+        : [...prev, muscle]
+    );
+  };
+
+  const handleAddCustomExercise = async () => {
+    if (customExerciseMuscles.length === 0) {
+      toast.error("Please select at least one muscle group");
+      return;
+    }
+    
+    try {
+      const exerciseId = await createExercise({
+        name: customExerciseName,
+        category: "lifting",
+        muscleGroups: customExerciseMuscles,
+      });
+      
+      addExerciseToDay(customExerciseName, exerciseId, "lifting");
+      setShowMuscleGroupDialog(false);
+      setCustomExerciseName("");
+      setCustomExerciseMuscles([]);
+      setSearchQuery("");
+    } catch (error) {
+      toast.error("Failed to create exercise");
+      console.error(error);
+    }
   };
 
   const addExerciseToDay = (
@@ -633,7 +679,8 @@ export default function NewRoutinePage() {
                   variant="outline"
                   className="w-full justify-start h-auto py-3 mb-2 bg-primary/5 border-primary/20 hover:bg-primary/10 text-primary hover:text-primary"
                   onClick={() => {
-                    addExerciseToDay(searchQuery.trim());
+                    setCustomExerciseName(searchQuery.trim());
+                    setShowMuscleGroupDialog(true);
                   }}
                 >
                   <div className="flex flex-col items-start">
@@ -679,6 +726,60 @@ export default function NewRoutinePage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <Dialog open={showMuscleGroupDialog} onOpenChange={setShowMuscleGroupDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Muscle Groups</DialogTitle>
+            <DialogDescription>
+              Choose which muscles &quot;{customExerciseName}&quot; targets
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex flex-wrap gap-2">
+              {MUSCLE_GROUPS.map((muscle) => (
+                <Badge
+                  key={muscle}
+                  variant={customExerciseMuscles.includes(muscle) ? "default" : "outline"}
+                  className="cursor-pointer capitalize h-10 px-4 text-sm font-medium"
+                  onClick={() => toggleCustomMuscleGroup(muscle)}
+                >
+                  {muscle}
+                  {customExerciseMuscles.includes(muscle) && (
+                    <X className="ml-1.5 h-3.5 w-3.5" />
+                  )}
+                </Badge>
+              ))}
+            </div>
+
+            {customExerciseMuscles.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Select at least one muscle group
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowMuscleGroupDialog(false);
+                setCustomExerciseName("");
+                setCustomExerciseMuscles([]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddCustomExercise}
+              disabled={customExerciseMuscles.length === 0}
+            >
+              Add Exercise
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
