@@ -79,7 +79,7 @@ export function ImportRoutineDialog({
         <DialogHeader>
           <DialogTitle>Import Routine</DialogTitle>
           <DialogDescription>
-            Paste a routine in JSON format. You can use ChatGPT to generate one!
+            Paste a routine in JSON format, or paste a workout export to convert it to a routine.
           </DialogDescription>
         </DialogHeader>
 
@@ -106,11 +106,19 @@ export function ImportRoutineDialog({
             />
           </div>
 
-          <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
-            <p className="font-medium mb-1">Tip: Generate with AI</p>
-            <p>
-              Ask ChatGPT: &quot;Create a 3-day workout routine in JSON format with name, days array, and exercises with name, kind (lifting/cardio), targetSets, and targetReps.&quot;
-            </p>
+          <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground space-y-2">
+            <div>
+              <p className="font-medium mb-1">Import a routine</p>
+              <p>
+                Use the example format above, or ask ChatGPT to create one for you.
+              </p>
+            </div>
+            <div>
+              <p className="font-medium mb-1">Convert a workout to a routine</p>
+              <p>
+                Export any completed workout, then paste it here. We&apos;ll automatically convert it to a reusable routine.
+              </p>
+            </div>
           </div>
         </div>
 
