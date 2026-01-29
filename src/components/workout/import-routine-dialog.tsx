@@ -79,7 +79,8 @@ export function ImportRoutineDialog({
         <DialogHeader>
           <DialogTitle>Import Routine</DialogTitle>
           <DialogDescription>
-            Paste a routine in JSON format, or paste a workout export to convert it to a routine.
+            Paste a routine in JSON format, or paste a workout export to convert
+            it to a routine.
           </DialogDescription>
         </DialogHeader>
 
@@ -110,13 +111,14 @@ export function ImportRoutineDialog({
             <div>
               <p className="font-medium mb-1">Import a routine</p>
               <p>
-                Use the example format above, or ask ChatGPT to create one for you.
+                Use the example format above, or ask AI to create one for you.
               </p>
             </div>
             <div>
               <p className="font-medium mb-1">Convert a workout to a routine</p>
               <p>
-                Export any completed workout, then paste it here. We&apos;ll automatically convert it to a reusable routine.
+                Export any completed workout, then paste it here. We&apos;ll
+                automatically convert it to a reusable routine.
               </p>
             </div>
           </div>
