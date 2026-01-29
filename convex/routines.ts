@@ -21,6 +21,68 @@ const routineDayValidator = v.object({
   exercises: v.array(routineExerciseValidator),
 });
 
+type WorkoutExercise = {
+  name?: string;
+  kind?: string;
+  sets?: Array<{
+    weight?: number;
+    reps?: number;
+    rpe?: number;
+    isWarmup?: boolean;
+  }>;
+  cardio?: unknown;
+};
+
+type RoutineExercise = {
+  name: string;
+  kind: string;
+  targetSets?: number;
+  targetReps?: string;
+  targetRpe?: number;
+  targetDuration?: number;
+};
+
+function convertWorkoutExercisesToRoutineFormat(exercises: WorkoutExercise[]): RoutineExercise[] {
+  return exercises.map((ex) => {
+    if (!ex.name || typeof ex.name !== "string") {
+      throw new Error(
+        "Workout export contains an exercise without a name. This might be corrupted. Try exporting the workout again."
+      );
+    }
+
+    const kind = ex.kind === "cardio" ? "cardio" : (ex.kind === "mobility" ? "mobility" : "lifting");
+
+    const exercise: RoutineExercise = {
+      name: ex.name,
+      kind,
+    };
+
+    if (kind === "lifting" && ex.sets && Array.isArray(ex.sets)) {
+      const workingSets = ex.sets.filter((s) => !s.isWarmup);
+      if (workingSets.length > 0) {
+        exercise.targetSets = workingSets.length;
+        const avgReps = Math.round(
+          workingSets.reduce((sum, s) => sum + (s.reps ?? 0), 0) / workingSets.length
+        );
+        exercise.targetReps = avgReps > 0 ? `${avgReps}` : "8-12";
+        const rpes = workingSets.map((s) => s.rpe).filter((r) => r !== undefined);
+        if (rpes.length > 0) {
+          exercise.targetRpe = Math.round(
+            rpes.reduce((sum, r) => sum + (r ?? 0), 0) / rpes.length
+          );
+        }
+      } else {
+        exercise.targetSets = ex.sets.length;
+        exercise.targetReps = "8-12";
+      }
+    } else if (kind === "cardio") {
+      exercise.targetDuration = 15;
+    }
+
+    return exercise;
+  });
+}
+
 export const createRoutine = mutation({
   args: {
     name: v.string(),
@@ -195,14 +257,36 @@ export const importRoutineFromJson = mutation({
     let parsed: unknown;
     try {
       parsed = JSON.parse(args.json);
-    } catch {
-      throw new Error("Invalid JSON format");
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : "Unknown error";
+      throw new Error(
+        `Invalid JSON format. Please check your JSON is valid.\n\nError details: ${errorMsg}\n\nTip: Copy the entire JSON from the export dialog, or use the example format.`
+      );
+    }
+
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error("Invalid input: Expected a JSON object, but got something else. Make sure you're pasting valid JSON.");
     }
 
     const data = parsed as {
       version?: number;
+      exportType?: string;
       name?: string;
       description?: string;
+      workout?: {
+        title?: string;
+        exercises?: Array<{
+          name?: string;
+          kind?: string;
+          sets?: Array<{
+            weight?: number;
+            reps?: number;
+            rpe?: number;
+            isWarmup?: boolean;
+          }>;
+          cardio?: unknown;
+        }>;
+      };
       days?: Array<{
         name?: string;
         exercises?: Array<{
@@ -220,26 +304,56 @@ export const importRoutineFromJson = mutation({
       }>;
     };
 
-    if (!data.name || typeof data.name !== "string") {
-      throw new Error("Missing or invalid routine name");
+    // Handle workout export format by converting to routine format
+    if (data.exportType === "workout" && data.workout?.exercises) {
+      const workoutExercises = convertWorkoutExercisesToRoutineFormat(data.workout.exercises);
+
+      data.days = [
+        {
+          name: data.workout.title ?? data.name ?? "Workout Day",
+          exercises: workoutExercises,
+        },
+      ];
     }
 
-    if (!data.days || !Array.isArray(data.days) || data.days.length === 0) {
-      throw new Error("Routine must have at least one day");
+    if (!data.name || typeof data.name !== "string") {
+      throw new Error(
+        `Missing routine name. Your JSON must include a "name" field.\n\nExample:\n{\n  "name": "My Routine",\n  "days": [...]\n}`
+      );
+    }
+
+    if (!data.days || !Array.isArray(data.days)) {
+      throw new Error(
+        `Missing or invalid "days" field. Your routine must have a "days" array.\n\nExample:\n{\n  "name": "My Routine",\n  "days": [\n    { "name": "Day 1", "exercises": [...] }\n  ]\n}`
+      );
+    }
+
+    if (data.days.length === 0) {
+      throw new Error("Routine must have at least one day. Add at least one day with exercises to your routine.");
     }
 
     const days = data.days.map((day, dayIdx) => {
       if (!day.name || typeof day.name !== "string") {
-        throw new Error(`Day ${dayIdx + 1} is missing a name`);
+        throw new Error(
+          `Day ${dayIdx + 1} is missing a name. Each day must have a "name" field.\n\nExample:\n{ "name": "Push Day", "exercises": [...] }`
+        );
       }
 
       if (!day.exercises || !Array.isArray(day.exercises)) {
-        throw new Error(`Day "${day.name}" must have exercises array`);
+        throw new Error(
+          `Day "${day.name}" must have an "exercises" array.\n\nExample:\n{\n  "name": "${day.name}",\n  "exercises": [\n    { "name": "Bench Press", "kind": "lifting", "targetSets": 4, "targetReps": "8-10" }\n  ]\n}`
+        );
+      }
+
+      if (day.exercises.length === 0) {
+        throw new Error(`Day "${day.name}" has no exercises. Each day must have at least one exercise.`);
       }
 
       const exercises = day.exercises.map((ex, exIdx) => {
         if (!ex.name || typeof ex.name !== "string") {
-          throw new Error(`Exercise ${exIdx + 1} in "${day.name}" is missing a name`);
+          throw new Error(
+            `Exercise ${exIdx + 1} in "${day.name}" is missing a name.\n\nEach exercise must have a "name" field.\n\nExample: { "name": "Bench Press", "kind": "lifting", "targetSets": 4 }`
+          );
         }
 
         const kind = ex.kind === "cardio" ? "cardio" : (ex.kind === "mobility" ? "mobility" : "lifting");
@@ -315,12 +429,34 @@ export const importDayToRoutine = mutation({
     let parsed: unknown;
     try {
       parsed = JSON.parse(args.json);
-    } catch {
-      throw new Error("Invalid JSON format");
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : "Unknown error";
+      throw new Error(
+        `Invalid JSON format. Please check your JSON is valid.\n\nError details: ${errorMsg}\n\nTip: Copy the entire JSON from the export dialog, or use the example format.`
+      );
+    }
+
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error("Invalid input: Expected a JSON object, but got something else. Make sure you're pasting valid JSON.");
     }
 
     const data = parsed as {
+      exportType?: string;
       name?: string;
+      workout?: {
+        title?: string;
+        exercises?: Array<{
+          name?: string;
+          kind?: string;
+          sets?: Array<{
+            weight?: number;
+            reps?: number;
+            rpe?: number;
+            isWarmup?: boolean;
+          }>;
+          cardio?: unknown;
+        }>;
+      };
       exercises?: Array<{
         name?: string;
         kind?: string;
@@ -335,17 +471,34 @@ export const importDayToRoutine = mutation({
       }>;
     };
 
-    if (!data.name || typeof data.name !== "string") {
-      throw new Error("Missing or invalid day name");
+    if (data.exportType === "workout" && data.workout?.exercises) {
+      const workoutExercises = convertWorkoutExercisesToRoutineFormat(data.workout.exercises);
+
+      data.exercises = workoutExercises;
+      data.name = data.workout.title ?? data.name ?? "Imported Workout";
     }
 
-    if (!data.exercises || !Array.isArray(data.exercises) || data.exercises.length === 0) {
-      throw new Error("Day must have at least one exercise");
+    if (!data.name || typeof data.name !== "string") {
+      throw new Error(
+        `Missing day name. Your JSON must include a "name" field.\n\nExample:\n{\n  "name": "Push Day",\n  "exercises": [...]\n}`
+      );
+    }
+
+    if (!data.exercises || !Array.isArray(data.exercises)) {
+      throw new Error(
+        `Missing or invalid "exercises" field. Your day must have an "exercises" array.\n\nExample:\n{\n  "name": "Push Day",\n  "exercises": [\n    { "name": "Bench Press", "kind": "lifting", "targetSets": 4, "targetReps": "8-10" }\n  ]\n}`
+      );
+    }
+
+    if (data.exercises.length === 0) {
+      throw new Error("Day must have at least one exercise. Add at least one exercise to your day.");
     }
 
     const exercises = data.exercises.map((ex, exIdx) => {
       if (!ex.name || typeof ex.name !== "string") {
-        throw new Error(`Exercise ${exIdx + 1} is missing a name`);
+        throw new Error(
+          `Exercise ${exIdx + 1} is missing a name.\n\nEach exercise must have a "name" field.\n\nExample: { "name": "Bench Press", "kind": "lifting", "targetSets": 4 }`
+        );
       }
 
       const kind = ex.kind === "cardio" ? "cardio" : (ex.kind === "mobility" ? "mobility" : "lifting");
