@@ -393,23 +393,18 @@ export const getDashboardStats = query({
       return null;
     }
 
-    // Calculate start of current week (Sunday)
+    // Calculate start of current week (Monday)
     const now = new Date();
     const dayOfWeek = now.getDay();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - dayOfWeek);
-    startOfWeek.setHours(0, 0, 0, 0);
-    const weekStartTimestamp = startOfWeek.getTime();
-
-    // Get current week (Monday through Sunday) for activity dots
-    const currentWeek: { date: string; dayName: string; hasWorkout: boolean }[] = [];
-    // Calculate start of week (Monday)
     // getDay() returns 0 for Sunday, 1 for Monday, etc.
     // We want Monday as day 0, so we adjust: (dayOfWeek + 6) % 7 gives us days since Monday
     const daysSinceMonday = (dayOfWeek + 6) % 7;
     const mondayOfThisWeek = new Date(now);
     mondayOfThisWeek.setDate(now.getDate() - daysSinceMonday);
     mondayOfThisWeek.setHours(0, 0, 0, 0);
+
+    // Get current week (Monday through Sunday) for activity dots
+    const currentWeek: { date: string; dayName: string; hasWorkout: boolean }[] = [];
 
     for (let i = 0; i < 7; i++) {
       const date = new Date(mondayOfThisWeek);
@@ -444,7 +439,7 @@ export const getDashboardStats = query({
 
     // Calculate this week's stats
     const thisWeekWorkouts = recentWorkouts.filter(
-      (w) => w.startedAt >= weekStartTimestamp
+      (w) => w.startedAt >= mondayOfThisWeek.getTime()
     );
 
     const weeklyWorkoutCount = thisWeekWorkouts.length;
