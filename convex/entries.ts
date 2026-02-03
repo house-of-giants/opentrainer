@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, internalQuery } from "./_generated/server";
 import { getCurrentUser } from "./auth";
 import type { Id } from "./_generated/dataModel";
+import { createConvexLogger, truncateId } from "./lib/logger";
 
 const liftingDataValidator = v.object({
   setNumber: v.number(),
@@ -79,15 +80,24 @@ export const addLiftingEntry = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const logger = createConvexLogger("entries.addLiftingEntry");
+
     const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({ user: { id: truncateId(user._id) } });
 
     const workout = await ctx.db.get(args.workoutId);
     if (!workout || workout.userId !== user._id) {
+      logger.fail(new Error("Workout not found or not authorized"));
       throw new Error("Workout not found or not authorized");
     }
 
     if (workout.status !== "in_progress") {
+      logger.fail(new Error("Cannot add entries to a completed workout"));
       throw new Error("Cannot add entries to a completed workout");
     }
 
@@ -99,6 +109,7 @@ export const addLiftingEntry = mutation({
       .first();
 
     if (existingEntry) {
+      logger.success({ deduplicated: true, entryId: truncateId(existingEntry._id) });
       return existingEntry._id;
     }
 
@@ -112,6 +123,15 @@ export const addLiftingEntry = mutation({
       lifting: args.lifting,
       notes: args.notes,
       createdAt: Date.now(),
+    });
+
+    logger.success({
+      entry: {
+        id: truncateId(entryId),
+        kind: "lifting",
+        exercise: args.exerciseName,
+        setNumber: args.lifting.setNumber,
+      },
     });
 
     return entryId;
@@ -128,15 +148,24 @@ export const addCardioEntry = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const logger = createConvexLogger("entries.addCardioEntry");
+
     const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({ user: { id: truncateId(user._id) } });
 
     const workout = await ctx.db.get(args.workoutId);
     if (!workout || workout.userId !== user._id) {
+      logger.fail(new Error("Workout not found or not authorized"));
       throw new Error("Workout not found or not authorized");
     }
 
     if (workout.status !== "in_progress") {
+      logger.fail(new Error("Cannot add entries to a completed workout"));
       throw new Error("Cannot add entries to a completed workout");
     }
 
@@ -148,6 +177,7 @@ export const addCardioEntry = mutation({
       .first();
 
     if (existingEntry) {
+      logger.success({ deduplicated: true, entryId: truncateId(existingEntry._id) });
       return existingEntry._id;
     }
 
@@ -161,6 +191,15 @@ export const addCardioEntry = mutation({
       cardio: args.cardio,
       notes: args.notes,
       createdAt: Date.now(),
+    });
+
+    logger.success({
+      entry: {
+        id: truncateId(entryId),
+        kind: "cardio",
+        exercise: args.exerciseName,
+        durationSeconds: args.cardio.durationSeconds,
+      },
     });
 
     return entryId;
@@ -277,15 +316,27 @@ export const deleteEntry = mutation({
     entryId: v.id("entries"),
   },
   handler: async (ctx, args) => {
+    const logger = createConvexLogger("entries.deleteEntry");
+
     const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({ user: { id: truncateId(user._id) } });
 
     const entry = await ctx.db.get(args.entryId);
     if (!entry || entry.userId !== user._id) {
+      logger.fail(new Error("Entry not found or not authorized"));
       throw new Error("Entry not found or not authorized");
     }
 
     await ctx.db.delete(args.entryId);
+
+    logger.success({
+      entry: { id: truncateId(args.entryId), kind: entry.kind, exercise: entry.exerciseName },
+    });
 
     return args.entryId;
   },

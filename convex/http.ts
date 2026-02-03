@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Webhook } from "svix";
+import { createConvexLogger, truncateId } from "./lib/logger";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -11,9 +12,12 @@ http.route({
   path: "/clerk-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
+    const logger = createConvexLogger("http.clerk-webhook");
+    logger.set({ webhook: { provider: "clerk" } });
+
     const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
     if (!webhookSecret) {
-      console.error("CLERK_WEBHOOK_SECRET not configured");
+      logger.fail(new Error("CLERK_WEBHOOK_SECRET not configured"));
       return new Response("Webhook secret not configured", { status: 500 });
     }
 
@@ -22,8 +26,11 @@ http.route({
     const svixSignature = request.headers.get("svix-signature");
 
     if (!svixId || !svixTimestamp || !svixSignature) {
+      logger.fail(new Error("Missing svix headers"));
       return new Response("Missing svix headers", { status: 400 });
     }
+
+    logger.set({ webhook: { eventId: svixId } });
 
     const body = await request.text();
 
@@ -37,16 +44,19 @@ http.route({
         "svix-signature": svixSignature,
       }) as WebhookEvent;
     } catch (err) {
-      console.error("Webhook verification failed:", err);
+      logger.fail(err, { reason: "signature_verification_failed" });
       return new Response("Invalid signature", { status: 400 });
     }
 
     const eventType = evt.type;
     const data = evt.data as any;
+    logger.set({ webhook: { eventType } });
 
     if (eventType === "user.created" || eventType === "user.updated") {
       const email = data.email_addresses?.[0]?.email_address;
       const name = [data.first_name, data.last_name].filter(Boolean).join(" ") || undefined;
+
+      logger.set({ user: { id: truncateId(data.id) } });
 
       await ctx.runMutation((internal as any).webhooks.upsertUser, {
         clerkId: data.id as string,
@@ -58,13 +68,13 @@ http.route({
 
     if (eventType === "user.deleted") {
       if (data.id) {
+        logger.set({ user: { id: truncateId(data.id) } });
         await ctx.runMutation((internal as any).webhooks.deleteUser, { 
           clerkId: data.id as string 
         });
       }
     }
 
-    // Clerk Billing: subscription.* events contain items[] array - find active item to determine tier
     if (
       eventType === "subscription.created" ||
       eventType === "subscription.updated" ||
@@ -73,7 +83,7 @@ http.route({
     ) {
       const userId = data.payer?.user_id || data.payer_id;
       if (!userId) {
-        console.error(`[Webhook] ${eventType}: Missing user_id/payer_id`, { data });
+        logger.fail(new Error("Missing payer user_id"), { eventType });
         return new Response("Missing payer user_id", { status: 400 });
       }
 
@@ -84,7 +94,10 @@ http.route({
       const planId = activeItem?.plan_id || activeItem?.plan?.id;
       const planName = activeItem?.plan?.name;
 
-
+      logger.set({
+        user: { id: truncateId(userId), tier },
+        subscription: { planId, planName, status: data.status },
+      });
 
       await ctx.runMutation((internal as any).webhooks.updateUserTier, {
         clerkId: userId as string,
@@ -95,7 +108,6 @@ http.route({
       });
     }
 
-    // Clerk Billing: subscriptionItem.* events fire for individual plan status changes
     if (
       eventType === "subscriptionItem.active" ||
       eventType === "subscriptionItem.canceled" ||
@@ -103,7 +115,7 @@ http.route({
     ) {
       const userId = data.payer?.user_id;
       if (!userId) {
-        console.error(`[Webhook] ${eventType}: Missing payer.user_id`, { data });
+        logger.fail(new Error("Missing payer.user_id"), { eventType });
         return new Response("Missing payer user_id", { status: 400 });
       }
 
@@ -115,7 +127,10 @@ http.route({
       const planId = data.plan_id || data.plan?.id;
       const planName = data.plan?.name;
 
-
+      logger.set({
+        user: { id: truncateId(userId), tier },
+        subscription: { planId, planName, status: data.status },
+      });
 
       await ctx.runMutation((internal as any).webhooks.updateUserTier, {
         clerkId: userId as string,
@@ -126,6 +141,7 @@ http.route({
       });
     }
 
+    logger.success();
     return new Response("OK", { status: 200 });
   }),
 });

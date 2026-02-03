@@ -8,6 +8,7 @@ import { TRAINING_LAB_FULL_PROMPT, TRAINING_LAB_SNAPSHOT_PROMPT } from "./prompt
 import type { Doc } from "../_generated/dataModel";
 import type { AggregatedWorkoutData } from "./aggregators";
 import type { TrainingLabReport, TrainingSnapshot } from "./trainingLabTypes";
+import { createConvexLogger, truncateId } from "../lib/logger";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -116,20 +117,48 @@ export const generateReport = action({
     reportType: v.union(v.literal("snapshot"), v.literal("full")),
   },
   handler: async (ctx, args): Promise<TrainingLabReport | TrainingSnapshot> => {
+    const logger = createConvexLogger("ai.trainingLab.generateReport");
+    logger.set({
+      ai: { action: "trainingLabReport", model: "gemini" },
+      request: { reportType: args.reportType, periodDays: args.periodDays ?? 7 },
+    });
+
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    if (!identity) {
+      logger.fail(new Error("Unauthorized"));
+      throw new Error("Unauthorized");
+    }
 
     const user = await ctx.runQuery(internal.users.getByClerkId, {
       clerkId: identity.subject,
     }) as Doc<"users"> | null;
-    if (!user) throw new Error("User not found");
-    if (user.tier !== "pro") throw new Error("Pro subscription required");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({
+      user: {
+        id: truncateId(user._id),
+        tier: user.tier,
+        experienceLevel: user.experienceLevel,
+      },
+    });
+
+    if (user.tier !== "pro") {
+      logger.fail(new Error("Pro subscription required"));
+      throw new Error("Pro subscription required");
+    }
 
     const rateLimitCheck = await ctx.runQuery(internal.ai.rateLimitQueries.checkAIRateLimit, {
       userId: user._id,
       actionType: "trainingLabReport",
     }) as { allowed: boolean; remaining: number };
+
+    logger.set({ ai: { rateLimitRemaining: rateLimitCheck.remaining } });
+
     if (!rateLimitCheck.allowed) {
+      logger.rateLimited("trainingLabReport", rateLimitCheck.remaining);
       throw new Error(
         `Rate limit exceeded. You've used all 10 Training Lab reports for today. Try again tomorrow.`
       );
@@ -143,8 +172,11 @@ export const generateReport = action({
 
     const workoutCount = aggregated.period.workouts;
     if (workoutCount === 0) {
+      logger.fail(new Error("No workouts to analyze"));
       throw new Error("No workouts to analyze");
     }
+
+    logger.set({ data: { workoutCount, periodDays: args.periodDays ?? 7 } });
 
     const systemPrompt =
       args.reportType === "full" ? TRAINING_LAB_FULL_PROMPT : TRAINING_LAB_SNAPSHOT_PROMPT;
@@ -165,6 +197,14 @@ export const generateReport = action({
       responseFormat: "json",
     });
     const latencyMs = Date.now() - startTime;
+
+    logger.set({
+      ai: {
+        latencyMs,
+        inputTokens: response.usageMetadata.promptTokenCount,
+        outputTokens: response.usageMetadata.candidatesTokenCount,
+      },
+    });
 
     if (args.reportType === "snapshot") {
       const result = JSON.parse(response.text) as {
@@ -214,6 +254,14 @@ export const generateReport = action({
           output: response.usageMetadata.candidatesTokenCount,
         },
         latencyMs,
+      });
+
+      logger.success({
+        report: {
+          type: "snapshot",
+          recommendationsCount: result.recommendations.length,
+          progressIndicatorsCount: result.progressIndicators.length,
+        },
       });
 
       return snapshot;
@@ -270,6 +318,15 @@ export const generateReport = action({
         output: response.usageMetadata.candidatesTokenCount,
       },
       latencyMs,
+    });
+
+    logger.success({
+      report: {
+        type: "full",
+        insightsCount: result.insights.length,
+        alertsCount: result.alerts.length,
+        scores: result.scores,
+      },
     });
 
     return report;

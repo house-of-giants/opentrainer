@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./auth";
+import { createConvexLogger, truncateId } from "./lib/logger";
 
 export const createWorkout = mutation({
   args: {
@@ -9,8 +10,15 @@ export const createWorkout = mutation({
     routineDayIndex: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const logger = createConvexLogger("workouts.createWorkout");
+
     const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({ user: { id: truncateId(user._id), tier: user.tier } });
 
     const existingWorkout = await ctx.db
       .query("workouts")
@@ -19,6 +27,9 @@ export const createWorkout = mutation({
       .first();
 
     if (existingWorkout) {
+      logger.fail(new Error("Active workout exists"), {
+        existingWorkoutId: truncateId(existingWorkout._id),
+      });
       throw new Error("You already have an active workout. Complete or cancel it first.");
     }
 
@@ -29,6 +40,13 @@ export const createWorkout = mutation({
       routineDayIndex: args.routineDayIndex,
       status: "in_progress",
       startedAt: Date.now(),
+    });
+
+    logger.success({
+      workout: {
+        id: truncateId(workoutId),
+        status: "in_progress",
+      },
     });
 
     return workoutId;
@@ -77,19 +95,31 @@ export const completeWorkout = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const logger = createConvexLogger("workouts.completeWorkout");
+
     const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({ user: { id: truncateId(user._id), tier: user.tier } });
 
     const workout = await ctx.db.get(args.workoutId);
     if (!workout) {
+      logger.fail(new Error("Workout not found"));
       throw new Error("Workout not found");
     }
 
     if (workout.userId !== user._id) {
+      logger.fail(new Error("Not authorized"));
       throw new Error("Not authorized");
     }
 
     if (workout.status !== "in_progress") {
+      logger.fail(new Error("Workout is not in progress"), {
+        workout: { id: truncateId(args.workoutId), status: workout.status },
+      });
       throw new Error("Workout is not in progress");
     }
 
@@ -148,6 +178,17 @@ export const completeWorkout = mutation({
       },
     });
 
+    logger.success({
+      workout: {
+        id: truncateId(args.workoutId),
+        status: "completed",
+        exerciseCount: exerciseNames.size,
+        totalSets,
+        totalVolume,
+        durationMinutes: totalDurationMinutes,
+      },
+    });
+
     return args.workoutId;
   },
 });
@@ -157,25 +198,41 @@ export const cancelWorkout = mutation({
     workoutId: v.id("workouts"),
   },
   handler: async (ctx, args) => {
+    const logger = createConvexLogger("workouts.cancelWorkout");
+
     const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({ user: { id: truncateId(user._id), tier: user.tier } });
 
     const workout = await ctx.db.get(args.workoutId);
     if (!workout) {
+      logger.fail(new Error("Workout not found"));
       throw new Error("Workout not found");
     }
 
     if (workout.userId !== user._id) {
+      logger.fail(new Error("Not authorized"));
       throw new Error("Not authorized");
     }
 
     if (workout.status !== "in_progress") {
+      logger.fail(new Error("Workout is not in progress"), {
+        workout: { id: truncateId(args.workoutId), status: workout.status },
+      });
       throw new Error("Workout is not in progress");
     }
 
     await ctx.db.patch(args.workoutId, {
       status: "cancelled",
       completedAt: Date.now(),
+    });
+
+    logger.success({
+      workout: { id: truncateId(args.workoutId), status: "cancelled" },
     });
 
     return args.workoutId;
