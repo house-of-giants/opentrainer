@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, internalQuery } from "./_generated/server";
 import { getCurrentUser as getAuthUser } from "./auth";
 import { checkRateLimit } from "./lib/rateLimit";
+import { createConvexLogger, truncateId, maskEmail } from "./lib/logger";
 
 export const getOrCreateUser = mutation({
   args: {
@@ -11,6 +12,9 @@ export const getOrCreateUser = mutation({
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const logger = createConvexLogger("users.getOrCreateUser");
+    logger.set({ user: { email: maskEmail(args.email) } });
+
     const existingUser = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
@@ -29,6 +33,10 @@ export const getOrCreateUser = mutation({
           updatedAt: Date.now(),
         });
       }
+      logger.success({
+        action: "user_updated",
+        user: { id: truncateId(existingUser._id), tier: existingUser.tier },
+      });
       return existingUser._id;
     }
 
@@ -42,6 +50,11 @@ export const getOrCreateUser = mutation({
       preferredUnits: "lb",
       createdAt: Date.now(),
       updatedAt: Date.now(),
+    });
+
+    logger.success({
+      action: "user_created",
+      user: { id: truncateId(userId), tier: "pro", isAlphaUser: true },
     });
 
     return userId;
@@ -162,11 +175,19 @@ export const getByClerkId = internalQuery({
 export const exportAllData = query({
   args: {},
   handler: async (ctx) => {
+    const logger = createConvexLogger("users.exportAllData");
+
     const user = await getAuthUser(ctx);
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({ user: { id: truncateId(user._id), tier: user.tier } });
 
     const { allowed } = await checkRateLimit(ctx, user._id, "dataExport");
     if (!allowed) {
+      logger.rateLimited("dataExport", 0);
       throw new Error("Export rate limit exceeded. You can export up to 5 times per day.");
     }
 
@@ -271,6 +292,14 @@ export const exportAllData = query({
       createdAt: new Date(fb.createdAt).toISOString(),
     }));
 
+    logger.success({
+      export: {
+        workoutsCount: workoutsWithEntries.length,
+        routinesCount: routinesExport.length,
+        assessmentsCount: assessmentsWithDetails.length,
+      },
+    });
+
     return {
       exportedAt: new Date().toISOString(),
       version: "1.0",
@@ -304,14 +333,25 @@ export const exportAllData = query({
 export const deleteAccount = mutation({
   args: {},
   handler: async (ctx) => {
+    const logger = createConvexLogger("users.deleteAccount");
+
     const user = await getAuthUser(ctx);
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({
+      user: { id: truncateId(user._id), tier: user.tier },
+      action: "account_deletion",
+    });
 
     const workouts = await ctx.db
       .query("workouts")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
+    let entriesDeleted = 0;
     for (const workout of workouts) {
       const entries = await ctx.db
         .query("entries")
@@ -320,6 +360,7 @@ export const deleteAccount = mutation({
 
       for (const entry of entries) {
         await ctx.db.delete(entry._id);
+        entriesDeleted++;
       }
       await ctx.db.delete(workout._id);
     }
@@ -369,6 +410,17 @@ export const deleteAccount = mutation({
     }
 
     await ctx.db.delete(user._id);
+
+    logger.success({
+      deleted: {
+        workouts: workouts.length,
+        entries: entriesDeleted,
+        routines: routines.length,
+        assessments: assessments.length,
+        swaps: swaps.length,
+        feedback: feedback.length,
+      },
+    });
 
     return { success: true };
   },

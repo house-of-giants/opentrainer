@@ -6,6 +6,7 @@ import { internal } from "../_generated/api";
 import { callGemini } from "./gemini";
 import { ROUTINE_GENERATOR_PROMPT, ROUTINE_SWAP_SYSTEM_PROMPT } from "./prompts";
 import type { Doc } from "../_generated/dataModel";
+import { createConvexLogger, truncateId } from "../lib/logger";
 
 export interface RoutineSwapAlternative {
   exercise: string;
@@ -75,20 +76,48 @@ export const generateRoutine = action({
     additionalNotes: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<GeneratedRoutine> => {
+    const logger = createConvexLogger("ai.generateRoutine");
+    logger.set({
+      ai: { action: "routineGeneration", model: "gemini" },
+      request: { splitType: args.splitType, primaryGoal: args.primaryGoal },
+    });
+
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    if (!identity) {
+      logger.fail(new Error("Unauthorized"));
+      throw new Error("Unauthorized");
+    }
 
     const user = (await ctx.runQuery(internal.users.getByClerkId, {
       clerkId: identity.subject,
     })) as Doc<"users"> | null;
-    if (!user) throw new Error("User not found");
-    if (user.tier !== "pro") throw new Error("Pro subscription required");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({
+      user: {
+        id: truncateId(user._id),
+        tier: user.tier,
+        experienceLevel: user.experienceLevel,
+      },
+    });
+
+    if (user.tier !== "pro") {
+      logger.fail(new Error("Pro subscription required"));
+      throw new Error("Pro subscription required");
+    }
 
     const rateLimitCheck = await ctx.runQuery(internal.ai.rateLimitQueries.checkAIRateLimit, {
       userId: user._id,
       actionType: "routineGeneration",
     }) as { allowed: boolean; remaining: number };
+
+    logger.set({ ai: { rateLimitRemaining: rateLimitCheck.remaining } });
+
     if (!rateLimitCheck.allowed) {
+      logger.rateLimited("routineGeneration", rateLimitCheck.remaining);
       throw new Error(
         `Rate limit exceeded. You've used all 10 routine generation requests for today. Try again tomorrow.`
       );
@@ -115,33 +144,46 @@ export const generateRoutine = action({
       },
     };
 
+    const startTime = Date.now();
     const response = await callGemini({
       systemPrompt: ROUTINE_GENERATOR_PROMPT,
       userMessage: JSON.stringify(payload),
       responseFormat: "json",
       maxTokens: 2048,
     });
+    const latencyMs = Date.now() - startTime;
+
+    logger.set({
+      ai: {
+        latencyMs,
+        inputTokens: response.usageMetadata?.promptTokenCount,
+        outputTokens: response.usageMetadata?.candidatesTokenCount,
+      },
+    });
 
     const result = JSON.parse(response.text) as GeneratedRoutine;
 
     if (!result.name || typeof result.name !== "string") {
+      logger.fail(new Error("Invalid routine: missing name"));
       throw new Error("Invalid routine: missing name");
     }
     if (!Array.isArray(result.days) || result.days.length === 0) {
+      logger.fail(new Error("Invalid routine: missing days"));
       throw new Error("Invalid routine: missing days");
     }
 
     for (const day of result.days) {
       if (!day.name || !Array.isArray(day.exercises)) {
+        logger.fail(new Error("Invalid routine: malformed day structure"));
         throw new Error("Invalid routine: malformed day structure");
       }
       for (const exercise of day.exercises) {
-        // Security: reject exercise names with suspicious characters
         if (
           !exercise.exerciseName ||
           exercise.exerciseName.length > 100 ||
           /[<>{}\\]/.test(exercise.exerciseName)
         ) {
+          logger.fail(new Error("Invalid routine: malformed exercise name"));
           throw new Error("Invalid routine: malformed exercise name");
         }
         if (!["lifting", "cardio", "mobility"].includes(exercise.kind)) {
@@ -160,6 +202,14 @@ export const generateRoutine = action({
       }
     }
 
+    logger.success({
+      routine: {
+        name: result.name,
+        daysCount: result.days.length,
+        exerciseCount: result.days.reduce((sum, d) => sum + d.exercises.length, 0),
+      },
+    });
+
     return result;
   },
 });
@@ -176,20 +226,42 @@ export const getRoutineSwapAlternatives = action({
     userNotes: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<RoutineSwapResponse> => {
+    const logger = createConvexLogger("ai.getRoutineSwapAlternatives");
+    logger.set({
+      ai: { action: "routineSwap", model: "gemini" },
+      request: { exercise: args.exerciseName, reason: args.reason },
+    });
+
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    if (!identity) {
+      logger.fail(new Error("Unauthorized"));
+      throw new Error("Unauthorized");
+    }
 
     const user = (await ctx.runQuery(internal.users.getByClerkId, {
       clerkId: identity.subject,
     })) as Doc<"users"> | null;
-    if (!user) throw new Error("User not found");
-    if (user.tier !== "pro") throw new Error("Pro subscription required");
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({ user: { id: truncateId(user._id), tier: user.tier } });
+
+    if (user.tier !== "pro") {
+      logger.fail(new Error("Pro subscription required"));
+      throw new Error("Pro subscription required");
+    }
 
     const rateLimitCheck = await ctx.runQuery(internal.ai.rateLimitQueries.checkAIRateLimit, {
       userId: user._id,
       actionType: "routineGeneration",
     }) as { allowed: boolean; remaining: number };
+
+    logger.set({ ai: { rateLimitRemaining: rateLimitCheck.remaining } });
+
     if (!rateLimitCheck.allowed) {
+      logger.rateLimited("routineSwap", rateLimitCheck.remaining);
       throw new Error(
         `Rate limit exceeded. You've used all 10 routine swap requests for today. Try again tomorrow.`
       );
@@ -205,16 +277,27 @@ export const getRoutineSwapAlternatives = action({
       userNotes: sanitizedNotes,
     };
 
+    const startTime = Date.now();
     const response = await callGemini({
       systemPrompt: ROUTINE_SWAP_SYSTEM_PROMPT,
       userMessage: JSON.stringify(payload),
       responseFormat: "json",
       maxTokens: 512,
     });
+    const latencyMs = Date.now() - startTime;
+
+    logger.set({
+      ai: {
+        latencyMs,
+        inputTokens: response.usageMetadata?.promptTokenCount,
+        outputTokens: response.usageMetadata?.candidatesTokenCount,
+      },
+    });
 
     const result = JSON.parse(response.text) as RoutineSwapResponse;
 
     if (!Array.isArray(result.alternatives)) {
+      logger.fail(new Error("Invalid swap response"));
       throw new Error("Invalid swap response");
     }
 
@@ -224,9 +307,17 @@ export const getRoutineSwapAlternatives = action({
         alt.exercise.length > 100 ||
         /[<>{}\\]/.test(alt.exercise)
       ) {
+        logger.fail(new Error("Invalid alternative exercise name"));
         throw new Error("Invalid alternative exercise name");
       }
     }
+
+    logger.success({
+      swap: {
+        originalExercise: args.exerciseName,
+        alternativesCount: result.alternatives.length,
+      },
+    });
 
     return result;
   },
