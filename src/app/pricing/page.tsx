@@ -1,10 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { ProPlanCard, FreePlanCard } from "@/components/pricing";
+import posthog from "posthog-js";
 
 export default function PricingPage() {
+  useEffect(() => {
+    posthog.capture("pricing_page_viewed");
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-background to-muted/20">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">

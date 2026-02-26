@@ -15,6 +15,7 @@ import { ExperienceStep, type ExperienceLevel } from "./steps/experience-step";
 import { EquipmentStep } from "./steps/equipment-step";
 import { EquipmentConfirmStep } from "./steps/equipment-confirm-step";
 import { AvailabilityStep } from "./steps/availability-step";
+import posthog from "posthog-js";
 
 const STEPS = ["goals", "experience", "equipment", "equipment-confirm", "availability"] as const;
 type Step = (typeof STEPS)[number];
@@ -126,6 +127,20 @@ export default function OnboardingPage() {
           equipment,
           weeklyAvailability: days,
           sessionDuration: duration,
+        });
+        // Identify and track onboarding completion
+        if (user?.clerkId) {
+          posthog.identify(user.clerkId, {
+            name: user.name,
+            email: user.email,
+          });
+        }
+        posthog.capture("onboarding_completed", {
+          goals,
+          experience_level: experience,
+          equipment_count: equipment.length,
+          weekly_availability: days,
+          session_duration: duration,
         });
         router.replace("/dashboard");
       } catch {

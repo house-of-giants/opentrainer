@@ -15,6 +15,7 @@ import { Play, Plus } from "lucide-react";
 import { WeeklyStatsGrid, GoalSettingDialog } from "@/components/dashboard";
 import { TrainingLabCard } from "@/components/training-lab/training-lab-card";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
+import posthog from "posthog-js";
 
 export default function DashboardPage() {
 	const router = useRouter();
@@ -38,7 +39,26 @@ export default function DashboardPage() {
 				email: clerkUser.primaryEmailAddress?.emailAddress,
 				name: clerkUser.fullName ?? undefined,
 				imageUrl: clerkUser.imageUrl,
-			}).catch(console.error);
+			})
+				.then((result) => {
+					if (result && (result as { isNew?: boolean }).isNew) {
+						// Identify + capture new sign-up
+						posthog.identify(clerkUser.id, {
+							name: clerkUser.fullName,
+							email: clerkUser.primaryEmailAddress?.emailAddress,
+						});
+						posthog.capture("user_signed_up", {
+							clerk_id: clerkUser.id,
+						});
+					} else {
+						// Identify returning user
+						posthog.identify(clerkUser.id, {
+							name: clerkUser.fullName,
+							email: clerkUser.primaryEmailAddress?.emailAddress,
+						});
+					}
+				})
+				.catch(console.error);
 		}
 	}, [isClerkLoaded, clerkUser, user, getOrCreateUser]);
 
@@ -95,6 +115,10 @@ export default function DashboardPage() {
 
 	const handleSaveGoal = async (newGoal: number) => {
 		await updateWeeklyGoal({ weeklyGoal: newGoal });
+		posthog.capture("weekly_goal_updated", {
+			new_goal: newGoal,
+			previous_goal: dashboardStats?.weeklyGoal,
+		});
 	};
 
 	return (
