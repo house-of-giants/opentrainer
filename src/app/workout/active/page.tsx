@@ -21,6 +21,7 @@ import { useHaptic } from "@/hooks/use-haptic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { calculateProgressionSuggestion } from "@/lib/progression";
+import posthog from "posthog-js";
 
 type EntryData = {
 	_id: string;
@@ -338,6 +339,15 @@ export default function ActiveWorkoutPage() {
 					rpe: set.rpe ?? undefined,
 				},
 			});
+			posthog.capture("set_logged", {
+				exercise_name: exerciseName,
+				set_number: setNumber,
+				reps: set.reps,
+				weight: set.weight,
+				unit: set.unit,
+				is_bodyweight: set.isBodyweight ?? false,
+				rpe: set.rpe ?? null,
+			});
 			setShowRestTimer(true);
 		} catch (error) {
 			toast.error("Failed to log set");
@@ -377,6 +387,13 @@ export default function ActiveWorkoutPage() {
 					vestWeightUnit: data.vestWeightUnit,
 					intensity: data.intensity,
 				},
+			});
+			posthog.capture("cardio_logged", {
+				exercise_name: exerciseName,
+				duration_seconds: data.durationSeconds,
+				distance: data.distance,
+				distance_unit: data.distanceUnit,
+				rpe: data.rpe,
 			});
 			// Don't remove from pendingExercises - we need to preserve order and metadata
 			toast.success("Cardio logged!");
@@ -422,6 +439,11 @@ export default function ActiveWorkoutPage() {
 				{ name: newExercise, category: "lifting" as const },
 			]);
 		}
+		posthog.capture("exercise_swapped", {
+			old_exercise: oldExercise,
+			new_exercise: newExercise,
+			workout_id: workout._id,
+		});
 		setSwapExercise(null);
 	};
 
@@ -429,6 +451,15 @@ export default function ActiveWorkoutPage() {
 		vibrate("success");
 		try {
 			await completeWorkout({ workoutId: workout._id });
+			posthog.capture("workout_completed", {
+				workout_id: workout._id,
+				is_from_routine: !!workout.routineId,
+				exercise_count: exerciseGroups.size,
+				total_sets: Array.from(exerciseGroups.values()).reduce(
+					(acc, { entries }) => acc + entries.filter((e) => e.kind === "lifting").length,
+					0
+				),
+			});
 			toast.success("Workout completed!");
 
 			const hasSwapsNeedingFollowUp = pendingSwaps && pendingSwaps.length > 0;
@@ -440,6 +471,7 @@ export default function ActiveWorkoutPage() {
 			}
 		} catch (error) {
 			toast.error("Failed to complete workout");
+			posthog.captureException(error);
 			console.error(error);
 		}
 	};
@@ -468,6 +500,15 @@ export default function ActiveWorkoutPage() {
 		vibrate("warning");
 		try {
 			await cancelWorkout({ workoutId: workout._id });
+			posthog.capture("workout_cancelled", {
+				workout_id: workout._id,
+				is_from_routine: !!workout.routineId,
+				exercise_count: exerciseGroups.size,
+				sets_logged: Array.from(exerciseGroups.values()).reduce(
+					(acc, { entries }) => acc + entries.filter((e) => e.kind === "lifting").length,
+					0
+				),
+			});
 			toast.success("Workout cancelled");
 			router.push("/dashboard");
 		} catch (error) {

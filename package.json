@@ -32,6 +32,8 @@
     "next": "16.1.1",
     "next-plausible": "^3.12.5",
     "next-themes": "^0.4.6",
+    "posthog-js": "^1.354.3",
+    "posthog-node": "^5.26.0",
     "react": "19.2.3",
     "react-circular-progressbar": "^2.2.0",
     "react-dom": "19.2.3",

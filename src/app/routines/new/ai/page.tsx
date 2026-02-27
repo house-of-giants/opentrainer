@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { useHaptic } from "@/hooks/use-haptic";
 import { cn } from "@/lib/utils";
 import type { GeneratedRoutine, RoutineSwapAlternative } from "../../../../../convex/ai/routineGenerator";
+import posthog from "posthog-js";
 
 type SwapReason = "equipment" | "discomfort" | "preference";
 
@@ -159,8 +160,17 @@ export default function AIRoutineGeneratorPage() {
       setExpandedDays(new Set([0]));
       setStep("preview");
       vibrate("success");
+      posthog.capture("ai_routine_generated", {
+        split_type: splitType,
+        primary_goal: primaryGoal,
+        days_per_week: daysPerWeek,
+        has_additional_notes: additionalNotes.trim().length > 0,
+        day_count: result.days.length,
+        total_exercises: result.days.reduce((acc, d) => acc + d.exercises.length, 0),
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to generate routine");
+      posthog.captureException(error);
       setStep("form");
     }
   };
@@ -187,6 +197,14 @@ export default function AIRoutineGeneratorPage() {
 
       vibrate("success");
       toast.success("Routine saved!");
+      posthog.capture("ai_routine_saved", {
+        routine_name: generatedRoutine.name,
+        split_type: splitType,
+        primary_goal: primaryGoal,
+        days_per_week: daysPerWeek,
+        day_count: generatedRoutine.days.length,
+        total_exercises: generatedRoutine.days.reduce((acc, d) => acc + d.exercises.length, 0),
+      });
       router.push("/routines");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save routine");

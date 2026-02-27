@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, ChevronRight, Dumbbell, Play, Zap, X } from "lucide-react";
 import { toast } from "sonner";
 import { useHaptic } from "@/hooks/use-haptic";
+import posthog from "posthog-js";
 
 interface StartWorkoutSheetProps {
   open: boolean;
@@ -92,6 +93,9 @@ export function StartWorkoutSheet({ open, onOpenChange, activeWorkout }: StartWo
     try {
       vibrate("medium");
       await createWorkout({});
+      posthog.capture("workout_started", {
+        source: "empty",
+      });
       onOpenChange(false);
       router.push("/workout/active");
     } catch (error) {
@@ -110,6 +114,13 @@ export function StartWorkoutSheet({ open, onOpenChange, activeWorkout }: StartWo
         title: day.name,
         routineId: routine._id,
         routineDayIndex: dayIndex,
+      });
+      posthog.capture("workout_started", {
+        source: "routine",
+        routine_name: routine.name,
+        day_name: day.name,
+        day_index: dayIndex,
+        exercise_count: day.exercises.length,
       });
       onOpenChange(false);
       router.push("/workout/active");
