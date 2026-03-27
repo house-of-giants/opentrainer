@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   FlaskConical,
@@ -37,7 +36,6 @@ export default function TrainingLabPage() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(true);
-  const [period, setPeriod] = useState<"7" | "30" | "90">("7");
   const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<ExerciseTrendData | null>(null);
 
@@ -58,18 +56,7 @@ export default function TrainingLabPage() {
     }
   };
 
-  const handleGenerateReport = () => doGenerateReport(parseInt(period));
-
-  const handlePeriodChange = (newPeriod: "7" | "30" | "90") => {
-    setPeriod(newPeriod);
-    if (ctaState?.hasReport) {
-      doGenerateReport(parseInt(newPeriod));
-    }
-  };
-
-  const dataRangeDays = ctaState?.dataRangeDays ?? 0;
-  const has30DaysData = dataRangeDays >= 14;
-  const has90DaysData = dataRangeDays >= 60;
+  const handleGenerateReport = () => doGenerateReport(7);
 
   if (ctaState === undefined) {
     return (
@@ -127,7 +114,7 @@ export default function TrainingLabPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-        <div className="flex h-14 items-center justify-between px-4">
+        <div className="flex h-14 items-center px-4">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
               <ArrowLeft className="h-5 w-5" />
@@ -137,13 +124,6 @@ export default function TrainingLabPage() {
               <h1 className="font-semibold">Training Lab</h1>
             </div>
           </div>
-          <Tabs value={period} onValueChange={(v) => handlePeriodChange(v as "7" | "30" | "90")}>
-            <TabsList className="h-8">
-              <TabsTrigger value="7" className="text-xs px-2" disabled={isGenerating}>7d</TabsTrigger>
-              <TabsTrigger value="30" className="text-xs px-2" disabled={!has30DaysData || isGenerating}>30d</TabsTrigger>
-              <TabsTrigger value="90" className="text-xs px-2" disabled={!has90DaysData || isGenerating}>90d</TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
       </header>
 
