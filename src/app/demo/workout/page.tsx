@@ -161,12 +161,13 @@ export default function DemoWorkout() {
   const [showCompletion, setShowCompletion] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
-  const [startTime] = useState(Date.now());
   const [duration, setDuration] = useState("0m");
   const exerciseRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const addingSetRef = useRef(false);
 
   useEffect(() => {
+    const startTime = Date.now();
+
     const update = () => {
       const minutes = Math.floor((Date.now() - startTime) / 60000);
       const hours = Math.floor(minutes / 60);
@@ -177,7 +178,7 @@ export default function DemoWorkout() {
     update();
     const interval = setInterval(update, 60000);
     return () => clearInterval(interval);
-  }, [startTime]);
+  }, []);
 
   useEffect(() => {
     const currentExercise = exercises[currentExerciseIndex];
@@ -189,7 +190,7 @@ export default function DemoWorkout() {
         element.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 100);
     }
-  }, [currentExerciseIndex]);
+  }, [currentExerciseIndex, exercises]);
 
   const handleAddSet = useCallback((
     exerciseIndex: number,
