@@ -21,6 +21,14 @@ export const metadata: Metadata = {
 	description:
 		"Minimalist, AI-first workout tracking. Log lifts and cardio with ease, get AI-powered routine suggestions and performance assessments.",
 	manifest: "/manifest.json",
+	icons: {
+		icon: [
+			{ url: "/icon.svg", type: "image/svg+xml" },
+			{ url: "/favicon.ico", type: "image/x-icon" },
+		],
+		shortcut: "/favicon.ico",
+		apple: "/apple-touch-icon.png",
+	},
 	appleWebApp: {
 		capable: true,
 		statusBarStyle: "black-translucent",
