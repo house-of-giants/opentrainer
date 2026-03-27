@@ -527,7 +527,6 @@ export default function ActiveWorkoutPage() {
 			});
 			handleCompletionSuccess(true);
 		} catch (error) {
-			toast.error("Failed to complete workout");
 			posthog.captureException(error);
 			console.error(error);
 			throw error;

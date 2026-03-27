@@ -117,7 +117,7 @@ export function WorkoutTimeEditorDialog({
     startedAtValue
   );
   const parsedCompletedAt = buildTimestampForWorkoutDate(
-    initialStartedAt,
+    initialCompletedAt,
     completedAtValue
   );
   const validationError = validateValues(parsedStartedAt, parsedCompletedAt);

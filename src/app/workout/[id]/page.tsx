@@ -184,7 +184,6 @@ export default function WorkoutDetailsPage() {
       });
       toast.success("Workout times updated");
     } catch (error) {
-      toast.error("Failed to update workout times");
       console.error(error);
       throw error;
     } finally {
