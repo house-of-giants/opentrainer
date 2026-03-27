@@ -71,9 +71,10 @@ function ExerciseAccordionWithHistory({
 			targetReps={targetReps}
 			lastSession={ghostData?.lastSession}
 			progressionSuggestion={ghostData?.suggestion}
-			unit={resolvedUnit}
 			{...props}
+			unit={resolvedUnit}
 		/>
+	);
 	);
 }
 
