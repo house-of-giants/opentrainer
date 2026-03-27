@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -88,17 +88,6 @@ function EditExerciseForm({
 	const [perSide, setPerSide] = useState(exercise.perSide ?? false);
 	const [rest, setRest] = useState(exercise.restSeconds);
 
-	useEffect(() => {
-		setName(exercise.exerciseName);
-		setKind(exercise.kind);
-		setSets(exercise.targetSets);
-		setReps(exercise.targetReps);
-		setDuration(exercise.targetDuration ?? 20);
-		setHoldSeconds(exercise.targetHoldSeconds ?? 30);
-		setPerSide(exercise.perSide ?? false);
-		setRest(exercise.restSeconds);
-	}, [exercise]);
-
 	const createExercise = useMutation(api.exercises.createExercise);
 	const updateExercise = useMutation(api.exercises.updateExercise);
 	const exerciseData = useQuery(
@@ -107,25 +96,21 @@ function EditExerciseForm({
 	);
 	const availableMuscleGroups = useQuery(api.exercises.getMuscleGroups, {});
 
-	const [muscleGroups, setMuscleGroups] = useState<string[]>([]);
-
-	useEffect(() => {
-		if (exerciseData?.muscleGroups) {
-			setMuscleGroups(exerciseData.muscleGroups);
-		} else {
-			setMuscleGroups([]);
-		}
-	}, [exerciseData, exercise.exerciseId]);
+	const [muscleGroupsOverride, setMuscleGroupsOverride] = useState<string[] | null>(
+		null
+	);
+	const muscleGroups = muscleGroupsOverride ?? exerciseData?.muscleGroups ?? [];
 
 	const toggleMuscleGroup = (muscle: string) => {
 		if (exerciseData?.isSystemExercise) {
 			return;
 		}
-		setMuscleGroups((prev) =>
-			prev.includes(muscle)
-				? prev.filter((m) => m !== muscle)
-				: [...prev, muscle]
-		);
+		setMuscleGroupsOverride((prev) => {
+			const current = prev ?? exerciseData?.muscleGroups ?? [];
+			return current.includes(muscle)
+				? current.filter((m) => m !== muscle)
+				: [...current, muscle];
+		});
 	};
 
 	const isSystemExercise = exerciseData?.isSystemExercise ?? false;

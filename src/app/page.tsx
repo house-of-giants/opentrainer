@@ -207,7 +207,7 @@ export default function Home() {
                 Start logging in under a minute
               </h2>
               <p className="mt-3 text-lg text-muted-foreground">
-                Most apps force you through 20 screens before your first workout. We don't.
+                Most apps force you through 20 screens before your first workout. We don&apos;t.
               </p>
             </div>
             <div className="relative">
@@ -223,7 +223,7 @@ export default function Home() {
                   </div>
                   <h3 className="text-xl font-semibold">Create your account</h3>
                   <p className="mt-3 text-muted-foreground leading-relaxed">
-                    No credit card. No personality quiz asking if you're a "morning person." Pick your sign-in method and you're in.
+                    No credit card. No personality quiz asking if you&apos;re a &quot;morning person.&quot; Pick your sign-in method and you&apos;re in.
                   </p>
                 </div>
 
@@ -235,7 +235,7 @@ export default function Home() {
                   </div>
                   <h3 className="text-xl font-semibold">Describe what you have</h3>
                   <p className="mt-3 text-muted-foreground leading-relaxed">
-                    Type "home gym, dumbbells, bench" and we'll generate a program that actually fits your equipment. Not a generic plan that assumes you own a cable machine.
+                    Type &quot;home gym, dumbbells, bench&quot; and we&apos;ll generate a program that actually fits your equipment. Not a generic plan that assumes you own a cable machine.
                   </p>
                 </div>
 
@@ -247,7 +247,7 @@ export default function Home() {
                   </div>
                   <h3 className="text-xl font-semibold">Log your first set</h3>
                   <p className="mt-3 text-muted-foreground leading-relaxed">
-                    Two taps and you're done. No navigating through five screens or typing notes about "how it felt." Just reps, weight, and back to lifting.
+                    Two taps and you&apos;re done. No navigating through five screens or typing notes about &quot;how it felt.&quot; Just reps, weight, and back to lifting.
                   </p>
                 </div>
               </div>
@@ -276,7 +276,7 @@ export default function Home() {
               
               <div className="space-y-4 text-lg leading-relaxed text-muted-foreground">
                 <p>
-                  Every workout app wants you to journal about "how you felt" and track your water intake. 
+                  Every workout app wants you to journal about &quot;how you felt&quot; and track your water intake. 
                   We just wanted to log our sets without missing our rest timer.
                 </p>
                 <p>
