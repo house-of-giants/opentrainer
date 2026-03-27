@@ -48,7 +48,9 @@ type EntryData = {
 function ExerciseAccordionWithHistory({
 	exerciseName,
 	targetReps,
-	...props
+	unit,
+	sets,
+	...rest
 }: Omit<
 	React.ComponentProps<typeof ExerciseAccordion>,
 	"lastSession" | "progressionSuggestion"
@@ -61,20 +63,20 @@ function ExerciseAccordionWithHistory({
 	}, [history, targetReps]);
 
 	const resolvedUnit =
-		props.sets.length > 0
-			? props.sets[props.sets.length - 1].unit
-			: ghostData?.lastSession.unit ?? props.unit;
+		sets.length > 0
+			? sets[sets.length - 1].unit
+			: ghostData?.lastSession.unit ?? unit;
 
 	return (
 		<ExerciseAccordion
 			exerciseName={exerciseName}
 			targetReps={targetReps}
+			sets={sets}
 			lastSession={ghostData?.lastSession}
 			progressionSuggestion={ghostData?.suggestion}
-			{...props}
 			unit={resolvedUnit}
+			{...rest}
 		/>
-	);
 	);
 }
 
