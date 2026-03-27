@@ -16,6 +16,7 @@ import { SaveAsRoutineDialog } from "@/components/workout/save-as-routine-dialog
 import { SmartSwapSheet } from "@/components/workout/smart-swap-sheet";
 import { SwapFollowUpDialog } from "@/components/workout/swap-followup-dialog";
 import { EditSetSheet, EditableSet } from "@/components/workout/edit-set-sheet";
+import { WorkoutTimeEditorDialog } from "@/components/workout/workout-time-editor-dialog";
 import {
 	Dialog,
 	DialogContent,
@@ -137,6 +138,12 @@ export default function ActiveWorkoutPage() {
 	const [manualNavigation, setManualNavigation] = useState(false);
 	const [showCancelDialog, setShowCancelDialog] = useState(false);
 	const [isCancelling, setIsCancelling] = useState(false);
+	const [showTimeEditor, setShowTimeEditor] = useState(false);
+	const [timeEditorInitialEnd, setTimeEditorInitialEnd] = useState<number | null>(
+		null
+	);
+	const [isCompletingWithEditedTime, setIsCompletingWithEditedTime] =
+		useState(false);
 	const exerciseRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
 	const workout = useQuery(api.workouts.getActiveWorkout);
@@ -466,32 +473,65 @@ export default function ActiveWorkoutPage() {
 		setSwapExercise(null);
 	};
 
+	const handleCompletionSuccess = (usedTimeOverride: boolean) => {
+		posthog.capture("workout_completed", {
+			workout_id: workout._id,
+			is_from_routine: !!workout.routineId,
+			exercise_count: exerciseGroups.size,
+			total_sets: Array.from(exerciseGroups.values()).reduce(
+				(acc, { entries }) =>
+					acc + entries.filter((e) => e.kind === "lifting").length,
+				0
+			),
+			used_time_override: usedTimeOverride,
+		});
+		toast.success("Workout completed!");
+
+		const hasSwapsNeedingFollowUp = pendingSwaps && pendingSwaps.length > 0;
+
+		if (hasSwapsNeedingFollowUp) {
+			setShowSwapFollowUp(true);
+		} else {
+			handlePostWorkoutFlow();
+		}
+	};
+
 	const handleComplete = async () => {
 		vibrate("success");
 		try {
 			await completeWorkout({ workoutId: workout._id });
-			posthog.capture("workout_completed", {
-				workout_id: workout._id,
-				is_from_routine: !!workout.routineId,
-				exercise_count: exerciseGroups.size,
-				total_sets: Array.from(exerciseGroups.values()).reduce(
-					(acc, { entries }) => acc + entries.filter((e) => e.kind === "lifting").length,
-					0
-				),
-			});
-			toast.success("Workout completed!");
-
-			const hasSwapsNeedingFollowUp = pendingSwaps && pendingSwaps.length > 0;
-
-			if (hasSwapsNeedingFollowUp) {
-				setShowSwapFollowUp(true);
-			} else {
-				handlePostWorkoutFlow();
-			}
+			handleCompletionSuccess(false);
 		} catch (error) {
 			toast.error("Failed to complete workout");
 			posthog.captureException(error);
 			console.error(error);
+		}
+	};
+
+	const handleOpenTimeEditor = () => {
+		setTimeEditorInitialEnd(Date.now());
+		setShowTimeEditor(true);
+	};
+
+	const handleCompleteWithEditedTime = async (
+		startedAt: number,
+		completedAt: number
+	) => {
+		setIsCompletingWithEditedTime(true);
+		vibrate("success");
+		try {
+			await completeWorkout({
+				workoutId: workout._id,
+				startedAtOverride: startedAt,
+				completedAtOverride: completedAt,
+			});
+			handleCompletionSuccess(true);
+		} catch (error) {
+			posthog.captureException(error);
+			console.error(error);
+			throw error;
+		} finally {
+			setIsCompletingWithEditedTime(false);
 		}
 	};
 
@@ -613,9 +653,19 @@ export default function ActiveWorkoutPage() {
 						<h1 className="truncate font-semibold">
 							{workout.title ?? "Workout"}
 						</h1>
-						<p className="text-xs text-muted-foreground font-mono tabular-nums">
-							{duration}
-						</p>
+						<div className="flex items-center gap-2">
+							<p className="text-xs text-muted-foreground font-mono tabular-nums">
+								{duration}
+							</p>
+							<Button
+								variant="ghost"
+								size="sm"
+								className="h-auto px-1.5 py-0 text-xs text-muted-foreground"
+								onClick={handleOpenTimeEditor}
+							>
+								Edit time
+							</Button>
+						</div>
 					</div>
 					<div className="flex shrink-0 gap-2">
 						<Button
@@ -794,6 +844,18 @@ export default function ActiveWorkoutPage() {
 				onSave={handleUpdateSet}
 				onDelete={handleDeleteSet}
 			/>
+
+			{showTimeEditor && (
+				<WorkoutTimeEditorDialog
+					open={showTimeEditor}
+					onOpenChange={setShowTimeEditor}
+					initialStartedAt={workout.startedAt}
+					initialCompletedAt={timeEditorInitialEnd ?? Date.now()}
+					mode="finish"
+					onSubmit={handleCompleteWithEditedTime}
+					isSubmitting={isCompletingWithEditedTime}
+				/>
+			)}
 
 			<Dialog
 				open={showCancelDialog}

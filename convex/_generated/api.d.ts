@@ -26,6 +26,7 @@ import type * as exercises from "../exercises.js";
 import type * as feedback from "../feedback.js";
 import type * as http from "../http.js";
 import type * as lib_equipment from "../lib/equipment.js";
+import type * as lib_logger from "../lib/logger.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as routines from "../routines.js";
 import type * as seed from "../seed.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   feedback: typeof feedback;
   http: typeof http;
   "lib/equipment": typeof lib_equipment;
+  "lib/logger": typeof lib_logger;
   "lib/rateLimit": typeof lib_rateLimit;
   routines: typeof routines;
   seed: typeof seed;

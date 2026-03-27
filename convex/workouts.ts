@@ -1,7 +1,114 @@
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./auth";
 import { createConvexLogger, truncateId } from "./lib/logger";
+
+type WorkoutSummary = NonNullable<Doc<"workouts">["summary"]>;
+
+async function getWorkoutEntries(
+  ctx: MutationCtx,
+  workoutId: Id<"workouts">
+): Promise<Doc<"entries">[]> {
+  return ctx.db
+    .query("entries")
+    .withIndex("by_workout_created", (q) => q.eq("workoutId", workoutId))
+    .collect();
+}
+
+function buildWorkoutSummary(
+  entries: Doc<"entries">[],
+  startedAt: number,
+  completedAt: number
+): WorkoutSummary {
+  let totalVolume = 0;
+  let totalSets = 0;
+  let totalCardioDurationSeconds = 0;
+  let totalDistanceKm = 0;
+  let hasCardio = false;
+  let hasMobility = false;
+  const exerciseNames = new Set<string>();
+
+  for (const entry of entries) {
+    exerciseNames.add(entry.exerciseName);
+
+    if (entry.kind === "lifting" && entry.lifting) {
+      totalSets++;
+      if (entry.lifting.weight && entry.lifting.reps) {
+        totalVolume += entry.lifting.weight * entry.lifting.reps;
+      }
+      continue;
+    }
+
+    if (entry.kind === "cardio" && entry.cardio) {
+      hasCardio = true;
+      totalCardioDurationSeconds += entry.cardio.durationSeconds;
+      if (entry.cardio.distance && entry.cardio.distanceUnit) {
+        const distanceKm =
+          entry.cardio.distanceUnit === "km"
+            ? entry.cardio.distance
+            : entry.cardio.distanceUnit === "mi"
+              ? entry.cardio.distance * 1.60934
+              : entry.cardio.distance / 1000;
+        totalDistanceKm += distanceKm;
+      }
+      continue;
+    }
+
+    if (entry.kind === "mobility") {
+      hasMobility = true;
+    }
+  }
+
+  const totalDurationMinutes = Math.round((completedAt - startedAt) / 60000);
+
+  return {
+    totalVolume,
+    totalSets,
+    totalDurationMinutes,
+    exerciseCount: exerciseNames.size,
+    totalCardioDurationSeconds: hasCardio ? totalCardioDurationSeconds : undefined,
+    totalDistanceKm: totalDistanceKm > 0 ? totalDistanceKm : undefined,
+    hasCardio: hasCardio || undefined,
+    hasMobility: hasMobility || undefined,
+  };
+}
+
+function validateWorkoutTimeRange({
+  entries,
+  startedAt,
+  completedAt,
+  now,
+}: {
+  entries: Doc<"entries">[];
+  startedAt: number;
+  completedAt: number;
+  now: number;
+}) {
+  if (startedAt >= completedAt) {
+    throw new Error("End time must be after start time");
+  }
+
+  if (startedAt > now || completedAt > now) {
+    throw new Error("Times can't be in the future");
+  }
+
+  if (entries.length === 0) {
+    return;
+  }
+
+  const earliestEntry = entries[0]?.createdAt;
+  const latestEntry = entries[entries.length - 1]?.createdAt;
+
+  if (earliestEntry !== undefined && startedAt > earliestEntry) {
+    throw new Error("Workout can't start after logged entries");
+  }
+
+  if (latestEntry !== undefined && completedAt < latestEntry) {
+    throw new Error("Workout can't end before logged entries");
+  }
+}
 
 export const createWorkout = mutation({
   args: {
@@ -93,6 +200,8 @@ export const completeWorkout = mutation({
   args: {
     workoutId: v.id("workouts"),
     notes: v.optional(v.string()),
+    startedAtOverride: v.optional(v.number()),
+    completedAtOverride: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const logger = createConvexLogger("workouts.completeWorkout");
@@ -123,69 +232,108 @@ export const completeWorkout = mutation({
       throw new Error("Workout is not in progress");
     }
 
-    const entries = await ctx.db
-      .query("entries")
-      .withIndex("by_workout", (q) => q.eq("workoutId", args.workoutId))
-      .collect();
+    const entries = await getWorkoutEntries(ctx, args.workoutId);
+    const startedAt = args.startedAtOverride ?? workout.startedAt;
+    const completedAt = args.completedAtOverride ?? Date.now();
 
-    let totalVolume = 0;
-    let totalSets = 0;
-    let totalCardioDurationSeconds = 0;
-    let totalDistanceKm = 0;
-    let hasCardio = false;
-    let hasMobility = false;
-    const exerciseNames = new Set<string>();
+    validateWorkoutTimeRange({
+      entries,
+      startedAt,
+      completedAt,
+      now: Date.now(),
+    });
 
-    for (const entry of entries) {
-      exerciseNames.add(entry.exerciseName);
-      if (entry.kind === "lifting" && entry.lifting) {
-        totalSets++;
-        if (entry.lifting.weight && entry.lifting.reps) {
-          totalVolume += entry.lifting.weight * entry.lifting.reps;
-        }
-      } else if (entry.kind === "cardio" && entry.cardio) {
-        hasCardio = true;
-        totalCardioDurationSeconds += entry.cardio.durationSeconds;
-        if (entry.cardio.distance && entry.cardio.distanceUnit) {
-          const distanceKm = entry.cardio.distanceUnit === "km" 
-            ? entry.cardio.distance 
-            : entry.cardio.distanceUnit === "mi" 
-              ? entry.cardio.distance * 1.60934 
-              : entry.cardio.distance / 1000;
-          totalDistanceKm += distanceKm;
-        }
-      } else if (entry.kind === "mobility") {
-        hasMobility = true;
-      }
-    }
-
-    const completedAt = Date.now();
-    const totalDurationMinutes = Math.round((completedAt - workout.startedAt) / 60000);
+    const summary = buildWorkoutSummary(entries, startedAt, completedAt);
 
     await ctx.db.patch(args.workoutId, {
       status: "completed",
+      startedAt,
       completedAt,
       notes: args.notes,
-      summary: {
-        totalVolume,
-        totalSets,
-        totalDurationMinutes,
-        exerciseCount: exerciseNames.size,
-        totalCardioDurationSeconds: hasCardio ? totalCardioDurationSeconds : undefined,
-        totalDistanceKm: totalDistanceKm > 0 ? totalDistanceKm : undefined,
-        hasCardio: hasCardio || undefined,
-        hasMobility: hasMobility || undefined,
-      },
+      summary,
     });
 
     logger.success({
       workout: {
         id: truncateId(args.workoutId),
         status: "completed",
-        exerciseCount: exerciseNames.size,
-        totalSets,
-        totalVolume,
-        durationMinutes: totalDurationMinutes,
+        exerciseCount: summary.exerciseCount,
+        totalSets: summary.totalSets,
+        totalVolume: summary.totalVolume,
+        durationMinutes: summary.totalDurationMinutes,
+        usedTimeOverride:
+          args.startedAtOverride !== undefined || args.completedAtOverride !== undefined,
+      },
+    });
+
+    return args.workoutId;
+  },
+});
+
+export const updateWorkoutTimes = mutation({
+  args: {
+    workoutId: v.id("workouts"),
+    startedAt: v.number(),
+    completedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const logger = createConvexLogger("workouts.updateWorkoutTimes");
+
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({ user: { id: truncateId(user._id), tier: user.tier } });
+
+    const workout = await ctx.db.get(args.workoutId);
+    if (!workout) {
+      logger.fail(new Error("Workout not found"));
+      throw new Error("Workout not found");
+    }
+
+    if (workout.userId !== user._id) {
+      logger.fail(new Error("Not authorized"));
+      throw new Error("Not authorized");
+    }
+
+    if (workout.status === "cancelled") {
+      logger.fail(new Error("Cancelled workouts can't be edited"), {
+        workout: { id: truncateId(args.workoutId), status: workout.status },
+      });
+      throw new Error("Cancelled workouts can't be edited");
+    }
+
+    if (workout.status !== "completed") {
+      logger.fail(new Error("Only completed workouts can be edited"), {
+        workout: { id: truncateId(args.workoutId), status: workout.status },
+      });
+      throw new Error("Only completed workouts can be edited");
+    }
+
+    const entries = await getWorkoutEntries(ctx, args.workoutId);
+
+    validateWorkoutTimeRange({
+      entries,
+      startedAt: args.startedAt,
+      completedAt: args.completedAt,
+      now: Date.now(),
+    });
+
+    const summary = buildWorkoutSummary(entries, args.startedAt, args.completedAt);
+
+    await ctx.db.patch(args.workoutId, {
+      startedAt: args.startedAt,
+      completedAt: args.completedAt,
+      summary,
+    });
+
+    logger.success({
+      workout: {
+        id: truncateId(args.workoutId),
+        status: workout.status,
+        durationMinutes: summary.totalDurationMinutes,
       },
     });
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock, Download, Dumbbell, MessageSquare, Route, Timer, Weight } from "lucide-react";
 import Link from "next/link";
 import { ExportWorkoutDialog } from "@/components/workout/export-workout-dialog";
+import { WorkoutTimeEditorDialog } from "@/components/workout/workout-time-editor-dialog";
+import { toast } from "sonner";
+import posthog from "posthog-js";
 
 type LiftingEntry = {
   _id: string;
@@ -52,9 +55,12 @@ export default function WorkoutDetailsPage() {
   const router = useRouter();
   const workoutId = params.id as Id<"workouts">;
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showTimeEditor, setShowTimeEditor] = useState(false);
+  const [isUpdatingTimes, setIsUpdatingTimes] = useState(false);
 
   const workout = useQuery(api.workouts.getWorkoutWithEntries, { workoutId });
   const user = useQuery(api.users.getCurrentUser);
+  const updateWorkoutTimes = useMutation(api.workouts.updateWorkoutTimes);
   const isPro = user?.tier === "pro";
 
   const formatDate = (timestamp: number) => {
@@ -157,6 +163,33 @@ export default function WorkoutDetailsPage() {
   }
 
   const groupedExercises = groupEntriesByExercise(workout.entries as Entry[]);
+  const editableCompletedAt =
+    workout.completedAt ??
+    workout.startedAt + Math.max(workout.summary?.totalDurationMinutes ?? 60, 1) * 60000;
+
+  const handleUpdateTimes = async (startedAt: number, completedAt: number) => {
+    setIsUpdatingTimes(true);
+    try {
+      await updateWorkoutTimes({
+        workoutId,
+        startedAt,
+        completedAt,
+      });
+      posthog.capture("workout_times_edited", {
+        workout_id: workoutId,
+        from_started_at: workout.startedAt,
+        to_started_at: startedAt,
+        from_completed_at: workout.completedAt ?? editableCompletedAt,
+        to_completed_at: completedAt,
+      });
+      toast.success("Workout times updated");
+    } catch (error) {
+      console.error(error);
+      throw error;
+    } finally {
+      setIsUpdatingTimes(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -189,6 +222,17 @@ export default function WorkoutDetailsPage() {
 
       <main className="flex-1 p-4">
         <Card className="mb-6 p-4">
+          {workout.status === "completed" && (
+            <div className="mb-4 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTimeEditor(true)}
+              >
+                Edit times
+              </Button>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Date</p>
@@ -347,6 +391,18 @@ export default function WorkoutDetailsPage() {
         onOpenChange={setShowExportDialog}
         workoutId={workoutId}
       />
+
+      {workout.status === "completed" && showTimeEditor && (
+        <WorkoutTimeEditorDialog
+          open={showTimeEditor}
+          onOpenChange={setShowTimeEditor}
+          initialStartedAt={workout.startedAt}
+          initialCompletedAt={editableCompletedAt}
+          mode="edit"
+          onSubmit={handleUpdateTimes}
+          isSubmitting={isUpdatingTimes}
+        />
+      )}
     </div >
   );
 }
