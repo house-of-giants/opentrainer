@@ -32,9 +32,9 @@ type Workout = {
 
 export default function HistoryPage() {
   const [showStartSheet, setShowStartSheet] = useState(false);
-  const workouts = useQuery(api.workouts.getWorkoutHistory, { 
+  const workouts = useQuery(api.workouts.getWorkoutHistory, {
     limit: 100,
-    status: "all" 
+    status: "completed"
   });
 
   const formatDate = (timestamp: number) => {
