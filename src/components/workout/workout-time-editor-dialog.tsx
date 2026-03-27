@@ -74,25 +74,38 @@ function formatWorkoutDate(timestamp: number) {
   });
 }
 
-function validateValues(startedAt: number | null, completedAt: number | null) {
+type ValidationState = {
+  message: string | null;
+  startInvalid?: boolean;
+  endInvalid?: boolean;
+};
+
+function validateValues(
+  startedAt: number | null,
+  completedAt: number | null
+): ValidationState {
   if (startedAt === null) {
-    return "Choose a start time";
+    return { message: "Choose a start time", startInvalid: true };
   }
 
   if (completedAt === null) {
-    return "Choose an end time";
+    return { message: "Choose an end time", endInvalid: true };
   }
 
   if (startedAt >= completedAt) {
-    return "End time must be after start time";
+    return { message: "End time must be after start time", endInvalid: true };
   }
 
   const now = Date.now();
   if (startedAt > now || completedAt > now) {
-    return "Times can't be in the future";
+    return {
+      message: "Times can't be in the future",
+      startInvalid: startedAt > now,
+      endInvalid: completedAt > now,
+    };
   }
 
-  return null;
+  return { message: null };
 }
 
 export function WorkoutTimeEditorDialog({
@@ -120,7 +133,7 @@ export function WorkoutTimeEditorDialog({
     initialCompletedAt,
     completedAtValue
   );
-  const validationError = validateValues(parsedStartedAt, parsedCompletedAt);
+  const validationState = validateValues(parsedStartedAt, parsedCompletedAt);
 
   const durationPreview =
     parsedStartedAt !== null &&
@@ -137,8 +150,8 @@ export function WorkoutTimeEditorDialog({
   const submitLabel = mode === "finish" ? "Finish Workout" : "Save";
 
   const handleSubmit = async () => {
-    if (validationError) {
-      setSubmitError(validationError);
+    if (validationState.message) {
+      setSubmitError(validationState.message);
       return;
     }
 
@@ -159,7 +172,11 @@ export function WorkoutTimeEditorDialog({
     }
   };
 
-  const errorMessage = submitError ?? validationError;
+  const errorMessage = submitError ?? validationState.message;
+  const startInputInvalid =
+    submitError === null && validationState.startInvalid ? true : undefined;
+  const endInputInvalid =
+    submitError === null && validationState.endInvalid ? true : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -187,7 +204,7 @@ export function WorkoutTimeEditorDialog({
                 setStartedAtValue(event.target.value);
                 setSubmitError(null);
               }}
-              aria-invalid={errorMessage ? true : undefined}
+              aria-invalid={startInputInvalid}
               disabled={isSubmitting}
             />
           </div>
@@ -202,7 +219,7 @@ export function WorkoutTimeEditorDialog({
                 setCompletedAtValue(event.target.value);
                 setSubmitError(null);
               }}
-              aria-invalid={errorMessage ? true : undefined}
+              aria-invalid={endInputInvalid}
               disabled={isSubmitting}
             />
           </div>
