@@ -60,12 +60,18 @@ function ExerciseAccordionWithHistory({
 		return calculateProgressionSuggestion(history, targetReps);
 	}, [history, targetReps]);
 
+	const resolvedUnit =
+		props.sets.length > 0
+			? props.sets[props.sets.length - 1].unit
+			: ghostData?.lastSession.unit ?? props.unit;
+
 	return (
 		<ExerciseAccordion
 			exerciseName={exerciseName}
 			targetReps={targetReps}
 			lastSession={ghostData?.lastSession}
 			progressionSuggestion={ghostData?.suggestion}
+			unit={resolvedUnit}
 			{...props}
 		/>
 	);
