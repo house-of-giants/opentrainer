@@ -16,6 +16,14 @@ import { SaveAsRoutineDialog } from "@/components/workout/save-as-routine-dialog
 import { SmartSwapSheet } from "@/components/workout/smart-swap-sheet";
 import { SwapFollowUpDialog } from "@/components/workout/swap-followup-dialog";
 import { EditSetSheet, EditableSet } from "@/components/workout/edit-set-sheet";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { useClientId } from "@/hooks/use-client-id";
 import { useHaptic } from "@/hooks/use-haptic";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -118,6 +126,8 @@ export default function ActiveWorkoutPage() {
 	const [editingSet, setEditingSet] = useState<EditableSet | null>(null);
 	const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
 	const [manualNavigation, setManualNavigation] = useState(false);
+	const [showCancelDialog, setShowCancelDialog] = useState(false);
+	const [isCancelling, setIsCancelling] = useState(false);
 	const exerciseRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
 	const workout = useQuery(api.workouts.getActiveWorkout);
@@ -496,7 +506,8 @@ export default function ActiveWorkoutPage() {
 		router.push("/dashboard");
 	};
 
-	const handleCancel = async () => {
+	const handleConfirmCancel = async () => {
+		setIsCancelling(true);
 		vibrate("warning");
 		try {
 			await cancelWorkout({ workoutId: workout._id });
@@ -509,11 +520,14 @@ export default function ActiveWorkoutPage() {
 					0
 				),
 			});
+			setShowCancelDialog(false);
 			toast.success("Workout cancelled");
 			router.push("/dashboard");
 		} catch (error) {
 			toast.error("Failed to cancel workout");
 			console.error(error);
+		} finally {
+			setIsCancelling(false);
 		}
 	};
 
@@ -595,7 +609,12 @@ export default function ActiveWorkoutPage() {
 						</p>
 					</div>
 					<div className="flex shrink-0 gap-2">
-						<Button variant="ghost" size="sm" onClick={handleCancel}>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => setShowCancelDialog(true)}
+							disabled={isCancelling}
+						>
 							Cancel
 						</Button>
 						<Button size="sm" onClick={handleComplete}>
@@ -766,6 +785,41 @@ export default function ActiveWorkoutPage() {
 				onSave={handleUpdateSet}
 				onDelete={handleDeleteSet}
 			/>
+
+			<Dialog
+				open={showCancelDialog}
+				onOpenChange={(open) => {
+					if (!isCancelling) {
+						setShowCancelDialog(open);
+					}
+				}}
+			>
+				<DialogContent className="max-w-sm" showCloseButton={!isCancelling}>
+					<DialogHeader>
+						<DialogTitle>Cancel workout?</DialogTitle>
+						<DialogDescription>
+							Cancelling will discard all progress from your current workout.
+							This action cannot be undone.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => setShowCancelDialog(false)}
+							disabled={isCancelling}
+						>
+							Keep Workout
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={handleConfirmCancel}
+							disabled={isCancelling}
+						>
+							{isCancelling ? "Cancelling..." : "Cancel Workout"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
 			{showRestTimer && (
 				<RestTimerOverlay
