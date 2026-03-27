@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RpeSlider } from "./rpe-slider";
 import { NoteSheet } from "./note-sheet";
+import { SetStepper } from "./set-stepper";
 import { useHaptic } from "@/hooks/use-haptic";
 import { Check, ChevronDown, ChevronUp, Dumbbell, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -493,15 +494,15 @@ export function CardioExerciseCard({
                 </label>
 
                 {useVest && (
-                  <div className="flex items-center gap-2 pl-8">
-                    <Input
-                      type="number"
+                  <div className="pl-8">
+                    <SetStepper
+                      label="Vest"
                       value={vestWeight}
-                      onChange={(e) => setVestWeight(Number(e.target.value))}
-                      className="h-10 w-20 text-center font-mono"
+                      onChange={setVestWeight}
+                      step={unit === "lb" ? 5 : 2.5}
                       min={0}
+                      unit={unit}
                     />
-                    <span className="text-sm text-muted-foreground">{unit}</span>
                   </div>
                 )}
               </div>
