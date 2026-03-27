@@ -173,10 +173,8 @@ export function WorkoutTimeEditorDialog({
   };
 
   const errorMessage = submitError ?? validationState.message;
-  const startInputInvalid =
-    submitError === null && validationState.startInvalid ? true : undefined;
-  const endInputInvalid =
-    submitError === null && validationState.endInvalid ? true : undefined;
+  const startInputInvalid = validationState.startInvalid ? true : undefined;
+  const endInputInvalid = validationState.endInvalid ? true : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
