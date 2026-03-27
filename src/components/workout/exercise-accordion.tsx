@@ -363,26 +363,24 @@ export function ExerciseAccordion({
 	onSelect,
 }: ExerciseAccordionProps) {
 	const weightMode = getWeightMode(equipment);
+	const resolvedUnit =
+		sets.length > 0 ? sets[sets.length - 1].unit : lastSession?.unit ?? unit;
+	const resolvedWeightStep = resolvedUnit === "kg" ? 2.5 : 5;
 
-	const getInitialWeight = () => {
-		if (sets.length > 0) return sets[sets.length - 1].weight;
-		if (progressionSuggestion?.targetWeight)
-			return progressionSuggestion.targetWeight;
-		if (lastSession) return lastSession.weight;
-		return defaultWeight;
-	};
+	const initialWeight =
+		sets.length > 0
+			? sets[sets.length - 1].weight
+			: progressionSuggestion?.targetWeight ?? lastSession?.weight ?? defaultWeight;
+	const initialReps =
+		sets.length > 0
+			? sets[sets.length - 1].reps
+			: progressionSuggestion?.targetReps ?? lastSession?.reps ?? defaultReps;
 
-	const getInitialReps = () => {
-		if (sets.length > 0) return sets[sets.length - 1].reps;
-		if (progressionSuggestion?.targetReps)
-			return progressionSuggestion.targetReps;
-		if (lastSession) return lastSession.reps;
-		return defaultReps;
-	};
-
-	const [weight, setWeight] = useState(getInitialWeight());
-	const [reps, setReps] = useState(getInitialReps());
+	const [weight, setWeight] = useState(initialWeight);
+	const [reps, setReps] = useState(initialReps);
 	const [rpe, setRpe] = useState<number | null>(null);
+	const [hasEditedWeight, setHasEditedWeight] = useState(false);
+	const [hasEditedReps, setHasEditedReps] = useState(false);
 	const [isBodyweight, setIsBodyweight] = useState(
 		weightMode === "bodyweight-only" ||
 			(sets.length > 0 && sets[sets.length - 1].isBodyweight === true)
@@ -395,11 +393,32 @@ export function ExerciseAccordion({
 	const isExpanded = status === "current";
 	const loggedCount = sets.length;
 	const isComplete = targetSets !== undefined && loggedCount >= targetSets;
+	const currentWeight =
+		sets.length > 0 || hasEditedWeight ? weight : initialWeight;
+	const currentReps = sets.length > 0 || hasEditedReps ? reps : initialReps;
+
+	const handleWeightChange = (nextWeight: number) => {
+		setHasEditedWeight(true);
+		setWeight(nextWeight);
+	};
+
+	const handleRepsChange = (nextReps: number) => {
+		setHasEditedReps(true);
+		setReps(nextReps);
+	};
 
 	const handleAddSet = () => {
 		vibrate("success");
-		const effectiveWeight = isBodyweight && !showAddedWeight ? 0 : weight;
-		onAddSet({ reps, weight: effectiveWeight, unit, isBodyweight, rpe });
+		setWeight(currentWeight);
+		setReps(currentReps);
+		const effectiveWeight = isBodyweight && !showAddedWeight ? 0 : currentWeight;
+		onAddSet({
+			reps: currentReps,
+			weight: effectiveWeight,
+			unit: resolvedUnit,
+			isBodyweight,
+			rpe,
+		});
 		setRpe(null);
 	};
 
@@ -735,17 +754,17 @@ export function ExerciseAccordion({
 								(weightMode === "bodyweight-only" && showAddedWeight)) && (
 								<SetStepper
 									label={weightMode === "bodyweight-only" ? "ADDED" : "WEIGHT"}
-									value={weight}
-									onChange={setWeight}
-									step={5}
+									value={currentWeight}
+									onChange={handleWeightChange}
+									step={resolvedWeightStep}
 									min={0}
-									unit={unit}
+									unit={resolvedUnit}
 								/>
 							)}
 							<SetStepper
 								label="REPS"
-								value={reps}
-								onChange={setReps}
+								value={currentReps}
+								onChange={handleRepsChange}
 								step={1}
 								min={1}
 								max={100}
