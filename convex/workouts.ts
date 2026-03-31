@@ -76,12 +76,10 @@ function buildWorkoutSummary(
 }
 
 function validateWorkoutTimeRange({
-  entries,
   startedAt,
   completedAt,
   now,
 }: {
-  entries: Doc<"entries">[];
   startedAt: number;
   completedAt: number;
   now: number;
@@ -94,20 +92,9 @@ function validateWorkoutTimeRange({
     throw new Error("Times can't be in the future");
   }
 
-  if (entries.length === 0) {
-    return;
-  }
-
-  const earliestEntry = entries[0]?.createdAt;
-  const latestEntry = entries[entries.length - 1]?.createdAt;
-
-  if (earliestEntry !== undefined && startedAt > earliestEntry) {
-    throw new Error("Workout can't start after logged entries");
-  }
-
-  if (latestEntry !== undefined && completedAt < latestEntry) {
-    throw new Error("Workout can't end before logged entries");
-  }
+  // Logged entry timestamps reflect when the user tapped save, not necessarily when
+  // the workout actually started or ended. Allowing manual time edits lets users
+  // backfill the real session window after the fact.
 }
 
 export const createWorkout = mutation({
@@ -232,17 +219,16 @@ export const completeWorkout = mutation({
       throw new Error("Workout is not in progress");
     }
 
-    const entries = await getWorkoutEntries(ctx, args.workoutId);
     const startedAt = args.startedAtOverride ?? workout.startedAt;
     const completedAt = args.completedAtOverride ?? Date.now();
 
     validateWorkoutTimeRange({
-      entries,
       startedAt,
       completedAt,
       now: Date.now(),
     });
 
+    const entries = await getWorkoutEntries(ctx, args.workoutId);
     const summary = buildWorkoutSummary(entries, startedAt, completedAt);
 
     await ctx.db.patch(args.workoutId, {
@@ -312,15 +298,13 @@ export const updateWorkoutTimes = mutation({
       throw new Error("Only completed workouts can be edited");
     }
 
-    const entries = await getWorkoutEntries(ctx, args.workoutId);
-
     validateWorkoutTimeRange({
-      entries,
       startedAt: args.startedAt,
       completedAt: args.completedAt,
       now: Date.now(),
     });
 
+    const entries = await getWorkoutEntries(ctx, args.workoutId);
     const summary = buildWorkoutSummary(entries, args.startedAt, args.completedAt);
 
     await ctx.db.patch(args.workoutId, {
