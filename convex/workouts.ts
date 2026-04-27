@@ -413,10 +413,8 @@ export const deleteWorkout = mutation({
 
     let swapsDeleted = 0;
     for (const swap of swaps) {
-      if (swap.userId === user._id) {
-        await ctx.db.delete(swap._id);
-        swapsDeleted++;
-      }
+      await ctx.db.delete(swap._id);
+      swapsDeleted++;
     }
 
     const assessments = await ctx.db
@@ -429,10 +427,6 @@ export const deleteWorkout = mutation({
     let assessmentDetailsDeleted = 0;
     let assessmentsDeleted = 0;
     for (const assessment of assessments) {
-      if (assessment.userId !== user._id) {
-        continue;
-      }
-
       const details = await ctx.db
         .query("assessmentDetails")
         .withIndex("by_assessment", (q) => q.eq("assessmentId", assessment._id))
@@ -447,6 +441,19 @@ export const deleteWorkout = mutation({
       assessmentsDeleted++;
     }
 
+    const feedback = await ctx.db
+      .query("feedback")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    let feedbackDeleted = 0;
+    for (const item of feedback) {
+      if (item.context?.workoutId === args.workoutId) {
+        await ctx.db.delete(item._id);
+        feedbackDeleted++;
+      }
+    }
+
     await ctx.db.delete(args.workoutId);
 
     logger.success({
@@ -459,6 +466,7 @@ export const deleteWorkout = mutation({
         swaps: swapsDeleted,
         assessments: assessmentsDeleted,
         assessmentDetails: assessmentDetailsDeleted,
+        feedback: feedbackDeleted,
       },
     });
 
