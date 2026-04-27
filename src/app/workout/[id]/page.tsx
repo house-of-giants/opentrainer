@@ -9,7 +9,25 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, Download, Dumbbell, MessageSquare, Route, Timer, Weight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  ArrowLeft,
+  Clock,
+  Download,
+  Dumbbell,
+  MessageSquare,
+  Route,
+  Timer,
+  Trash2,
+  Weight,
+} from "lucide-react";
 import Link from "next/link";
 import { ExportWorkoutDialog } from "@/components/workout/export-workout-dialog";
 import { WorkoutTimeEditorDialog } from "@/components/workout/workout-time-editor-dialog";
@@ -56,11 +74,14 @@ export default function WorkoutDetailsPage() {
   const workoutId = params.id as Id<"workouts">;
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showTimeEditor, setShowTimeEditor] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isUpdatingTimes, setIsUpdatingTimes] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const workout = useQuery(api.workouts.getWorkoutWithEntries, { workoutId });
   const user = useQuery(api.users.getCurrentUser);
   const updateWorkoutTimes = useMutation(api.workouts.updateWorkoutTimes);
+  const deleteWorkout = useMutation(api.workouts.deleteWorkout);
   const isPro = user?.tier === "pro";
 
   const formatDate = (timestamp: number) => {
@@ -191,6 +212,25 @@ export default function WorkoutDetailsPage() {
     }
   };
 
+  const handleDeleteWorkout = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteWorkout({ workoutId });
+      posthog.capture("workout_deleted", {
+        workout_id: workoutId,
+        status: workout.status,
+        entry_count: workout.entries.length,
+      });
+      toast.success("Workout deleted");
+      router.replace("/history");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete workout");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
@@ -222,15 +262,25 @@ export default function WorkoutDetailsPage() {
 
       <main className="flex-1 p-4">
         <Card className="mb-6 p-4">
-          {workout.status === "completed" && (
-            <div className="mb-4 flex justify-end">
+          {workout.status !== "in_progress" && (
+            <div className="mb-4 flex justify-end gap-2">
               <Button
-                variant="outline"
+                variant="destructive"
                 size="sm"
-                onClick={() => setShowTimeEditor(true)}
+                onClick={() => setShowDeleteConfirm(true)}
               >
-                Edit times
+                <Trash2 data-icon="inline-start" />
+                Delete workout
               </Button>
+              {workout.status === "completed" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTimeEditor(true)}
+                >
+                  Edit times
+                </Button>
+              )}
             </div>
           )}
           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -403,6 +453,33 @@ export default function WorkoutDetailsPage() {
           isSubmitting={isUpdatingTimes}
         />
       )}
-    </div >
+
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete workout?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete this workout and all logged sets, notes, and related workout analysis.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteWorkout}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete workout"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
