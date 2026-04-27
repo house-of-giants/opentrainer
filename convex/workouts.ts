@@ -371,6 +371,109 @@ export const cancelWorkout = mutation({
   },
 });
 
+export const deleteWorkout = mutation({
+  args: {
+    workoutId: v.id("workouts"),
+  },
+  handler: async (ctx, args) => {
+    const logger = createConvexLogger("workouts.deleteWorkout");
+
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      logger.fail(new Error("User not found"));
+      throw new Error("User not found");
+    }
+
+    logger.set({ user: { id: truncateId(user._id), tier: user.tier } });
+
+    const workout = await ctx.db.get(args.workoutId);
+    if (!workout) {
+      logger.fail(new Error("Workout not found"));
+      throw new Error("Workout not found");
+    }
+
+    if (workout.userId !== user._id) {
+      logger.fail(new Error("Not authorized"));
+      throw new Error("Not authorized");
+    }
+
+    const entries = await ctx.db
+      .query("entries")
+      .withIndex("by_workout", (q) => q.eq("workoutId", args.workoutId))
+      .collect();
+
+    for (const entry of entries) {
+      await ctx.db.delete(entry._id);
+    }
+
+    const swaps = await ctx.db
+      .query("exerciseSwaps")
+      .withIndex("by_workout", (q) => q.eq("workoutId", args.workoutId))
+      .collect();
+
+    let swapsDeleted = 0;
+    for (const swap of swaps) {
+      await ctx.db.delete(swap._id);
+      swapsDeleted++;
+    }
+
+    const assessments = await ctx.db
+      .query("assessments")
+      .withIndex("by_subject", (q) =>
+        q.eq("subjectType", "workout").eq("subjectId", args.workoutId)
+      )
+      .collect();
+
+    let assessmentDetailsDeleted = 0;
+    let assessmentsDeleted = 0;
+    for (const assessment of assessments) {
+      const details = await ctx.db
+        .query("assessmentDetails")
+        .withIndex("by_assessment", (q) => q.eq("assessmentId", assessment._id))
+        .collect();
+
+      for (const detail of details) {
+        await ctx.db.delete(detail._id);
+        assessmentDetailsDeleted++;
+      }
+
+      await ctx.db.delete(assessment._id);
+      assessmentsDeleted++;
+    }
+
+    const feedback = await ctx.db
+      .query("feedback")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    let feedbackDeleted = 0;
+    for (const item of feedback) {
+      if (item.context?.workoutId === args.workoutId) {
+        await ctx.db.delete(item._id);
+        feedbackDeleted++;
+      }
+    }
+
+    await ctx.db.delete(args.workoutId);
+
+    logger.success({
+      workout: {
+        id: truncateId(args.workoutId),
+        status: workout.status,
+      },
+      deleted: {
+        entries: entries.length,
+        swaps: swapsDeleted,
+        assessments: assessmentsDeleted,
+        assessmentDetails: assessmentDetailsDeleted,
+        feedback: feedbackDeleted,
+      },
+    });
+
+    return args.workoutId;
+  },
+});
+
 export const getWorkoutHistory = query({
   args: {
     limit: v.optional(v.number()),
