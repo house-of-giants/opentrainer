@@ -17,6 +17,7 @@ import { SmartSwapSheet } from "@/components/workout/smart-swap-sheet";
 import { SwapFollowUpDialog } from "@/components/workout/swap-followup-dialog";
 import { EditSetSheet, EditableSet } from "@/components/workout/edit-set-sheet";
 import { WorkoutTimeEditorDialog } from "@/components/workout/workout-time-editor-dialog";
+import { SessionCommandCenter } from "@/components/workout/session-command-center";
 import {
 	Dialog,
 	DialogContent,
@@ -30,6 +31,7 @@ import { useHaptic } from "@/hooks/use-haptic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { calculateProgressionSuggestion } from "@/lib/progression";
+import { convertWeight, type WeightUnit } from "@/lib/units";
 import posthog from "posthog-js";
 
 type EntryData = {
@@ -645,6 +647,46 @@ export default function ActiveWorkoutPage() {
 		}
 	};
 
+	const sessionStats = (() => {
+		let loggedSets = 0;
+		let targetSets = 0;
+		let totalVolume = 0;
+		// Normalize all lifting volume to lb so mixed-unit workouts sum correctly.
+		const unit: WeightUnit = "lb";
+
+		for (const [, { entries: groupEntries, meta }] of exerciseGroups) {
+			if (meta.category === "cardio") {
+				targetSets += 1;
+				if (groupEntries.some((entry) => entry.kind === "cardio")) loggedSets += 1;
+				continue;
+			}
+
+			const liftingEntries = groupEntries.filter((entry) => entry.kind === "lifting" && entry.lifting);
+			loggedSets += liftingEntries.length;
+			targetSets += meta.targetSets ?? Math.max(liftingEntries.length, 1);
+
+			for (const entry of liftingEntries) {
+				if (!entry.lifting) continue;
+				const weight = entry.lifting.weight ?? 0;
+				const weightLb = convertWeight(weight, entry.lifting.unit ?? unit, unit);
+				totalVolume += weightLb * (entry.lifting.reps ?? 0);
+			}
+		}
+
+		return { loggedSets, targetSets, totalVolume, unit };
+	})();
+
+	const currentExerciseName = exerciseList[currentExerciseIndex]?.[0];
+	const nextExerciseName = exerciseList[currentExerciseIndex + 1]?.[0];
+
+	const jumpToCurrentExercise = () => {
+		if (!currentExerciseName) return;
+		const element = exerciseRefs.current.get(currentExerciseName);
+		if (element) {
+			element.scrollIntoView({ behavior: "smooth", block: "center" });
+		}
+	};
+
 	return (
 		<div className="flex min-h-screen flex-col">
 			<header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
@@ -682,6 +724,20 @@ export default function ActiveWorkoutPage() {
 					</div>
 				</div>
 			</header>
+
+			<div className="px-4 pt-4">
+				<SessionCommandCenter
+					duration={duration}
+					exerciseCount={exerciseList.length}
+					currentExerciseName={currentExerciseName}
+					nextExerciseName={nextExerciseName}
+					loggedSets={sessionStats.loggedSets}
+					targetSets={sessionStats.targetSets}
+					totalVolume={sessionStats.totalVolume}
+					unit={sessionStats.unit}
+					onJumpToCurrent={jumpToCurrentExercise}
+				/>
+			</div>
 
 			<main className="flex-1 space-y-4 p-4">
 				{Array.from(exerciseGroups.entries()).map(

@@ -10,6 +10,8 @@ Most workout apps are bloated. You're between sets, sweaty, 45 seconds on the cl
 
 OpenTrainer is different:
 - **2 taps per set.** Log and get back to lifting.
+- **Session brief on the dashboard.** Surfaces your next workout action and weekly progress at a glance — no speculative readiness scores.
+- **Focused workout mode.** Active sessions show what to log next, sets remaining, elapsed time, and total volume without burying the set controls.
 - **AI that knows your gym.** Tell it what equipment you have. Get a program that actually uses it.
 - **Your data, your rules.** Full JSON export. No lock-in. Leave anytime.
 - **No tracking pixels.** We don't sell your data.

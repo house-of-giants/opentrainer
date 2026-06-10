@@ -71,9 +71,9 @@ export default function Home() {
                   <span className="text-muted-foreground">not minutes.</span>
                 </h1>
                 <p className="max-w-md text-lg text-muted-foreground sm:text-xl lg:max-w-xl">
-                  Most apps need 5 screens to log one set. We need 2 taps.
+                  Strong logs fast. Fitbod plans for you. Boostcamp gives you programs.
                   <span className="mt-2 block text-base">
-                    Built for sweaty hands, bad gym WiFi, and the 45 seconds you have before your next set.
+                    OpenTrainer keeps the useful parts: fast logging, plain progression, equipment-aware routines, and exportable data. No social feed. No black-box readiness scores. No lock-in.
                   </span>
                 </p>
                 <div className="flex flex-col items-center gap-3 lg:items-start">
@@ -166,6 +166,35 @@ export default function Home() {
               </svg>
               Full data export
             </p>
+          </div>
+        </section>
+
+        {/* Competitive position */}
+        <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-bold tracking-tight">
+              Built from the useful parts of the category
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              The market already proved what matters. OpenTrainer removes the rest.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <ComparisonCard
+              app="Strong / Hevy"
+              keeps="Fast set logging, history, rest timer"
+              cuts="Social feeds, streak mechanics, interface clutter"
+            />
+            <ComparisonCard
+              app="Fitbod"
+              keeps="Equipment-aware planning and next-step guidance"
+              cuts="Opaque recovery scores and overbuilt planning"
+            />
+            <ComparisonCard
+              app="Boostcamp"
+              keeps="Program structure, auto-progression, simple goals"
+              cuts="Marketplace browsing when you just need today's session"
+            />
           </div>
         </section>
 
@@ -536,6 +565,34 @@ function FeatureCard({
 }
 
 
+
+function ComparisonCard({
+  app,
+  keeps,
+  cuts,
+}: {
+  app: string;
+  keeps: string;
+  cuts: string;
+}) {
+  return (
+    <div className="rounded-xl border bg-card p-5">
+      <p className="text-xs font-mono uppercase tracking-[0.18em] text-muted-foreground">
+        {app}
+      </p>
+      <div className="mt-4 space-y-3 text-sm">
+        <div>
+          <p className="font-semibold text-green-600 dark:text-green-400">Keep</p>
+          <p className="mt-1 text-muted-foreground">{keeps}</p>
+        </div>
+        <div>
+          <p className="font-semibold text-destructive">Cut</p>
+          <p className="mt-1 text-muted-foreground">{cuts}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false);
