@@ -4,17 +4,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { BottomNav } from "@/components/navigation/bottom-nav";
 import { StartWorkoutSheet } from "@/components/workout/start-workout-sheet";
-import { Play, Plus } from "lucide-react";
 import { WeeklyStatsGrid, GoalSettingDialog } from "@/components/dashboard";
+import { DashboardBriefCard } from "@/components/dashboard/dashboard-brief-card";
 import { TrainingLabCard } from "@/components/training-lab/training-lab-card";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
+import { formatDuration } from "@/lib/utils";
 import posthog from "posthog-js";
 
 export default function DashboardPage() {
@@ -97,13 +96,6 @@ export default function DashboardPage() {
 		});
 	};
 
-	const formatDuration = (minutes?: number) => {
-		if (!minutes) return "—";
-		const hours = Math.floor(minutes / 60);
-		const mins = minutes % 60;
-		return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-	};
-
 	const formatCardioDuration = (seconds: number) => {
 		const hours = Math.floor(seconds / 3600);
 		const mins = Math.floor((seconds % 3600) / 60);
@@ -136,37 +128,21 @@ export default function DashboardPage() {
 			</header>
 
 			<main className="flex-1 space-y-4 p-4 pb-24">
-				<div>
-					<h1 className="text-2xl font-bold">
-						Hey{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
-					</h1>
-					<p className="text-muted-foreground">Ready to train?</p>
-				</div>
+				<h1 className="sr-only">Dashboard</h1>
 
-				{activeWorkout ? (
-					<Card className="border-primary/50 bg-primary/5 p-4">
-						<div className="flex items-center justify-between">
-							<div>
-								<h2 className="font-semibold">Workout In Progress</h2>
-								<p className="text-sm text-muted-foreground">
-									Started {formatDate(activeWorkout.startedAt)}
-								</p>
-							</div>
-							<Button onClick={() => router.push("/workout/active")}>
-								<Play className="mr-2 h-4 w-4" />
-								Continue
-							</Button>
-						</div>
-					</Card>
+				{dashboardStats && activeWorkout !== undefined && workoutHistory !== undefined ? (
+					<DashboardBriefCard
+						weeklyWorkoutCount={dashboardStats.weeklyWorkoutCount}
+						weeklyGoal={dashboardStats.weeklyGoal}
+						weeklyTotalSets={dashboardStats.weeklyTotalSets}
+						weeklyTotalDuration={dashboardStats.weeklyTotalDuration}
+						hasActiveWorkout={!!activeWorkout}
+						hasHistory={(workoutHistory?.length ?? 0) > 0}
+						onStartWorkout={() => setShowStartSheet(true)}
+						onContinueWorkout={() => router.push("/workout/active")}
+					/>
 				) : (
-					<Button
-						size="lg"
-						className="w-full"
-						onClick={() => setShowStartSheet(true)}
-					>
-						<Plus className="mr-2 h-5 w-5" />
-						Start Workout
-					</Button>
+					<Skeleton className="h-36 w-full rounded-lg" />
 				)}
 
 				{dashboardStats ? (
@@ -231,7 +207,8 @@ export default function DashboardPage() {
 												</p>
 												<p className="font-mono font-medium">
 													{formatDuration(
-														workout.summary?.totalDurationMinutes
+														workout.summary?.totalDurationMinutes,
+														"—"
 													)}
 												</p>
 											</div>
