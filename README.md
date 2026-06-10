@@ -80,6 +80,10 @@ convex/
 ├── *.ts           # Backend functions (queries, mutations)
 ```
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the product direction, competitive position, free/Pro line, and implementation sequence.
+
 ## Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
