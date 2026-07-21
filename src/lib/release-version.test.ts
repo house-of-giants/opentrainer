@@ -2,10 +2,36 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
 	getActiveDismissedReleaseId,
+	getDismissedReleaseStorageKey,
 	getReleaseStatus,
 	parseStoredReleaseCheck,
 	shouldCheckForRelease,
 } from "./release-version";
+
+describe("getDismissedReleaseStorageKey", () => {
+	test("gives each release an independent dismissal slot", () => {
+		assert.equal(
+			getDismissedReleaseStorageKey("release-b"),
+			"opentrainer:dismissed-release:release-b"
+		);
+		assert.equal(
+			getDismissedReleaseStorageKey("release-c"),
+			"opentrainer:dismissed-release:release-c"
+		);
+		assert.notEqual(
+			getDismissedReleaseStorageKey("release-b"),
+			getDismissedReleaseStorageKey("release-c")
+		);
+	});
+
+	test("normalizes valid identifiers and rejects missing identifiers", () => {
+		assert.equal(
+			getDismissedReleaseStorageKey(" release/b "),
+			"opentrainer:dismissed-release:release%2Fb"
+		);
+		assert.equal(getDismissedReleaseStorageKey(" "), null);
+	});
+});
 
 describe("getReleaseStatus", () => {
 	test("does not compare missing release identifiers", () => {

@@ -28,11 +28,22 @@ export interface StoredReleaseDismissal {
 	dismissedAt: number;
 }
 
+const DISMISSED_RELEASE_KEY_PREFIX = "opentrainer:dismissed-release";
+
 export function normalizeReleaseId(
 	releaseId: string | null | undefined
 ): string | null {
 	const normalized = releaseId?.trim();
 	return normalized ? normalized : null;
+}
+
+export function getDismissedReleaseStorageKey(
+	releaseId: string | null | undefined
+): string | null {
+	const normalized = normalizeReleaseId(releaseId);
+	return normalized
+		? `${DISMISSED_RELEASE_KEY_PREFIX}:${encodeURIComponent(normalized)}`
+		: null;
 }
 
 export function getReleaseStatus({

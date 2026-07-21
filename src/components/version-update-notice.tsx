@@ -6,6 +6,7 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	getActiveDismissedReleaseId,
+	getDismissedReleaseStorageKey,
 	getReleaseStatus,
 	normalizeReleaseId,
 	parseStoredReleaseCheck,
@@ -19,7 +20,6 @@ const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const MINIMUM_RECHECK_MS = 60 * 1000;
 const REQUEST_TIMEOUT_MS = 10 * 1000;
 const DISMISSAL_DURATION_MS = 24 * 60 * 60 * 1000;
-const DISMISSED_RELEASE_KEY = "opentrainer:dismissed-release";
 const RELEASE_CHECK_KEY = CURRENT_RELEASE_ID
 	? `opentrainer:release-check:${CURRENT_RELEASE_ID}`
 	: null;
@@ -63,8 +63,9 @@ export function VersionUpdateNotice() {
 
 		const updateNotice = (releaseId: string) => {
 			latestReleaseId = releaseId;
+			const dismissalKey = getDismissedReleaseStorageKey(releaseId);
 			const dismissedReleaseId = getActiveDismissedReleaseId({
-				value: readStorage(DISMISSED_RELEASE_KEY),
+				value: dismissalKey ? readStorage(dismissalKey) : null,
 				now: Date.now(),
 				maximumAgeMs: DISMISSAL_DURATION_MS,
 			});
@@ -135,7 +136,10 @@ export function VersionUpdateNotice() {
 				const storedCheck = parseStoredReleaseCheck(event.newValue);
 				if (storedCheck) updateNotice(storedCheck.releaseId);
 			}
-			if (event.key === DISMISSED_RELEASE_KEY && latestReleaseId) {
+			if (
+				latestReleaseId &&
+				event.key === getDismissedReleaseStorageKey(latestReleaseId)
+			) {
 				updateNotice(latestReleaseId);
 			}
 		};
@@ -165,8 +169,10 @@ export function VersionUpdateNotice() {
 	const isActiveWorkout = pathname.startsWith("/workout/active");
 	const handleDismiss = () => {
 		if (!availableReleaseId) return;
+		const dismissalKey = getDismissedReleaseStorageKey(availableReleaseId);
+		if (!dismissalKey) return;
 		writeStorage(
-			DISMISSED_RELEASE_KEY,
+			dismissalKey,
 			JSON.stringify({
 				releaseId: availableReleaseId,
 				dismissedAt: Date.now(),

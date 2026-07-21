@@ -9,9 +9,10 @@ The client checks on mount, every five minutes, and after reconnecting, focusing
 or returning to a visible tab. Successful checks are shared across tabs for one
 minute. Failures are silent and do not advance the retry clock. The notice never
 reloads the page automatically; the user chooses Refresh or Later, including
-during an active workout. Later is stored against only the detected release for
-24 hours. The same release can remind the user after that window, and a subsequent
-deployment can notify immediately.
+during an active workout. Later is stored in a separate key for each detected
+release for 24 hours, so tabs tracking different releases cannot overwrite each
+other's dismissal. The same release can remind the user after that window, and a
+subsequent deployment can notify immediately.
 
 ## Why the signal does not use Convex
 
