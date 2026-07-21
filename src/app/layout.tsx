@@ -4,6 +4,7 @@ import "./globals.css";
 import { ConvexClientProvider } from "@/components/providers/convex-client-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { VersionUpdateNotice } from "@/components/version-update-notice";
 import PlausibleProvider from "next-plausible";
 
 const geistSans = Geist({
@@ -73,6 +74,7 @@ export default function RootLayout({
 							{children}
 							<Toaster position="top-center" richColors />
 						</ConvexClientProvider>
+						<VersionUpdateNotice />
 					</PlausibleProvider>
 				</ThemeProvider>
 			</body>
