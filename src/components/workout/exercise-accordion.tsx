@@ -348,7 +348,7 @@ export function ExerciseAccordion({
 	sets,
 	status,
 	equipment,
-	defaultWeight = 45,
+	defaultWeight,
 	defaultReps = 8,
 	unit = "lb",
 	targetSets,
@@ -366,11 +366,15 @@ export function ExerciseAccordion({
 	const resolvedUnit =
 		sets.length > 0 ? sets[sets.length - 1].unit : lastSession?.unit ?? unit;
 	const resolvedWeightStep = resolvedUnit === "kg" ? 2.5 : 5;
+	const resolvedDefaultWeight =
+		defaultWeight ?? (resolvedUnit === "kg" ? 20 : 45);
 
 	const initialWeight =
 		sets.length > 0
 			? sets[sets.length - 1].weight
-			: progressionSuggestion?.targetWeight ?? lastSession?.weight ?? defaultWeight;
+			: progressionSuggestion?.targetWeight ??
+				lastSession?.weight ??
+				resolvedDefaultWeight;
 	const initialReps =
 		sets.length > 0
 			? sets[sets.length - 1].reps

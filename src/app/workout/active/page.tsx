@@ -35,7 +35,12 @@ import { useHaptic } from "@/hooks/use-haptic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { calculateProgressionSuggestion } from "@/lib/progression";
-import { convertWeight, type WeightUnit } from "@/lib/units";
+import {
+	calculateVolumeInUnit,
+	displayWeight,
+	editedWeightForStorage,
+	type WeightUnit,
+} from "@/lib/units";
 import posthog from "posthog-js";
 
 type EntryData = {
@@ -75,13 +80,8 @@ function ExerciseAccordionWithHistory({
 
 	const ghostData = useMemo(() => {
 		if (!history || history.length === 0) return null;
-		return calculateProgressionSuggestion(history, targetReps);
-	}, [history, targetReps]);
-
-	const resolvedUnit =
-		sets.length > 0
-			? sets[sets.length - 1].unit
-			: ghostData?.lastSession.unit ?? unit;
+		return calculateProgressionSuggestion(history, targetReps, unit);
+	}, [history, targetReps, unit]);
 
 	return (
 		<ExerciseAccordion
@@ -90,7 +90,7 @@ function ExerciseAccordionWithHistory({
 			sets={sets}
 			lastSession={ghostData?.lastSession}
 			progressionSuggestion={ghostData?.suggestion}
-			unit={resolvedUnit}
+			unit={unit}
 			{...rest}
 		/>
 	);
@@ -171,6 +171,8 @@ export default function ActiveWorkoutPage() {
 	const exerciseRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
 	const workout = useQuery(api.workouts.getActiveWorkout);
+	const user = useQuery(api.users.getCurrentUser);
+	const preferredUnit: WeightUnit = user?.preferredUnits ?? "lb";
 	const entries = useQuery(
 		api.entries.getEntriesByWorkout,
 		workout ? { workoutId: workout._id } : "skip"
@@ -360,7 +362,7 @@ export default function ActiveWorkoutPage() {
 		}
 	}, [currentExerciseIndex, exerciseList]);
 
-	if (workout === undefined || workout === null) {
+	if (workout === undefined || workout === null || user === undefined) {
 		return (
 			<div className="flex min-h-screen flex-col p-4">
 				<Skeleton className="mb-4 h-8 w-48" />
@@ -393,7 +395,7 @@ export default function ActiveWorkoutPage() {
 					setNumber,
 					reps: set.reps,
 					weight: set.weight,
-					unit: set.unit,
+					unit: preferredUnit,
 					isBodyweight: set.isBodyweight,
 					rpe: set.rpe ?? undefined,
 				},
@@ -403,7 +405,7 @@ export default function ActiveWorkoutPage() {
 				set_number: setNumber,
 				reps: set.reps,
 				weight: set.weight,
-				unit: set.unit,
+				unit: preferredUnit,
 				is_bodyweight: set.isBodyweight ?? false,
 				rpe: set.rpe ?? null,
 			});
@@ -690,6 +692,9 @@ export default function ActiveWorkoutPage() {
 		}
 	) => {
 		if (!set.entryId) return;
+		const storedSet = exerciseGroups
+			.get(exerciseName)
+			?.entries.find((entry) => entry._id === set.entryId)?.lifting;
 		setEditingSet({
 			entryId: set.entryId,
 			exerciseName,
@@ -697,6 +702,8 @@ export default function ActiveWorkoutPage() {
 			reps: set.reps,
 			weight: set.weight,
 			unit: set.unit,
+			storedWeight: storedSet?.weight,
+			storedUnit: storedSet?.unit,
 			isBodyweight: set.isBodyweight,
 			rpe: set.rpe,
 		});
@@ -736,8 +743,18 @@ export default function ActiveWorkoutPage() {
 						: {
 								setNumber: editingSet.setNumber,
 								reps: data.reps,
-								weight: data.weight,
-								unit: editingSet.unit,
+								weight:
+									data.weight === undefined
+										? undefined
+										: editedWeightForStorage({
+												displayedWeight: data.weight,
+												displayUnit: editingSet.unit,
+												storedUnit:
+													editingSet.storedUnit ?? editingSet.unit,
+												originalDisplayedWeight: editingSet.weight,
+												originalStoredWeight: editingSet.storedWeight,
+											}),
+								unit: editingSet.storedUnit ?? editingSet.unit,
 								isBodyweight: editingSet.isBodyweight,
 								rpe: data.rpe ?? undefined,
 							},
@@ -768,8 +785,6 @@ export default function ActiveWorkoutPage() {
 		let loggedSets = 0;
 		let targetSets = 0;
 		let totalVolume = 0;
-		// Normalize all lifting volume to lb so mixed-unit workouts sum correctly.
-		const unit: WeightUnit = "lb";
 
 		for (const [, { entries: groupEntries, meta }] of exerciseGroups) {
 			if (meta.category === "cardio") {
@@ -782,15 +797,15 @@ export default function ActiveWorkoutPage() {
 			loggedSets += liftingEntries.length;
 			targetSets += meta.targetSets ?? Math.max(liftingEntries.length, 1);
 
-			for (const entry of liftingEntries) {
-				if (!entry.lifting) continue;
-				const weight = entry.lifting.weight ?? 0;
-				const weightLb = convertWeight(weight, entry.lifting.unit ?? unit, unit);
-				totalVolume += weightLb * (entry.lifting.reps ?? 0);
-			}
+			totalVolume += calculateVolumeInUnit(
+				liftingEntries.flatMap((entry) =>
+					entry.lifting ? [entry.lifting] : []
+				),
+				preferredUnit
+			);
 		}
 
-		return { loggedSets, targetSets, totalVolume, unit };
+		return { loggedSets, targetSets, totalVolume, unit: preferredUnit };
 	})();
 
 	const currentExerciseName = exerciseList[currentExerciseIndex]?.[0];
@@ -882,6 +897,7 @@ export default function ActiveWorkoutPage() {
 									<CardioExerciseCard
 										exerciseName={name}
 										primaryMetric={meta.primaryMetric ?? "duration"}
+										unit={preferredUnit}
 										status={status}
 										defaultMinutes={meta.targetDurationMinutes}
 										note={getExerciseNote(name)}
@@ -945,15 +961,22 @@ export default function ActiveWorkoutPage() {
 
 						const sets = groupEntries
 							.filter((e) => e.kind === "lifting" && e.lifting)
-							.map((e) => ({
-								entryId: e._id,
-								setNumber: e.lifting!.setNumber,
-								reps: e.lifting!.reps ?? 0,
-								weight: e.lifting!.weight ?? 0,
-								unit: (e.lifting!.unit ?? "lb") as "lb" | "kg",
-								isBodyweight: e.lifting!.isBodyweight,
-								rpe: e.lifting!.rpe ?? null,
-							}));
+							.map((e) => {
+								const sourceUnit = e.lifting!.unit ?? "lb";
+								return {
+									entryId: e._id,
+									setNumber: e.lifting!.setNumber,
+									reps: e.lifting!.reps ?? 0,
+									weight: displayWeight(
+										e.lifting!.weight ?? 0,
+										sourceUnit,
+										preferredUnit
+									),
+									unit: preferredUnit,
+									isBodyweight: e.lifting!.isBodyweight,
+									rpe: e.lifting!.rpe ?? null,
+								};
+							});
 
 						const parseTargetReps = (
 							targetReps?: string
@@ -976,6 +999,7 @@ export default function ActiveWorkoutPage() {
 									exerciseName={name}
 									sets={sets}
 									status={status}
+									unit={preferredUnit}
 									equipment={meta.equipment}
 									defaultReps={parseTargetReps(meta.targetReps)}
 									targetSets={meta.targetSets}

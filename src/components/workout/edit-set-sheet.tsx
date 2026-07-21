@@ -22,6 +22,8 @@ export interface EditableSet {
   weight: number;
   durationSeconds?: number;
   unit: "lb" | "kg";
+  storedWeight?: number;
+  storedUnit?: "lb" | "kg";
   isBodyweight?: boolean;
   rpe?: number | null;
 }
@@ -105,7 +107,7 @@ function EditSetContent({
               label={set.isBodyweight ? "Added Weight" : "Weight"}
               value={weight}
               onChange={setWeight}
-              step={5}
+              step={set.unit === "kg" ? 2.5 : 5}
               min={0}
               unit={set.unit}
             />

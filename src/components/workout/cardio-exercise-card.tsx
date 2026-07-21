@@ -189,7 +189,7 @@ export function CardioExerciseCard({
   const [rpe, setRpe] = useState(5);
   const [showEquipment, setShowEquipment] = useState(false);
   const [useVest, setUseVest] = useState(false);
-  const [vestWeight, setVestWeight] = useState(20);
+  const [vestWeight, setVestWeight] = useState(unit === "kg" ? 10 : 20);
   const [isLogged, setIsLogged] = useState(false);
   const [showNoteSheet, setShowNoteSheet] = useState(false);
 

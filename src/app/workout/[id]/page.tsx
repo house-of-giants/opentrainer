@@ -33,6 +33,11 @@ import { ExportWorkoutDialog } from "@/components/workout/export-workout-dialog"
 import { WorkoutTimeEditorDialog } from "@/components/workout/workout-time-editor-dialog";
 import { toast } from "sonner";
 import posthog from "posthog-js";
+import {
+  calculateVolumeInUnit,
+  displayWeight,
+  type WeightUnit,
+} from "@/lib/units";
 
 type LiftingEntry = {
   _id: string;
@@ -58,6 +63,8 @@ type CardioEntry = {
     mode: "steady" | "intervals";
     durationSeconds: number;
     intensity?: number;
+    vestWeight?: number;
+    vestWeightUnit?: "kg" | "lb";
   };
   createdAt: number;
 };
@@ -84,6 +91,7 @@ export default function WorkoutDetailsPage() {
   const updateWorkoutTimes = useMutation(api.workouts.updateWorkoutTimes);
   const deleteWorkout = useMutation(api.workouts.deleteWorkout);
   const isPro = user?.tier === "pro";
+  const preferredUnit: WeightUnit = user?.preferredUnits ?? "lb";
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -148,7 +156,7 @@ export default function WorkoutDetailsPage() {
     }));
   };
 
-  if (workout === undefined) {
+  if (workout === undefined || user === undefined) {
     return (
       <div className="flex min-h-screen flex-col">
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
@@ -185,6 +193,14 @@ export default function WorkoutDetailsPage() {
   }
 
   const groupedExercises = groupEntriesByExercise(workout.entries as Entry[]);
+  const displayedVolume = calculateVolumeInUnit(
+    (workout.entries as Entry[]).flatMap((entry) =>
+      entry.kind === "lifting" && entry.lifting.durationSeconds === undefined
+        ? [entry.lifting]
+        : []
+    ),
+    preferredUnit
+  );
   const editableCompletedAt =
     workout.completedAt ??
     workout.startedAt + Math.max(workout.summary?.totalDurationMinutes ?? 60, 1) * 60000;
@@ -306,13 +322,13 @@ export default function WorkoutDetailsPage() {
               </div>
             )}
             {(() => {
-              const volume = workout.summary?.totalVolume;
+              const volume = displayedVolume;
               return volume && volume > 0 ? (
                 <div>
                   <p className="text-muted-foreground">Volume</p>
                   <p className="font-medium font-mono tabular-nums flex items-center gap-1">
                     <Weight className="h-4 w-4" />
-                    {volume.toLocaleString()} lb
+                    {Math.round(volume).toLocaleString()} {preferredUnit}
                   </p>
                 </div>
               ) : null;
@@ -388,7 +404,11 @@ export default function WorkoutDetailsPage() {
                               ) : (
                                 <>
                                   <span className="font-medium font-mono tabular-nums">
-                                    {entry.lifting.weight ?? 0} {entry.lifting.unit}
+                                    {displayWeight(
+                                      entry.lifting.weight ?? 0,
+                                      entry.lifting.unit,
+                                      preferredUnit
+                                    )} {preferredUnit}
                                   </span>
                                   <span className="text-muted-foreground">x</span>
                                   <span className="font-medium font-mono tabular-nums">
@@ -423,6 +443,15 @@ export default function WorkoutDetailsPage() {
                                 <Badge variant="secondary" className="text-xs">
                                   Level {entry.cardio.intensity}
                                 </Badge>
+                              )}
+                              {entry.cardio.vestWeight !== undefined && (
+                                <span className="font-medium font-mono tabular-nums">
+                                  Vest {displayWeight(
+                                    entry.cardio.vestWeight,
+                                    entry.cardio.vestWeightUnit ?? "lb",
+                                    preferredUnit
+                                  )} {preferredUnit}
+                                </span>
                               )}
                             </div>
                           </div>
