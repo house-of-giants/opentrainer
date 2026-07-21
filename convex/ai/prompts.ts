@@ -211,7 +211,9 @@ SCHEMA:
       "reasoning": "string (1-2 sentences explaining biomechanical similarity)",
       "equipmentNeeded": ["string"],
       "muscleEmphasis": "string (how stimulus compares to original)",
-      "difficultyAdjustment": "easier|similar|harder"
+      "difficultyAdjustment": "easier|similar|harder",
+      "measurementType": "reps|duration",
+      "targetHoldSeconds": "number|null (required for timed holds)"
     }
   ],
   "note": "string|null (optional insight about the swap pattern)"
@@ -230,6 +232,7 @@ GUIDELINES:
 5. Consider the user's recent training volume to identify potential imbalances.
 6. Order alternatives from most to least recommended.
 7. Keep reasoning concise but informative.
+8. Use measurementType "duration" and targetHoldSeconds for timed isometric holds.
 
 MOVEMENT PATTERN MATCHING:
 - Horizontal push → horizontal push (bench → push-up, dumbbell press)
@@ -250,7 +253,9 @@ SCHEMA:
       "exercise": "string (standard exercise name)",
       "reasoning": "string (1-2 sentences explaining why this is a good substitute)",
       "equipmentNeeded": ["string"],
-      "difficultyAdjustment": "easier|similar|harder"
+      "difficultyAdjustment": "easier|similar|harder",
+      "measurementType": "reps|duration",
+      "targetHoldSeconds": "number|null (required for timed holds)"
     }
   ]
 }
@@ -267,6 +272,7 @@ GUIDELINES:
 4. Consider the routine context (other exercises in the same day) to avoid redundancy.
 5. Order alternatives from most to least recommended.
 6. Keep reasoning concise.
+7. Use measurementType "duration" and targetHoldSeconds for timed isometric holds.
 
 COMMON EXERCISE NAMES (use these exact names):
 - Chest: Bench Press, Incline Bench Press, Dumbbell Bench Press, Push Up, Cable Fly, Dumbbell Fly, Machine Chest Press
@@ -330,6 +336,8 @@ SCHEMA:
           "kind": "lifting|cardio|mobility",
           "targetSets": number (typically 3-5 for lifting),
           "targetReps": "string (e.g., '8-12', '5x5', '3x8-10')",
+          "measurementType": "reps|duration (use duration for timed strength holds such as Plank)",
+          "targetHoldSeconds": "number|null (required when measurementType is duration)",
           "notes": "string|null (brief coaching cue or note)"
         }
       ]
@@ -372,6 +380,7 @@ PROGRAM DESIGN GUIDELINES:
    - Include both push and pull movements each session
    - For beginners: stick to basics, fewer exercises per session
    - For advanced: add variation and isolation work
+   - Use measurementType "duration" and targetHoldSeconds for timed isometric holds; do not prescribe reps for them
 
 4. GOAL-SPECIFIC ADJUSTMENTS:
    - Strength: Lower rep ranges (3-6), longer rest, compound focus

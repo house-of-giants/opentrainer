@@ -88,6 +88,8 @@ export default defineSchema({
     // For lifting exercises
     muscleGroups: v.optional(v.array(v.string())),
     equipment: v.optional(v.array(v.string())),
+    // Defaults to reps for backward compatibility. Duration is for timed holds.
+    measurementType: v.optional(v.union(v.literal("reps"), v.literal("duration"))),
     
     // For cardio exercises
     modality: v.optional(v.string()), // run, bike, row, stairstepper, etc.
@@ -170,6 +172,7 @@ export default defineSchema({
       setNumber: v.number(),
       reps: v.optional(v.number()),
       weight: v.optional(v.number()),
+      durationSeconds: v.optional(v.number()),
       unit: v.union(v.literal("kg"), v.literal("lb")),
       rpe: v.optional(v.number()), // 1-10 scale
       rir: v.optional(v.number()), // Reps in reserve
@@ -274,10 +277,11 @@ export default defineSchema({
         targetSets: v.optional(v.number()),
         targetReps: v.optional(v.string()), // e.g., "8-12"
         targetRpe: v.optional(v.number()),
+        measurementType: v.optional(v.union(v.literal("reps"), v.literal("duration"))),
         // Target for cardio
         targetDuration: v.optional(v.number()), // minutes
         targetIntensity: v.optional(v.number()),
-        // Target for mobility
+        // Target for mobility or duration-based lifting holds
         targetHoldSeconds: v.optional(v.number()),
         perSide: v.optional(v.boolean()),
         notes: v.optional(v.string()),

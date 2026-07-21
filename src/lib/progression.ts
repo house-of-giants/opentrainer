@@ -1,3 +1,5 @@
+import { convertWeight, displayWeight, type WeightUnit } from "./units";
+
 type ExerciseSession = {
   workoutId: string;
   date: string;
@@ -15,6 +17,32 @@ type ExerciseSession = {
     unit: "kg" | "lb";
   };
 };
+
+function convertSessionToUnit(
+  session: ExerciseSession,
+  unit: WeightUnit
+): ExerciseSession {
+  const sets = session.sets.map((set) => ({
+    ...set,
+    weight: convertWeight(set.weight, set.unit, unit),
+    unit,
+  }));
+  const workingSets = sets.filter((set) => set.reps > 0);
+  const bestSet = (workingSets.length > 0 ? workingSets : sets).reduce(
+    (best, current) => (current.weight > best.weight ? current : best),
+    {
+      ...session.bestSet,
+      weight: convertWeight(
+        session.bestSet.weight,
+        session.bestSet.unit,
+        unit
+      ),
+      unit,
+    }
+  );
+
+  return { ...session, sets, bestSet };
+}
 
 export type ProgressionSuggestion = {
   type: "increase_weight" | "increase_reps" | "hold" | "deload";
@@ -99,15 +127,20 @@ function getAvgRpe(sessions: ExerciseSession[]): number | null {
 
 export function calculateProgressionSuggestion(
   sessions: ExerciseSession[],
-  targetRepRange?: string
+  targetRepRange?: string,
+  preferredUnit?: WeightUnit
 ): { lastSession: GhostSetData; suggestion: ProgressionSuggestion } | null {
   if (sessions.length === 0) return null;
 
-  const lastSession = sessions[0];
+  const normalizedSessions = preferredUnit
+    ? sessions.map((session) => convertSessionToUnit(session, preferredUnit))
+    : sessions;
+
+  const lastSession = normalizedSessions[0];
   const { bestSet } = lastSession;
   const repRange = parseRepRange(targetRepRange);
 
-  const sessionsAtWeight = sessionsAtSameWeight(sessions);
+  const sessionsAtWeight = sessionsAtSameWeight(normalizedSessions);
   const consecutiveSessionsAtWeight = sessionsAtWeight.length;
 
   const sessionsHittingTarget = repRange
@@ -115,14 +148,14 @@ export function calculateProgressionSuggestion(
     : [];
   const consecutiveTargetHits = sessionsHittingTarget.length;
 
-  const sessionsAtWeightAndReps = sessionsAtSameWeightAndReps(sessions);
+  const sessionsAtWeightAndReps = sessionsAtSameWeightAndReps(normalizedSessions);
   const consecutiveAtWeightAndReps = sessionsAtWeightAndReps.length;
 
   const avgRpe = getAvgRpe(sessionsAtWeight.slice(0, 3));
   const lastRpe = bestSet.rpe;
   const hasAnyRpeData = avgRpe !== null || lastRpe !== null;
 
-  const recentRpes = sessions
+  const recentRpes = normalizedSessions
     .slice(0, 3)
     .map((s) => s.bestSet.rpe)
     .filter((rpe): rpe is number => rpe !== null);
@@ -184,7 +217,7 @@ export function calculateProgressionSuggestion(
 
   return {
     lastSession: {
-      weight: bestSet.weight,
+      weight: displayWeight(bestSet.weight, bestSet.unit, bestSet.unit),
       reps: bestSet.reps,
       rpe: bestSet.rpe,
       date: lastSession.date,
@@ -192,7 +225,10 @@ export function calculateProgressionSuggestion(
     },
     suggestion: {
       type: suggestionType,
-      targetWeight,
+      targetWeight:
+        targetWeight === null
+          ? null
+          : displayWeight(targetWeight, bestSet.unit, bestSet.unit),
       targetReps,
       reasoning,
     },

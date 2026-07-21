@@ -8,6 +8,7 @@ const liftingDataValidator = v.object({
   setNumber: v.number(),
   reps: v.optional(v.number()),
   weight: v.optional(v.number()),
+  durationSeconds: v.optional(v.number()),
   unit: v.union(v.literal("kg"), v.literal("lb")),
   rpe: v.optional(v.number()),
   rir: v.optional(v.number()),
@@ -99,6 +100,17 @@ export const addLiftingEntry = mutation({
     if (workout.status !== "in_progress") {
       logger.fail(new Error("Cannot add entries to a completed workout"));
       throw new Error("Cannot add entries to a completed workout");
+    }
+
+    const { durationSeconds, reps } = args.lifting;
+    if (durationSeconds !== undefined && (!Number.isFinite(durationSeconds) || durationSeconds <= 0)) {
+      throw new Error("Duration must be greater than zero");
+    }
+    if (durationSeconds !== undefined && reps !== undefined) {
+      throw new Error("A lifting set cannot use both duration and reps");
+    }
+    if (durationSeconds === undefined && (reps === undefined || !Number.isFinite(reps) || reps <= 0)) {
+      throw new Error("Reps must be greater than zero");
     }
 
     const existingEntry = await ctx.db
@@ -223,6 +235,19 @@ export const updateLiftingEntry = mutation({
 
     if (entry.kind !== "lifting") {
       throw new Error("Entry is not a lifting entry");
+    }
+
+    if (args.lifting) {
+      const { durationSeconds, reps } = args.lifting;
+      if (durationSeconds !== undefined && (!Number.isFinite(durationSeconds) || durationSeconds <= 0)) {
+        throw new Error("Duration must be greater than zero");
+      }
+      if (durationSeconds !== undefined && reps !== undefined) {
+        throw new Error("A lifting set cannot use both duration and reps");
+      }
+      if (durationSeconds === undefined && (reps === undefined || !Number.isFinite(reps) || reps <= 0)) {
+        throw new Error("Reps must be greater than zero");
+      }
     }
 
     await ctx.db.patch(args.entryId, {
@@ -463,7 +488,7 @@ export const getExerciseHistory = query({
       );
 
       const sets = sessionEntries
-        .filter((e) => e.lifting)
+        .filter((e) => e.lifting && e.lifting.durationSeconds === undefined)
         .map((e) => ({
           setNumber: e.lifting!.setNumber,
           weight: e.lifting!.weight ?? 0,
@@ -485,6 +510,64 @@ export const getExerciseHistory = query({
         date: new Date(workout.completedAt ?? workout.startedAt).toISOString(),
         sets,
         bestSet,
+      });
+    }
+
+    return sessions;
+  },
+});
+
+export const getTimedExerciseHistory = query({
+  args: {
+    exerciseName: v.string(),
+    sessionCount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
+    if (!user) return [];
+
+    const limit = args.sessionCount ?? 3;
+    const entries = await ctx.db
+      .query("entries")
+      .withIndex("by_user_created", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("exerciseName"), args.exerciseName),
+          q.eq(q.field("kind"), "lifting")
+        )
+      )
+      .collect();
+
+    const sessionMap = new Map<Id<"workouts">, (typeof entries)[number][]>();
+    for (const entry of entries) {
+      if (!entry.lifting?.durationSeconds) continue;
+      const existing = sessionMap.get(entry.workoutId) ?? [];
+      existing.push(entry);
+      sessionMap.set(entry.workoutId, existing);
+    }
+
+    const sessions = [];
+    for (const [workoutId, sessionEntries] of sessionMap) {
+      if (sessions.length >= limit) break;
+      const workout = await ctx.db.get(workoutId);
+      if (!workout || workout.status !== "completed") continue;
+
+      const sets = sessionEntries
+        .filter((entry) => entry.lifting?.durationSeconds)
+        .sort((a, b) => (a.lifting?.setNumber ?? 0) - (b.lifting?.setNumber ?? 0))
+        .map((entry) => ({
+          setNumber: entry.lifting!.setNumber,
+          durationSeconds: entry.lifting!.durationSeconds!,
+          rpe: entry.lifting!.rpe ?? null,
+        }));
+
+      if (sets.length === 0) continue;
+      sessions.push({
+        workoutId,
+        date: new Date(workout.completedAt ?? workout.startedAt).toISOString(),
+        sets,
+        longestHoldSeconds: Math.max(...sets.map((set) => set.durationSeconds)),
       });
     }
 
@@ -564,7 +647,7 @@ export const getExerciseHistoryInternal = internalQuery({
       );
 
       const sets = sessionEntries
-        .filter((e) => e.lifting)
+        .filter((e) => e.lifting && e.lifting.durationSeconds === undefined)
         .map((e) => ({
           setNumber: e.lifting!.setNumber,
           weight: e.lifting!.weight ?? 0,
@@ -592,5 +675,3 @@ export const getExerciseHistoryInternal = internalQuery({
     return sessions;
   },
 });
-
-

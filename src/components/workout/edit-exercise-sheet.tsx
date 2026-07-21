@@ -28,6 +28,7 @@ export type RoutineExercise = {
 	kind: "lifting" | "cardio" | "mobility";
 	targetSets: number;
 	targetReps: string;
+	measurementType?: "reps" | "duration";
 	targetDuration?: number;
 	targetHoldSeconds?: number;
 	perSide?: boolean;
@@ -81,6 +82,9 @@ function EditExerciseForm({
 	);
 	const [sets, setSets] = useState(exercise.targetSets);
 	const [reps, setReps] = useState(exercise.targetReps);
+	const [measurementType, setMeasurementType] = useState<"reps" | "duration">(
+		exercise.measurementType ?? "reps"
+	);
 	const [duration, setDuration] = useState(exercise.targetDuration ?? 20);
 	const [holdSeconds, setHoldSeconds] = useState(
 		exercise.targetHoldSeconds ?? 30
@@ -130,6 +134,7 @@ function EditExerciseForm({
 						id: exerciseId,
 						muscleGroups,
 						name,
+						measurementType,
 					});
 				} catch (error) {
 					toast.error("Failed to update exercise");
@@ -142,6 +147,7 @@ function EditExerciseForm({
 						name,
 						category: kind,
 						muscleGroups,
+						measurementType,
 					});
 				} catch (error) {
 					toast.error("Failed to create exercise");
@@ -158,6 +164,7 @@ function EditExerciseForm({
 			kind,
 			targetSets: sets,
 			targetReps: reps,
+			measurementType: kind === "lifting" ? measurementType : undefined,
 			targetDuration: duration,
 			targetHoldSeconds: holdSeconds,
 			perSide,
@@ -185,7 +192,7 @@ function EditExerciseForm({
 			<DrawerHeader>
 				<DrawerTitle>Edit Exercise</DrawerTitle>
 				<DrawerDescription>
-					Configure sets, reps, and rest time
+					Configure how this exercise is measured and logged
 				</DrawerDescription>
 			</DrawerHeader>
 
@@ -228,6 +235,18 @@ function EditExerciseForm({
 
 				{kind === "lifting" ? (
 					<>
+						<div className="space-y-3">
+							<Label>Measure By</Label>
+							<Tabs
+								value={measurementType}
+								onValueChange={(value) => setMeasurementType(value as "reps" | "duration")}
+							>
+								<TabsList className="grid h-12 w-full grid-cols-2">
+									<TabsTrigger value="reps" className="h-10">Reps</TabsTrigger>
+									<TabsTrigger value="duration" className="h-10">Time</TabsTrigger>
+								</TabsList>
+							</Tabs>
+						</div>
 						<div className="space-y-3">
 							<Label>
 								Muscle Groups
@@ -305,6 +324,7 @@ function EditExerciseForm({
 							</div>
 						</div>
 
+						{measurementType === "reps" ? (
 						<div className="space-y-3">
 							<Label>Reps</Label>
 							<div className="grid grid-cols-4 gap-2">
@@ -338,6 +358,35 @@ function EditExerciseForm({
 								className="h-12 text-center font-mono"
 							/>
 						</div>
+						) : (
+							<div className="space-y-4">
+								<div className="flex items-center justify-between">
+									<Label>Hold Duration</Label>
+									<span className="text-2xl font-mono font-bold tabular-nums">
+										{holdSeconds}s
+									</span>
+								</div>
+								<div className="grid grid-cols-4 gap-2">
+									{[15, 30, 45, 60].map((preset) => (
+										<Button
+											key={preset}
+											variant={holdSeconds === preset ? "default" : "outline"}
+											className="h-12 font-mono"
+											onClick={() => setHoldSeconds(preset)}
+										>
+											{preset}s
+										</Button>
+									))}
+								</div>
+								<Slider
+									value={[holdSeconds]}
+									onValueChange={([value]) => setHoldSeconds(value)}
+									min={5}
+									max={300}
+									step={5}
+								/>
+							</div>
+						)}
 
 						<div className="space-y-4">
 							<div className="flex items-center justify-between">

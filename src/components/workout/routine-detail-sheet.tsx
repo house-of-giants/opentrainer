@@ -37,6 +37,8 @@ export type RoutineForDetail = {
       exerciseName: string;
       targetSets?: number;
       targetReps?: string;
+      measurementType?: "reps" | "duration";
+      targetHoldSeconds?: number;
     }>;
   }>;
 };
@@ -151,7 +153,9 @@ export function RoutineDetailSheet({ routine, onOpenChange }: RoutineDetailSheet
                           </span>
                           {ex.targetSets && (
                             <span className="text-xs text-muted-foreground font-mono tabular-nums ml-2">
-                              {ex.targetSets}×{ex.targetReps || "?"}
+                              {ex.targetSets}×{ex.measurementType === "duration"
+                                ? `${ex.targetHoldSeconds ?? 30}s`
+                                : ex.targetReps || "?"}
                             </span>
                           )}
                         </div>
