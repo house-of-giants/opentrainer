@@ -38,7 +38,6 @@ import { calculateProgressionSuggestion } from "@/lib/progression";
 import {
 	calculateVolumeInUnit,
 	displayWeight,
-	editedWeightForStorage,
 	type WeightUnit,
 } from "@/lib/units";
 import {
@@ -46,6 +45,10 @@ import {
 	createCardioPersistenceGate,
 } from "@/lib/cardio-persistence";
 import { getExerciseGroupKey } from "@/lib/workout-exercise-group";
+import {
+	buildRepLiftingUpdate,
+	createEditableLiftingSet,
+} from "@/lib/workout-set-edit";
 import posthog from "posthog-js";
 
 type EntryData = {
@@ -770,22 +773,12 @@ export default function ActiveWorkoutPage() {
 			rpe?: number | null;
 		}
 	) => {
-		if (!set.entryId) return;
-		const storedSet = exerciseGroups
-			.get(exerciseName)
-			?.entries.find((entry) => entry._id === set.entryId)?.lifting;
-		setEditingSet({
-			entryId: set.entryId,
+		const editableSet = createEditableLiftingSet(
+			exerciseGroups,
 			exerciseName,
-			setNumber: set.setNumber,
-			reps: set.reps,
-			weight: set.weight,
-			unit: set.unit,
-			storedWeight: storedSet?.weight,
-			storedUnit: storedSet?.unit,
-			isBodyweight: set.isBodyweight,
-			rpe: set.rpe,
-		});
+			set
+		);
+		if (editableSet) setEditingSet(editableSet);
 	};
 
 	const handleEditTimedSet = (exerciseName: string, set: TimedSetData) => {
@@ -819,24 +812,7 @@ export default function ActiveWorkoutPage() {
 								unit: editingSet.unit,
 								rpe: data.rpe ?? undefined,
 							}
-						: {
-								setNumber: editingSet.setNumber,
-								reps: data.reps,
-								weight:
-									data.weight === undefined
-										? undefined
-										: editedWeightForStorage({
-												displayedWeight: data.weight,
-												displayUnit: editingSet.unit,
-												storedUnit:
-													editingSet.storedUnit ?? editingSet.unit,
-												originalDisplayedWeight: editingSet.weight,
-												originalStoredWeight: editingSet.storedWeight,
-											}),
-								unit: editingSet.storedUnit ?? editingSet.unit,
-								isBodyweight: editingSet.isBodyweight,
-								rpe: data.rpe ?? undefined,
-							},
+						: buildRepLiftingUpdate(editingSet, data),
 			});
 			vibrate("success");
 			toast.success("Set updated");

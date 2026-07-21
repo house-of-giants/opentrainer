@@ -57,6 +57,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { normalizeExerciseName } from "@/lib/exercise-names";
 
 type RoutineExercise = {
   id: string;
@@ -470,6 +471,15 @@ export default function NewRoutinePage() {
     return true;
   });
 
+  const normalizedSearchQuery = normalizeExerciseName(searchQuery);
+  const hasExactExerciseMatch = exercises?.some(
+    (exercise) =>
+      normalizeExerciseName(exercise.name) === normalizedSearchQuery ||
+      exercise.aliases?.some(
+        (alias) => normalizeExerciseName(alias) === normalizedSearchQuery
+      )
+  );
+
   const needsSeeding = exercises && exercises.length === 0;
 
   return (
@@ -690,7 +700,7 @@ export default function NewRoutinePage() {
             )}
 
             <div className="flex-1 overflow-y-auto space-y-2">
-              {searchQuery.trim() && (
+              {searchQuery.trim() && !hasExactExerciseMatch && (
                 <Button
                   variant="outline"
                   className="w-full justify-start h-auto py-3 mb-2 bg-primary/5 border-primary/20 hover:bg-primary/10 text-primary hover:text-primary"

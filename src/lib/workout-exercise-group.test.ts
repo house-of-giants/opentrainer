@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { getExerciseGroupKey } from "./workout-exercise-group";
+import {
+	getExerciseGroup,
+	getExerciseGroupKey,
+} from "./workout-exercise-group";
 
 describe("getExerciseGroupKey", () => {
 	test("separates rep and timed lifting rows with the same name", () => {
@@ -26,6 +29,25 @@ describe("getExerciseGroupKey", () => {
 				category: "lifting",
 				measurementType: "reps",
 			})
+		);
+	});
+
+	test("retrieves a rep-based lifting group from its structured key", () => {
+		const descriptor = {
+			name: "Bench Press",
+			category: "lifting" as const,
+			measurementType: "reps" as const,
+		};
+		const group = { storedWeight: 225 };
+		const groups = new Map([[getExerciseGroupKey(descriptor), group]]);
+
+		assert.equal(getExerciseGroup(groups, descriptor), group);
+		assert.equal(
+			getExerciseGroup(groups, {
+				...descriptor,
+				measurementType: "duration",
+			}),
+			undefined
 		);
 	});
 });
