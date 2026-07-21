@@ -12,3 +12,10 @@ export function getExerciseGroupKey(exercise: ExerciseGroupDescriptor) {
 			: "reps";
 	return JSON.stringify([exercise.name, category, measurementType]);
 }
+
+export function getExerciseGroup<T>(
+	groups: ReadonlyMap<string, T>,
+	exercise: ExerciseGroupDescriptor
+): T | undefined {
+	return groups.get(getExerciseGroupKey(exercise));
+}

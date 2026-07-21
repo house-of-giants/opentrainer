@@ -45,7 +45,10 @@ import {
 	CardioSaveBlockedError,
 	createCardioPersistenceGate,
 } from "@/lib/cardio-persistence";
-import { getExerciseGroupKey } from "@/lib/workout-exercise-group";
+import {
+	getExerciseGroup,
+	getExerciseGroupKey,
+} from "@/lib/workout-exercise-group";
 import posthog from "posthog-js";
 
 type EntryData = {
@@ -771,8 +774,11 @@ export default function ActiveWorkoutPage() {
 		}
 	) => {
 		if (!set.entryId) return;
-		const storedSet = exerciseGroups
-			.get(exerciseName)
+		const storedSet = getExerciseGroup(exerciseGroups, {
+			name: exerciseName,
+			category: "lifting",
+			measurementType: "reps",
+		})
 			?.entries.find((entry) => entry._id === set.entryId)?.lifting;
 		setEditingSet({
 			entryId: set.entryId,
