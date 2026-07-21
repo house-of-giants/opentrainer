@@ -64,7 +64,7 @@ type EntryData = {
 	cardio?: {
 		durationSeconds: number;
 		distance?: number;
-		distanceUnit?: "km" | "mi";
+		distanceUnit?: "m" | "km" | "mi";
 		rpe?: number;
 		vestWeight?: number;
 		vestWeightUnit?: "kg" | "lb";

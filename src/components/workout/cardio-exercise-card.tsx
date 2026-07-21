@@ -9,6 +9,10 @@ import { SetStepper } from "./set-stepper";
 import { useHaptic } from "@/hooks/use-haptic";
 import { Check, ChevronDown, ChevronUp, Dumbbell, MessageSquare } from "lucide-react";
 import { CardioSaveBlockedError } from "@/lib/cardio-persistence";
+import {
+  getCardioDisplaySummary,
+  type PersistedCardioSummary,
+} from "@/lib/cardio-display";
 import { cn } from "@/lib/utils";
 
 type ExerciseStatus = "completed" | "current" | "upcoming";
@@ -23,6 +27,12 @@ export type CardioLogData = {
   intensity?: number;
 };
 
+export type PersistedCardioLogData = Omit<
+  CardioLogData,
+  "distanceUnit"
+> &
+  PersistedCardioSummary;
+
 interface CardioExerciseCardProps {
   exerciseName: string;
   primaryMetric: "duration" | "distance";
@@ -31,7 +41,7 @@ interface CardioExerciseCardProps {
   distanceUnit?: "km" | "mi";
   defaultMinutes?: number;
   note?: string;
-  loggedData?: CardioLogData;
+  loggedData?: PersistedCardioLogData;
   onLog: (data: CardioLogData) => Promise<void>;
   onNoteChange?: (note: string) => void;
   onSelect?: () => void;
@@ -205,10 +215,12 @@ export function CardioExerciseCard({
   const totalSeconds = minutes * 60 + seconds;
   const canLog = primaryMetric === "duration" ? totalSeconds > 0 : distance > 0;
   const isLogged = loggedData !== undefined || hasAcknowledgedLog;
-  const loggedDurationSeconds = loggedData?.durationSeconds ?? totalSeconds;
-  const loggedDistance = loggedData?.distance ?? distance;
-  const loggedDistanceUnit = loggedData?.distanceUnit ?? distanceUnit;
-  const loggedRpe = loggedData?.rpe ?? rpe;
+  const loggedSummary = getCardioDisplaySummary(loggedData, {
+    durationSeconds: totalSeconds,
+    distance,
+    distanceUnit,
+    rpe,
+  });
   const loggedVestWeight = loggedData?.vestWeight ?? vestWeight;
   const loggedVestWeightUnit = loggedData?.vestWeightUnit ?? unit;
   const hasLoggedVest = loggedData
@@ -355,11 +367,13 @@ export function CardioExerciseCard({
 
             {displayStatus === "completed" && isLogged && (
               <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                {formatDuration(loggedDurationSeconds)}
+                {formatDuration(loggedSummary.durationSeconds)}
                 {primaryMetric === "distance" &&
-                  loggedDistance > 0 &&
-                  ` · ${loggedDistance} ${loggedDistanceUnit}`}
-                {` · RPE ${loggedRpe}`}
+                  loggedSummary.distance !== undefined &&
+                  loggedSummary.distance > 0 &&
+                  ` · ${loggedSummary.distance} ${loggedSummary.distanceUnit}`}
+                {loggedSummary.rpe !== undefined &&
+                  ` · RPE ${loggedSummary.rpe}`}
               </span>
             )}
           </div>
@@ -390,20 +404,24 @@ export function CardioExerciseCard({
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <div className="font-mono text-2xl tabular-nums">
-                      {formatDuration(loggedDurationSeconds)}
+                      {formatDuration(loggedSummary.durationSeconds)}
                     </div>
-                    {primaryMetric === "distance" && loggedDistance > 0 && (
-                      <div className="font-mono text-lg tabular-nums text-muted-foreground">
-                        {loggedDistance} {loggedDistanceUnit}
+                    {primaryMetric === "distance" &&
+                      loggedSummary.distance !== undefined &&
+                      loggedSummary.distance > 0 && (
+                        <div className="font-mono text-lg tabular-nums text-muted-foreground">
+                          {loggedSummary.distance} {loggedSummary.distanceUnit}
+                        </div>
+                      )}
+                  </div>
+                  {loggedSummary.rpe !== undefined && (
+                    <div className="text-right">
+                      <div className="text-sm text-muted-foreground">RPE</div>
+                      <div className="font-mono text-2xl tabular-nums">
+                        {loggedSummary.rpe}
                       </div>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground">RPE</div>
-                    <div className="font-mono text-2xl tabular-nums">
-                      {loggedRpe}
                     </div>
-                  </div>
+                  )}
                 </div>
                 {hasLoggedVest && (
                   <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground border-t pt-3">
