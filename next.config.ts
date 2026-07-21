@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
+const clientReleaseId =
+  process.env.VERCEL_ENV === "production"
+    ? (process.env.VERCEL_DEPLOYMENT_ID ?? "")
+    : "";
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_OPENTRAINER_RELEASE_ID: clientReleaseId,
+  },
   /* config options here */
   async rewrites() {
     return [
