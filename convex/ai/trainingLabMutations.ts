@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query, internalMutation } from "../_generated/server";
 import { getCurrentUser } from "../auth";
 import type { TrainingLabReport, TrainingSnapshot, TrainingLabCTAState, TrainingLabDashboardStats } from "./trainingLabTypes";
+import { getMondayWeekKey, getMondayWeekStartUtc, WEEK_IN_MS } from "../lib/week";
 
 export const storeAssessment = internalMutation({
   args: {
@@ -85,6 +86,8 @@ export const getCtaState = query({
     const totalWorkouts = allWorkouts.length;
     
     const now = Date.now();
+    const weekStart = getMondayWeekStartUtc(now);
+    const currentWeekWorkouts = allWorkouts.filter((w) => w.startedAt >= weekStart);
     const oldestWorkout = allWorkouts.length > 0 
       ? Math.min(...allWorkouts.map(w => w.startedAt))
       : now;
@@ -113,18 +116,20 @@ export const getCtaState = query({
     const hasReport = !!lastAssessment;
     const lastAssessmentDate = lastAssessment?.createdAt ?? 0;
 
-    const workoutsSince = allWorkouts.filter((w) => w.startedAt > lastAssessmentDate);
+    const workoutsSince = currentWeekWorkouts.filter((w) => w.startedAt > lastAssessmentDate);
     const count = workoutsSince.length;
 
-    const canGenerate = hasReport ? count > 0 : totalWorkouts > 0;
+    const canGenerate = hasReport ? count > 0 : currentWeekWorkouts.length > 0;
 
     let message: string;
     if (totalWorkouts === 0) {
       message = "Complete your first workout to unlock insights";
+    } else if (currentWeekWorkouts.length === 0) {
+      message = "Complete a workout this week to generate your analysis";
     } else if (!hasReport) {
-      message = totalWorkouts === 1
+      message = currentWeekWorkouts.length === 1
         ? "Your first analysis is ready"
-        : `${totalWorkouts} workouts logged. Generate your analysis`;
+        : `${currentWeekWorkouts.length} workouts this week. Generate your analysis`;
     } else if (count === 0) {
       message = "Log a workout to refresh your analysis";
     } else {
@@ -176,14 +181,6 @@ export const getLatestReport = query({
   },
 });
 
-function getWeekStart(timestamp: number): string {
-  const date = new Date(timestamp);
-  const dayOfWeek = date.getDay();
-  date.setDate(date.getDate() - dayOfWeek);
-  date.setHours(0, 0, 0, 0);
-  return date.toISOString().split("T")[0];
-}
-
 export const getDashboardStats = query({
   args: {},
   handler: async (ctx): Promise<TrainingLabDashboardStats | null> => {
@@ -191,9 +188,9 @@ export const getDashboardStats = query({
     if (!user) return null;
 
     const now = Date.now();
-    const weekStart = new Date(getWeekStart(now)).getTime();
-    const twoWeeksAgo = weekStart - 7 * 24 * 60 * 60 * 1000;
-    const fourWeeksAgo = weekStart - 28 * 24 * 60 * 60 * 1000;
+    const weekStart = getMondayWeekStartUtc(now);
+    const twoWeeksAgo = weekStart - WEEK_IN_MS;
+    const fourWeeksAgo = weekStart - 4 * WEEK_IN_MS;
 
     const recentWorkouts = await ctx.db
       .query("workouts")
@@ -269,15 +266,15 @@ export const getDashboardStats = query({
 
     const weeklyWorkouts = new Map<string, number>();
     for (const workout of allWorkouts) {
-      const weekKey = getWeekStart(workout.startedAt);
+      const weekKey = getMondayWeekKey(workout.startedAt);
       weeklyWorkouts.set(weekKey, (weeklyWorkouts.get(weekKey) ?? 0) + 1);
     }
 
     let currentStreak = 0;
     let longestStreak = 0;
     let tempStreak = 0;
-    const currentWeek = getWeekStart(now);
-    const lastWeek = getWeekStart(now - 7 * 24 * 60 * 60 * 1000);
+    const currentWeek = getMondayWeekKey(now);
+    const lastWeek = getMondayWeekKey(weekStart - WEEK_IN_MS);
 
     const weeks = Array.from(weeklyWorkouts.keys()).sort().reverse();
     for (const week of weeks) {
