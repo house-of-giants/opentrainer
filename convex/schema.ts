@@ -98,6 +98,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
+    .index("by_system", ["isSystemExercise"])
     .index("by_category", ["category"])
     .index("by_name", ["name"]),
 

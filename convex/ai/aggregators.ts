@@ -949,10 +949,13 @@ export const getExerciseContext = internalQuery({
     exerciseName: v.string(),
   },
   handler: async (ctx, args) => {
-    const exercise = await ctx.db
+    const exercises = await ctx.db
       .query("exercises")
       .withIndex("by_name", (q) => q.eq("name", args.exerciseName))
-      .first();
+      .collect();
+    const exercise =
+      exercises.find((candidate) => candidate.isSystemExercise) ??
+      exercises.find((candidate) => candidate.userId === args.userId);
 
     const recentEntries = await ctx.db
       .query("entries")

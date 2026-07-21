@@ -1,6 +1,79 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { getCurrentUser } from "./auth";
+
+function cleanExerciseName(name: string) {
+  return name.normalize("NFKC").trim().replace(/\s+/g, " ");
+}
+
+function normalizeExerciseName(name: string) {
+  return cleanExerciseName(name).toLowerCase();
+}
+
+function hasExerciseName(exercise: Doc<"exercises">, normalizedName: string) {
+  return (
+    normalizeExerciseName(exercise.name) === normalizedName ||
+    exercise.aliases?.some(
+      (alias) => normalizeExerciseName(alias) === normalizedName
+    ) === true
+  );
+}
+
+function findMatchingExercise(
+  systemExercises: Doc<"exercises">[],
+  userExercises: Doc<"exercises">[],
+  normalizedName: string
+) {
+  return (
+    systemExercises.find(
+      (exercise) => normalizeExerciseName(exercise.name) === normalizedName
+    ) ??
+    userExercises.find(
+      (exercise) => normalizeExerciseName(exercise.name) === normalizedName
+    ) ??
+    systemExercises.find((exercise) => hasExerciseName(exercise, normalizedName)) ??
+    userExercises.find((exercise) => hasExerciseName(exercise, normalizedName))
+  );
+}
+
+async function getVisibleExercises(ctx: QueryCtx | MutationCtx) {
+  const user = await getCurrentUser(ctx, {
+    requireAuth: false,
+    requireUser: false,
+  });
+  const systemExercises = await ctx.db
+    .query("exercises")
+    .withIndex("by_system", (q) => q.eq("isSystemExercise", true))
+    .collect();
+  const userExercises = user
+    ? await ctx.db
+        .query("exercises")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .collect()
+    : [];
+
+  return [...systemExercises, ...userExercises];
+}
+
+function deduplicateExercises(exercises: Doc<"exercises">[]) {
+  const preferredExercises = [...exercises].sort((a, b) => {
+    if (a.isSystemExercise !== b.isSystemExercise) {
+      return a.isSystemExercise ? -1 : 1;
+    }
+    return a.createdAt - b.createdAt;
+  });
+  const uniqueExercises = new Map<string, Doc<"exercises">>();
+
+  for (const exercise of preferredExercises) {
+    const normalizedName = normalizeExerciseName(exercise.name);
+    if (!uniqueExercises.has(normalizedName)) {
+      uniqueExercises.set(normalizedName, exercise);
+    }
+  }
+
+  return Array.from(uniqueExercises.values());
+}
 
 // ============================================================================
 // System Exercises Data
@@ -150,7 +223,7 @@ export const getExercises = query({
     search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    let exercises = await ctx.db.query("exercises").collect();
+    let exercises = await getVisibleExercises(ctx);
 
     if (args.category) {
       exercises = exercises.filter(e => e.category === args.category);
@@ -170,7 +243,7 @@ export const getExercises = query({
       );
     }
 
-    return exercises.sort((a, b) => {
+    return deduplicateExercises(exercises).sort((a, b) => {
       if (a.isSystemExercise !== b.isSystemExercise) {
         return a.isSystemExercise ? -1 : 1;
       }
@@ -185,7 +258,15 @@ export const getExercises = query({
 export const getExercise = query({
   args: { id: v.id("exercises") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const exercise = await ctx.db.get(args.id);
+    if (!exercise) return null;
+    if (exercise.isSystemExercise) return exercise;
+
+    const user = await getCurrentUser(ctx, {
+      requireAuth: false,
+      requireUser: false,
+    });
+    return exercise.userId === user?._id ? exercise : null;
   },
 });
 
@@ -195,7 +276,7 @@ export const getExercise = query({
 export const getMuscleGroups = query({
   args: {},
   handler: async (ctx) => {
-    const exercises = await ctx.db.query("exercises").collect();
+    const exercises = await getVisibleExercises(ctx);
     const muscleGroups = new Set<string>();
     
     for (const exercise of exercises) {
@@ -318,9 +399,33 @@ export const createExercise = mutation({
     const user = await getCurrentUser(ctx);
     if (!user) throw new Error("User not found");
 
+    const name = cleanExerciseName(args.name);
+    const normalizedName = normalizeExerciseName(name);
+    if (!normalizedName) {
+      throw new Error("Exercise name is required");
+    }
+
+    const systemExercises = await ctx.db
+      .query("exercises")
+      .withIndex("by_system", (q) => q.eq("isSystemExercise", true))
+      .collect();
+    const userExercises = await ctx.db
+      .query("exercises")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const existingExercise = findMatchingExercise(
+      systemExercises,
+      userExercises,
+      normalizedName
+    );
+
+    if (existingExercise) {
+      return existingExercise._id;
+    }
+
     const id = await ctx.db.insert("exercises", {
       userId: user._id,
-      name: args.name,
+      name,
       aliases: args.aliases,
       category: args.category,
       muscleGroups: args.muscleGroups,
@@ -371,7 +476,25 @@ export const updateExercise = mutation({
     }
 
     if (args.name !== undefined) {
-      updates.name = args.name;
+      const name = cleanExerciseName(args.name);
+      const normalizedName = normalizeExerciseName(name);
+      if (!normalizedName) {
+        throw new Error("Exercise name is required");
+      }
+
+      if (normalizedName !== normalizeExerciseName(exercise.name)) {
+        const visibleExercises = await getVisibleExercises(ctx);
+        const duplicate = visibleExercises.find(
+          (candidate) =>
+            candidate._id !== exercise._id &&
+            hasExerciseName(candidate, normalizedName)
+        );
+        if (duplicate) {
+          throw new Error("An exercise with this name already exists");
+        }
+      }
+
+      updates.name = name;
     }
 
     await ctx.db.patch(args.id, updates);
