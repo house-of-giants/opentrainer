@@ -9,6 +9,7 @@ import type { Doc } from "../_generated/dataModel";
 import type { AggregatedWorkoutData } from "./aggregators";
 import type { TrainingLabReport, TrainingSnapshot } from "./trainingLabTypes";
 import { createConvexLogger, truncateId } from "../lib/logger";
+import { getMondayWeekStartUtc } from "../lib/week";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -117,10 +118,16 @@ export const generateReport = action({
     reportType: v.union(v.literal("snapshot"), v.literal("full")),
   },
   handler: async (ctx, args): Promise<TrainingLabReport | TrainingSnapshot> => {
+    const periodDays = args.periodDays ?? 7;
+    const now = Date.now();
+    const periodStart =
+      periodDays === 7
+        ? getMondayWeekStartUtc(now)
+        : now - periodDays * 24 * 60 * 60 * 1000;
     const logger = createConvexLogger("ai.trainingLab.generateReport");
     logger.set({
       ai: { action: "trainingLabReport", model: "gemini" },
-      request: { reportType: args.reportType, periodDays: args.periodDays ?? 7 },
+      request: { reportType: args.reportType, periodDays },
     });
 
     const identity = await ctx.auth.getUserIdentity();
@@ -166,7 +173,8 @@ export const generateReport = action({
 
     const aggregated = (await ctx.runQuery(internal.ai.aggregators.aggregateWorkoutData, {
       userId: user._id,
-      days: args.periodDays ?? 7,
+      days: periodDays,
+      periodStart,
       includeHistoricalContext: true,
     })) as AggregatedWorkoutData;
 
@@ -176,7 +184,7 @@ export const generateReport = action({
       throw new Error("No workouts to analyze");
     }
 
-    logger.set({ data: { workoutCount, periodDays: args.periodDays ?? 7 } });
+    logger.set({ data: { workoutCount, periodDays } });
 
     const systemPrompt =
       args.reportType === "full" ? TRAINING_LAB_FULL_PROMPT : TRAINING_LAB_SNAPSHOT_PROMPT;

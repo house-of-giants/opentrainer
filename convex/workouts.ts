@@ -4,6 +4,7 @@ import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./auth";
 import { createConvexLogger, truncateId } from "./lib/logger";
+import { getMondayWeekStartUtc, WEEK_IN_MS } from "./lib/week";
 
 type WorkoutSummary = NonNullable<Doc<"workouts">["summary"]>;
 
@@ -686,24 +687,17 @@ export const getDashboardStats = query({
     }
 
     // Calculate start of current week (Monday)
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    // getDay() returns 0 for Sunday, 1 for Monday, etc.
-    // We want Monday as day 0, so we adjust: (dayOfWeek + 6) % 7 gives us days since Monday
-    const daysSinceMonday = (dayOfWeek + 6) % 7;
-    const mondayOfThisWeek = new Date(now);
-    mondayOfThisWeek.setDate(now.getDate() - daysSinceMonday);
-    mondayOfThisWeek.setHours(0, 0, 0, 0);
+    const now = Date.now();
+    const mondayOfThisWeek = getMondayWeekStartUtc(now);
 
     // Get current week (Monday through Sunday) for activity dots
     const currentWeek: { date: string; dayName: string; hasWorkout: boolean }[] = [];
 
     for (let i = 0; i < 7; i++) {
-      const date = new Date(mondayOfThisWeek);
-      date.setDate(mondayOfThisWeek.getDate() + i);
+      const date = new Date(mondayOfThisWeek + i * 24 * 60 * 60 * 1000);
       currentWeek.push({
         date: date.toISOString().split("T")[0],
-        dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
+        dayName: date.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }),
         hasWorkout: false,
       });
     }
@@ -715,7 +709,7 @@ export const getDashboardStats = query({
       .filter((q) =>
         q.and(
           q.eq(q.field("status"), "completed"),
-          q.gte(q.field("startedAt"), mondayOfThisWeek.getTime())
+          q.gte(q.field("startedAt"), mondayOfThisWeek)
         )
       )
       .collect();
@@ -731,7 +725,7 @@ export const getDashboardStats = query({
 
     // Calculate this week's stats
     const thisWeekWorkouts = recentWorkouts.filter(
-      (w) => w.startedAt >= mondayOfThisWeek.getTime()
+      (w) => w.startedAt >= mondayOfThisWeek
     );
 
     const weeklyWorkoutCount = thisWeekWorkouts.length;
@@ -746,9 +740,7 @@ export const getDashboardStats = query({
     }
 
     // Get weekly trend data (last 4 weeks)
-    const fourWeeksAgo = new Date(now);
-    fourWeeksAgo.setDate(now.getDate() - 28);
-    fourWeeksAgo.setHours(0, 0, 0, 0);
+    const fourWeeksAgo = mondayOfThisWeek - 3 * WEEK_IN_MS;
 
     const trendWorkouts = await ctx.db
       .query("workouts")
@@ -756,7 +748,7 @@ export const getDashboardStats = query({
       .filter((q) =>
         q.and(
           q.eq(q.field("status"), "completed"),
-          q.gte(q.field("startedAt"), fourWeeksAgo.getTime())
+          q.gte(q.field("startedAt"), fourWeeksAgo)
         )
       )
       .collect();
@@ -764,15 +756,11 @@ export const getDashboardStats = query({
     // Group by week for trend chart
     const weeklyTrend: { week: string; volume: number; workouts: number; duration: number }[] = [];
     for (let i = 3; i >= 0; i--) {
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - (i * 7 + dayOfWeek));
-      weekStart.setHours(0, 0, 0, 0);
-
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 7);
+      const weekStart = mondayOfThisWeek - i * WEEK_IN_MS;
+      const weekEnd = weekStart + WEEK_IN_MS;
 
       const weekWorkouts = trendWorkouts.filter(
-        (w) => w.startedAt >= weekStart.getTime() && w.startedAt < weekEnd.getTime()
+        (w) => w.startedAt >= weekStart && w.startedAt < weekEnd
       );
 
       let volume = 0;
@@ -783,7 +771,11 @@ export const getDashboardStats = query({
       }
 
       weeklyTrend.push({
-        week: weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        week: new Date(weekStart).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        }),
         volume,
         workouts: weekWorkouts.length,
         duration,
