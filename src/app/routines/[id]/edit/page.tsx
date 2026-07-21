@@ -64,6 +64,7 @@ import {
 	type RoutineExercise,
 } from "@/components/workout/edit-exercise-sheet";
 import { ImportDayDialog } from "@/components/workout/import-day-dialog";
+import { normalizeExerciseName } from "@/lib/exercise-names";
 
 type RoutineDay = {
 	id: string;
@@ -437,6 +438,15 @@ export default function EditRoutinePage() {
 		return true;
 	});
 
+	const normalizedSearchQuery = normalizeExerciseName(searchQuery);
+	const hasExactExerciseMatch = exercises?.some(
+		(exercise) =>
+			normalizeExerciseName(exercise.name) === normalizedSearchQuery ||
+			exercise.aliases?.some(
+				(alias) => normalizeExerciseName(alias) === normalizedSearchQuery
+			)
+	);
+
 	const needsSeeding = exercises && exercises.length === 0;
 
 	if (routine === undefined) {
@@ -754,7 +764,7 @@ export default function EditRoutinePage() {
 						)}
 
 						<div className="flex-1 overflow-y-auto -mx-4 px-4 space-y-1">
-							{searchQuery.trim() && (
+							{searchQuery.trim() && !hasExactExerciseMatch && (
 								<button
 									className="w-full flex items-center justify-between p-3 rounded-lg text-left bg-primary/5 border border-primary/20 hover:bg-primary/10 active:bg-primary/15 transition-colors mb-2"
 									onClick={() => {
