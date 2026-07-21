@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RpeSlider } from "./rpe-slider";
@@ -8,9 +8,20 @@ import { NoteSheet } from "./note-sheet";
 import { SetStepper } from "./set-stepper";
 import { useHaptic } from "@/hooks/use-haptic";
 import { Check, ChevronDown, ChevronUp, Dumbbell, MessageSquare } from "lucide-react";
+import { CardioSaveBlockedError } from "@/lib/cardio-persistence";
 import { cn } from "@/lib/utils";
 
 type ExerciseStatus = "completed" | "current" | "upcoming";
+
+export type CardioLogData = {
+  durationSeconds: number;
+  distance?: number;
+  distanceUnit?: "km" | "mi";
+  rpe?: number;
+  vestWeight?: number;
+  vestWeightUnit?: "kg" | "lb";
+  intensity?: number;
+};
 
 interface CardioExerciseCardProps {
   exerciseName: string;
@@ -20,15 +31,8 @@ interface CardioExerciseCardProps {
   distanceUnit?: "km" | "mi";
   defaultMinutes?: number;
   note?: string;
-  onLog: (data: {
-    durationSeconds: number;
-    distance?: number;
-    distanceUnit?: "km" | "mi";
-    rpe?: number;
-    vestWeight?: number;
-    vestWeightUnit?: "kg" | "lb";
-    intensity?: number;
-  }) => void;
+  loggedData?: CardioLogData;
+  onLog: (data: CardioLogData) => Promise<void>;
   onNoteChange?: (note: string) => void;
   onSelect?: () => void;
 }
@@ -177,6 +181,7 @@ export function CardioExerciseCard({
   distanceUnit = "mi",
   defaultMinutes = 20,
   note,
+  loggedData,
   onLog,
   onNoteChange,
   onSelect,
@@ -190,11 +195,25 @@ export function CardioExerciseCard({
   const [showEquipment, setShowEquipment] = useState(false);
   const [useVest, setUseVest] = useState(false);
   const [vestWeight, setVestWeight] = useState(unit === "kg" ? 10 : 20);
-  const [isLogged, setIsLogged] = useState(false);
+  const [hasAcknowledgedLog, setHasAcknowledgedLog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [logError, setLogError] = useState<string | null>(null);
   const [showNoteSheet, setShowNoteSheet] = useState(false);
+  const isSavingRef = useRef(false);
+  const logErrorId = useId();
 
   const totalSeconds = minutes * 60 + seconds;
   const canLog = primaryMetric === "duration" ? totalSeconds > 0 : distance > 0;
+  const isLogged = loggedData !== undefined || hasAcknowledgedLog;
+  const loggedDurationSeconds = loggedData?.durationSeconds ?? totalSeconds;
+  const loggedDistance = loggedData?.distance ?? distance;
+  const loggedDistanceUnit = loggedData?.distanceUnit ?? distanceUnit;
+  const loggedRpe = loggedData?.rpe ?? rpe;
+  const loggedVestWeight = loggedData?.vestWeight ?? vestWeight;
+  const loggedVestWeightUnit = loggedData?.vestWeightUnit ?? unit;
+  const hasLoggedVest = loggedData
+    ? loggedData.vestWeight !== undefined
+    : useVest;
 
   const isExpanded = status === "current";
   const displayStatus = isLogged && status !== "current" ? "completed" : status;
@@ -207,21 +226,37 @@ export function CardioExerciseCard({
     }
   };
 
-  const handleLog = () => {
-    if (!canLog) return;
-    vibrate("success");
+  const handleLog = async () => {
+    if (!canLog || isSavingRef.current) return;
 
-    onLog({
-      durationSeconds: totalSeconds,
-      distance: primaryMetric === "distance" ? distance : undefined,
-      distanceUnit: primaryMetric === "distance" ? distanceUnit : undefined,
-      rpe,
-      vestWeight: useVest ? vestWeight : undefined,
-      vestWeightUnit: useVest ? unit : undefined,
-      intensity: rpe,
-    });
+    isSavingRef.current = true;
+    setIsSaving(true);
+    setLogError(null);
 
-    setIsLogged(true);
+    try {
+      await onLog({
+        durationSeconds: totalSeconds,
+        distance: primaryMetric === "distance" ? distance : undefined,
+        distanceUnit: primaryMetric === "distance" ? distanceUnit : undefined,
+        rpe,
+        vestWeight: useVest ? vestWeight : undefined,
+        vestWeightUnit: useVest ? unit : undefined,
+        intensity: rpe,
+      });
+
+      setHasAcknowledgedLog(true);
+      vibrate("success");
+    } catch (error) {
+      setLogError(
+        error instanceof CardioSaveBlockedError
+          ? "The workout is already finishing, so this cardio wasn't saved."
+          : "Cardio wasn't saved. Check your connection and try again."
+      );
+      vibrate("warning");
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   const handleSecondsChange = (newSeconds: number) => {
@@ -320,9 +355,11 @@ export function CardioExerciseCard({
 
             {displayStatus === "completed" && isLogged && (
               <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                {formatDuration(totalSeconds)}
-                {distance > 0 && ` · ${distance} ${distanceUnit}`}
-                {` · RPE ${rpe}`}
+                {formatDuration(loggedDurationSeconds)}
+                {primaryMetric === "distance" &&
+                  loggedDistance > 0 &&
+                  ` · ${loggedDistance} ${loggedDistanceUnit}`}
+                {` · RPE ${loggedRpe}`}
               </span>
             )}
           </div>
@@ -353,23 +390,27 @@ export function CardioExerciseCard({
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <div className="font-mono text-2xl tabular-nums">
-                      {formatDuration(totalSeconds)}
+                      {formatDuration(loggedDurationSeconds)}
                     </div>
-                    {distance > 0 && (
+                    {primaryMetric === "distance" && loggedDistance > 0 && (
                       <div className="font-mono text-lg tabular-nums text-muted-foreground">
-                        {distance} {distanceUnit}
+                        {loggedDistance} {loggedDistanceUnit}
                       </div>
                     )}
                   </div>
                   <div className="text-right">
                     <div className="text-sm text-muted-foreground">RPE</div>
-                    <div className="font-mono text-2xl tabular-nums">{rpe}</div>
+                    <div className="font-mono text-2xl tabular-nums">
+                      {loggedRpe}
+                    </div>
                   </div>
                 </div>
-                {useVest && (
+                {hasLoggedVest && (
                   <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground border-t pt-3">
                     <Dumbbell className="h-4 w-4" />
-                    <span>Vest: {vestWeight} {unit}</span>
+                    <span>
+                      Vest: {loggedVestWeight} {loggedVestWeightUnit}
+                    </span>
                   </div>
                 )}
               </div>
@@ -381,11 +422,21 @@ export function CardioExerciseCard({
               )}
               <div className="flex items-center justify-center pt-2">
                 <Check className="h-5 w-5 text-primary mr-2" />
-                <span className="text-sm font-medium text-muted-foreground">Logged</span>
+                <span
+                  className="text-sm font-medium text-muted-foreground"
+                  role="status"
+                >
+                  Logged
+                </span>
               </div>
             </div>
           ) : (
-          <div className="space-y-4 px-4 pb-4 pt-2">
+          <fieldset
+            className="space-y-4 px-4 pb-4 pt-2"
+            disabled={isSaving}
+            aria-describedby={logError ? logErrorId : undefined}
+          >
+            <legend className="sr-only">Log cardio for {exerciseName}</legend>
             {primaryMetric === "duration" ? (
               <div>
                 <label className="mb-2 block text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -509,17 +560,24 @@ export function CardioExerciseCard({
             )}
 
             <Button
+              type="button"
               size="lg"
               className={cn(
                 "mt-2 h-14 w-full text-base font-semibold tracking-wide",
                 "transition-all duration-200"
               )}
               onClick={handleLog}
-              disabled={!canLog}
+              disabled={!canLog || isSaving}
+              aria-busy={isSaving}
             >
-              LOG CARDIO
+              {isSaving ? "SAVING CARDIO..." : "LOG CARDIO"}
             </Button>
-          </div>
+            {logError && (
+              <p id={logErrorId} className="text-sm text-destructive" role="alert">
+                {logError}
+              </p>
+            )}
+          </fieldset>
           )}
         </div>
       </div>

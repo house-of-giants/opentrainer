@@ -41,6 +41,10 @@ import {
 	editedWeightForStorage,
 	type WeightUnit,
 } from "@/lib/units";
+import {
+	CardioSaveBlockedError,
+	createCardioPersistenceGate,
+} from "@/lib/cardio-persistence";
 import posthog from "posthog-js";
 
 type EntryData = {
@@ -168,6 +172,11 @@ export default function ActiveWorkoutPage() {
 	);
 	const [isCompletingWithEditedTime, setIsCompletingWithEditedTime] =
 		useState(false);
+	const [isCompleting, setIsCompleting] = useState(false);
+	const [pendingCardioSaveCount, setPendingCardioSaveCount] = useState(0);
+	const [cardioPersistenceGate] = useState(() =>
+		createCardioPersistenceGate(setPendingCardioSaveCount)
+	);
 	const exerciseRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
 	const workout = useQuery(api.workouts.getActiveWorkout);
@@ -465,38 +474,50 @@ export default function ActiveWorkoutPage() {
 		}
 	) => {
 		try {
-			await addCardioEntry({
-				workoutId: workout._id,
-				clientId: generateClientId(),
-				exerciseName,
-				cardio: {
-					mode: "steady",
-					durationSeconds: data.durationSeconds,
+			await cardioPersistenceGate.runSave(async () => {
+				await addCardioEntry({
+					workoutId: workout._id,
+					clientId: generateClientId(),
+					exerciseName,
+					cardio: {
+						mode: "steady",
+						durationSeconds: data.durationSeconds,
+						distance: data.distance,
+						distanceUnit:
+							data.distanceUnit === "km"
+								? "km"
+								: data.distanceUnit === "mi"
+									? "mi"
+									: undefined,
+						rpe: data.rpe,
+						vestWeight: data.vestWeight,
+						vestWeightUnit: data.vestWeightUnit,
+						intensity: data.intensity,
+					},
+				});
+				posthog.capture("cardio_logged", {
+					exercise_name: exerciseName,
+					duration_seconds: data.durationSeconds,
 					distance: data.distance,
-					distanceUnit:
-						data.distanceUnit === "km"
-							? "km"
-							: data.distanceUnit === "mi"
-								? "mi"
-								: undefined,
+					distance_unit: data.distanceUnit,
 					rpe: data.rpe,
-					vestWeight: data.vestWeight,
-					vestWeightUnit: data.vestWeightUnit,
-					intensity: data.intensity,
-				},
-			});
-			posthog.capture("cardio_logged", {
-				exercise_name: exerciseName,
-				duration_seconds: data.durationSeconds,
-				distance: data.distance,
-				distance_unit: data.distanceUnit,
-				rpe: data.rpe,
+				});
 			});
 			// Don't remove from pendingExercises - we need to preserve order and metadata
 			toast.success("Cardio logged!");
 		} catch (error) {
-			toast.error("Failed to log cardio");
+			const reason =
+				error instanceof CardioSaveBlockedError
+					? "workout_completing"
+					: "mutation_failed";
+			posthog.capture("cardio_log_failed", { reason });
+			toast.error(
+				reason === "workout_completing"
+					? "Workout is already finishing"
+					: "Failed to log cardio"
+			);
 			console.error(error);
+			throw error;
 		}
 	};
 
@@ -596,6 +617,15 @@ export default function ActiveWorkoutPage() {
 	};
 
 	const handleComplete = async () => {
+		const completionStart = cardioPersistenceGate.tryStartCompletion();
+		if (completionStart !== "started") {
+			if (completionStart === "cardio_save_pending") {
+				toast.info("Wait for cardio to finish saving");
+			}
+			return;
+		}
+
+		setIsCompleting(true);
 		vibrate("success");
 		try {
 			await completeWorkout({ workoutId: workout._id });
@@ -604,10 +634,17 @@ export default function ActiveWorkoutPage() {
 			toast.error("Failed to complete workout");
 			posthog.captureException(error);
 			console.error(error);
+		} finally {
+			setIsCompleting(false);
+			cardioPersistenceGate.finishCompletion();
 		}
 	};
 
 	const handleOpenTimeEditor = () => {
+		if (cardioPersistenceGate.pendingCount > 0) {
+			toast.info("Wait for cardio to finish saving");
+			return;
+		}
 		setTimeEditorInitialEnd(Date.now());
 		setShowTimeEditor(true);
 	};
@@ -616,6 +653,15 @@ export default function ActiveWorkoutPage() {
 		startedAt: number,
 		completedAt: number
 	) => {
+		const completionStart = cardioPersistenceGate.tryStartCompletion();
+		if (completionStart !== "started") {
+			throw new Error(
+				completionStart === "cardio_save_pending"
+					? "Wait for cardio to finish saving"
+					: "Workout completion is already in progress"
+			);
+		}
+
 		setIsCompletingWithEditedTime(true);
 		vibrate("success");
 		try {
@@ -631,6 +677,7 @@ export default function ActiveWorkoutPage() {
 			throw error;
 		} finally {
 			setIsCompletingWithEditedTime(false);
+			cardioPersistenceGate.finishCompletion();
 		}
 	};
 
@@ -810,6 +857,8 @@ export default function ActiveWorkoutPage() {
 
 	const currentExerciseName = exerciseList[currentExerciseIndex]?.[0];
 	const nextExerciseName = exerciseList[currentExerciseIndex + 1]?.[0];
+	const hasPendingCardioSaves = pendingCardioSaveCount > 0;
+	const isWorkoutCompleting = isCompleting || isCompletingWithEditedTime;
 
 	const jumpToCurrentExercise = () => {
 		if (!currentExerciseName) return;
@@ -836,6 +885,7 @@ export default function ActiveWorkoutPage() {
 								size="sm"
 								className="h-auto px-1.5 py-0 text-xs text-muted-foreground"
 								onClick={handleOpenTimeEditor}
+								disabled={hasPendingCardioSaves || isWorkoutCompleting}
 							>
 								Edit time
 							</Button>
@@ -850,9 +900,32 @@ export default function ActiveWorkoutPage() {
 						>
 							Cancel
 						</Button>
-						<Button size="sm" onClick={handleComplete}>
-							Finish
+						<Button
+							size="sm"
+							onClick={handleComplete}
+							disabled={hasPendingCardioSaves || isWorkoutCompleting}
+							aria-describedby={
+								hasPendingCardioSaves ? "cardio-save-status" : undefined
+							}
+						>
+							{hasPendingCardioSaves
+								? "Saving..."
+								: isWorkoutCompleting
+									? "Finishing..."
+									: "Finish"}
 						</Button>
+						<span
+							id="cardio-save-status"
+							className="sr-only"
+							role="status"
+							aria-live="polite"
+						>
+							{hasPendingCardioSaves
+								? `${pendingCardioSaveCount} cardio ${
+										pendingCardioSaveCount === 1 ? "entry is" : "entries are"
+									} still saving.`
+								: ""}
+						</span>
 					</div>
 				</div>
 			</header>
@@ -884,7 +957,9 @@ export default function ActiveWorkoutPage() {
 						};
 
 						if (meta.category === "cardio") {
-							const hasLogged = groupEntries.some((e) => e.kind === "cardio");
+							const loggedCardioEntry = groupEntries.find(
+								(entry) => entry.kind === "cardio"
+							);
 							const status = getExerciseStatus();
 
 							return (
@@ -901,11 +976,8 @@ export default function ActiveWorkoutPage() {
 										status={status}
 										defaultMinutes={meta.targetDurationMinutes}
 										note={getExerciseNote(name)}
-										onLog={
-											hasLogged
-												? () => {}
-												: (data) => handleLogCardio(name, data)
-										}
+										loggedData={loggedCardioEntry?.cardio}
+										onLog={(data) => handleLogCardio(name, data)}
 										onNoteChange={(note: string) =>
 											handleNoteChange(name, note)
 										}
