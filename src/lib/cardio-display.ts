@@ -31,6 +31,14 @@ export function getCardioDisplaySummary(
     };
   }
 
+  if (distanceUnit === undefined) {
+    return {
+      ...summary,
+      distance: undefined,
+      distanceUnit: undefined,
+    };
+  }
+
   return {
     ...summary,
     distanceUnit,

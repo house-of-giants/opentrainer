@@ -35,7 +35,23 @@ describe("getCardioDisplaySummary", () => {
       getCardioDisplaySummary({ durationSeconds: 600 }, draft),
       {
         durationSeconds: 600,
+        distance: undefined,
         distanceUnit: undefined,
+      }
+    );
+  });
+
+  test("omits persisted distances whose unit is unknown", () => {
+    assert.deepEqual(
+      getCardioDisplaySummary(
+        { durationSeconds: 600, distance: 5, rpe: 6 },
+        draft
+      ),
+      {
+        durationSeconds: 600,
+        distance: undefined,
+        distanceUnit: undefined,
+        rpe: 6,
       }
     );
   });

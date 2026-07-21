@@ -371,6 +371,7 @@ export function CardioExerciseCard({
                 {primaryMetric === "distance" &&
                   loggedSummary.distance !== undefined &&
                   loggedSummary.distance > 0 &&
+                  loggedSummary.distanceUnit !== undefined &&
                   ` · ${loggedSummary.distance} ${loggedSummary.distanceUnit}`}
                 {loggedSummary.rpe !== undefined &&
                   ` · RPE ${loggedSummary.rpe}`}
@@ -408,7 +409,8 @@ export function CardioExerciseCard({
                     </div>
                     {primaryMetric === "distance" &&
                       loggedSummary.distance !== undefined &&
-                      loggedSummary.distance > 0 && (
+                      loggedSummary.distance > 0 &&
+                      loggedSummary.distanceUnit !== undefined && (
                         <div className="font-mono text-lg tabular-nums text-muted-foreground">
                           {loggedSummary.distance} {loggedSummary.distanceUnit}
                         </div>
