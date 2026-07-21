@@ -591,17 +591,33 @@ export const getRoutineExercisesForWorkout = query({
 
     const exercisesWithEquipment = await Promise.all(
       exercises.map(async (ex) => {
-        const exerciseData = ex.exerciseId
-          ? await ctx.db.get(ex.exerciseId)
-          : await ctx.db
-              .query("exercises")
-              .withIndex("by_name", (query) => query.eq("name", ex.exerciseName))
-              .first();
+        let exerciseData = ex.exerciseId ? await ctx.db.get(ex.exerciseId) : null;
+
+        if (exerciseData?.userId && exerciseData.userId !== user._id) {
+          exerciseData = null;
+        }
+
+        if (!ex.exerciseId) {
+          const accessibleMatches = (await ctx.db
+            .query("exercises")
+            .withIndex("by_name", (query) => query.eq("name", ex.exerciseName))
+            .collect())
+            .filter((candidate) => !candidate.userId || candidate.userId === user._id);
+
+          // A legacy or imported routine may not have an exerciseId. Only enrich
+          // it when the name identifies one accessible catalog row; otherwise its
+          // explicit routine metadata (or the legacy reps default) is authoritative.
+          exerciseData = accessibleMatches.length === 1 ? accessibleMatches[0] : null;
+        }
+
         if (exerciseData) {
           return {
             ...ex,
-            equipment: exerciseData?.equipment,
-            measurementType: ex.measurementType ?? exerciseData?.measurementType,
+            equipment: exerciseData.equipment,
+            // A catalog mode is authoritative only when the routine stores that
+            // catalog row's id. Name-only legacy rows retain the reps default.
+            measurementType: ex.measurementType
+              ?? (ex.exerciseId ? exerciseData.measurementType : undefined),
           };
         }
         return ex;
