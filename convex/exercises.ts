@@ -2,14 +2,10 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { getCurrentUser } from "./auth";
-
-function cleanExerciseName(name: string) {
-  return name.normalize("NFKC").trim().replace(/\s+/g, " ");
-}
-
-function normalizeExerciseName(name: string) {
-  return cleanExerciseName(name).toLowerCase();
-}
+import {
+  cleanExerciseName,
+  normalizeExerciseName,
+} from "../src/lib/exercise-names";
 
 function hasExerciseName(exercise: Doc<"exercises">, normalizedName: string) {
   return (
@@ -67,7 +63,16 @@ function deduplicateExercises(exercises: Doc<"exercises">[]) {
 
   for (const exercise of preferredExercises) {
     const normalizedName = normalizeExerciseName(exercise.name);
-    if (!uniqueExercises.has(normalizedName)) {
+    const matchesExistingExercise = Array.from(uniqueExercises.values()).some(
+      (existingExercise) =>
+        hasExerciseName(existingExercise, normalizedName) ||
+        hasExerciseName(
+          exercise,
+          normalizeExerciseName(existingExercise.name)
+        )
+    );
+
+    if (!matchesExistingExercise) {
       uniqueExercises.set(normalizedName, exercise);
     }
   }

@@ -1,3 +1,7 @@
+export function cleanExerciseName(name: string) {
+  return name.normalize("NFKC").trim().replace(/\s+/g, " ");
+}
+
 export function normalizeExerciseName(name: string) {
-  return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
+  return cleanExerciseName(name).toLowerCase();
 }
