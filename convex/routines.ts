@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./auth";
+import {
+  convertWorkoutEntriesToRoutineFormat,
+  convertWorkoutExercisesToRoutineFormat,
+  type WorkoutExerciseForRoutine,
+} from "./lib/routineMeasurements";
 
 const routineExerciseValidator = v.object({
   exerciseId: v.optional(v.id("exercises")),
@@ -21,79 +26,6 @@ const routineDayValidator = v.object({
   name: v.string(),
   exercises: v.array(routineExerciseValidator),
 });
-
-type WorkoutExercise = {
-  name?: string;
-  kind?: string;
-  sets?: Array<{
-    weight?: number;
-    reps?: number;
-    durationSeconds?: number;
-    rpe?: number;
-    isWarmup?: boolean;
-  }>;
-  cardio?: unknown;
-};
-
-type RoutineExercise = {
-  name: string;
-  kind: string;
-  targetSets?: number;
-  targetReps?: string;
-  targetRpe?: number;
-  targetDuration?: number;
-  measurementType?: "reps" | "duration";
-  targetHoldSeconds?: number;
-};
-
-function convertWorkoutExercisesToRoutineFormat(exercises: WorkoutExercise[]): RoutineExercise[] {
-  return exercises.map((ex) => {
-    if (!ex.name || typeof ex.name !== "string") {
-      throw new Error(
-        "Workout export contains an exercise without a name. This might be corrupted. Try exporting the workout again."
-      );
-    }
-
-    const kind = ex.kind === "cardio" ? "cardio" : (ex.kind === "mobility" ? "mobility" : "lifting");
-
-    const exercise: RoutineExercise = {
-      name: ex.name,
-      kind,
-    };
-
-    if (kind === "lifting" && ex.sets && Array.isArray(ex.sets)) {
-      const workingSets = ex.sets.filter((s) => !s.isWarmup);
-      if (workingSets.length > 0) {
-        exercise.targetSets = workingSets.length;
-        const durationSets = workingSets.filter((s) => (s.durationSeconds ?? 0) > 0);
-        if (durationSets.length > 0) {
-          exercise.measurementType = "duration";
-          exercise.targetHoldSeconds = Math.round(
-            durationSets.reduce((sum, s) => sum + (s.durationSeconds ?? 0), 0) / durationSets.length
-          );
-        } else {
-          const avgReps = Math.round(
-            workingSets.reduce((sum, s) => sum + (s.reps ?? 0), 0) / workingSets.length
-          );
-          exercise.targetReps = avgReps > 0 ? `${avgReps}` : "8-12";
-        }
-        const rpes = workingSets.map((s) => s.rpe).filter((r) => r !== undefined);
-        if (rpes.length > 0) {
-          exercise.targetRpe = Math.round(
-            rpes.reduce((sum, r) => sum + (r ?? 0), 0) / rpes.length
-          );
-        }
-      } else {
-        exercise.targetSets = ex.sets.length;
-        exercise.targetReps = "8-12";
-      }
-    } else if (kind === "cardio") {
-      exercise.targetDuration = 15;
-    }
-
-    return exercise;
-  });
-}
 
 export const createRoutine = mutation({
   args: {
@@ -145,45 +77,7 @@ export const createRoutineFromWorkout = mutation({
       .withIndex("by_workout", (q) => q.eq("workoutId", args.workoutId))
       .collect();
 
-    const exerciseMap = new Map<string, {
-      kind: "lifting" | "cardio" | "mobility";
-      sets: number;
-      durations: number[];
-    }>();
-    
-    for (const entry of entries) {
-      const existing = exerciseMap.get(entry.exerciseName);
-      if (!existing) {
-        exerciseMap.set(entry.exerciseName, {
-          kind: entry.kind,
-          sets: 1,
-          durations: entry.lifting?.durationSeconds ? [entry.lifting.durationSeconds] : [],
-        });
-      } else {
-        exerciseMap.set(entry.exerciseName, {
-          ...existing,
-          sets: existing.sets + 1,
-          durations: entry.lifting?.durationSeconds
-            ? [...existing.durations, entry.lifting.durationSeconds]
-            : existing.durations,
-        });
-      }
-    }
-
-    const exercises = Array.from(exerciseMap.entries()).map(([name, data]) => {
-      const isTimedStrength = data.kind === "lifting" && data.durations.length > 0;
-      return {
-        exerciseName: name,
-        kind: data.kind,
-        targetSets: data.kind === "lifting" || data.kind === "mobility" ? data.sets : undefined,
-        targetReps: data.kind === "lifting" && !isTimedStrength ? "8-12" : undefined,
-        measurementType: isTimedStrength ? ("duration" as const) : undefined,
-        targetDuration: data.kind === "cardio" ? 15 : undefined,
-        targetHoldSeconds: isTimedStrength
-          ? Math.round(data.durations.reduce((sum, duration) => sum + duration, 0) / data.durations.length)
-          : data.kind === "mobility" ? 30 : undefined,
-      };
-    });
+    const exercises = convertWorkoutEntriesToRoutineFormat(entries);
 
     const now = Date.now();
 
@@ -307,18 +201,7 @@ export const importRoutineFromJson = mutation({
       description?: string;
       workout?: {
         title?: string;
-        exercises?: Array<{
-          name?: string;
-          kind?: string;
-          sets?: Array<{
-            weight?: number;
-            reps?: number;
-            durationSeconds?: number;
-            rpe?: number;
-            isWarmup?: boolean;
-          }>;
-          cardio?: unknown;
-        }>;
+        exercises?: WorkoutExerciseForRoutine[];
       };
       days?: Array<{
         name?: string;
@@ -480,18 +363,7 @@ export const importDayToRoutine = mutation({
       name?: string;
       workout?: {
         title?: string;
-        exercises?: Array<{
-          name?: string;
-          kind?: string;
-          sets?: Array<{
-            weight?: number;
-            reps?: number;
-            durationSeconds?: number;
-            rpe?: number;
-            isWarmup?: boolean;
-          }>;
-          cardio?: unknown;
-        }>;
+        exercises?: WorkoutExerciseForRoutine[];
       };
       exercises?: Array<{
         name?: string;

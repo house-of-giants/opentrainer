@@ -45,6 +45,7 @@ import {
 	CardioSaveBlockedError,
 	createCardioPersistenceGate,
 } from "@/lib/cardio-persistence";
+import { getExerciseGroupKey } from "@/lib/workout-exercise-group";
 import posthog from "posthog-js";
 
 type EntryData = {
@@ -128,6 +129,17 @@ type PendingExercise = {
 	muscleGroups?: string[];
 };
 
+function getEntryGroupKey(entry: EntryData) {
+	return getExerciseGroupKey({
+		name: entry.exerciseName,
+		category: entry.kind === "cardio" ? "cardio" : "lifting",
+		measurementType:
+			entry.kind === "lifting" && entry.lifting?.durationSeconds !== undefined
+				? "duration"
+				: "reps",
+	});
+}
+
 function useDuration(startedAt: number | undefined) {
 	const [duration, setDuration] = useState("");
 
@@ -159,7 +171,10 @@ export default function ActiveWorkoutPage() {
 	const [pendingExercises, setPendingExercises] = useState<PendingExercise[]>(
 		[]
 	);
-	const [swapExercise, setSwapExercise] = useState<string | null>(null);
+	const [swapExercise, setSwapExercise] = useState<{
+		groupKey: string;
+		name: string;
+	} | null>(null);
 	const [showSwapFollowUp, setShowSwapFollowUp] = useState(false);
 	const [editingSet, setEditingSet] = useState<EditableSet | null>(null);
 	const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
@@ -235,25 +250,29 @@ export default function ActiveWorkoutPage() {
 
 		// First, add all pending exercises to establish stable order and meta (targetSets, targetReps, etc.)
 		for (const pending of pendingExercises) {
-			groups.set(pending.name, { entries: [], meta: pending });
+			groups.set(getExerciseGroupKey(pending), { entries: [], meta: pending });
 		}
 
 		// Then, add entries to their groups (entries may exist for exercises in pendingExercises)
 		if (entries) {
 			for (const entry of entries) {
-				const existing = groups.get(entry.exerciseName);
+				const groupKey = getEntryGroupKey(entry as EntryData);
+				const existing = groups.get(groupKey);
 				if (existing) {
 					existing.entries.push(entry as EntryData);
 				} else {
 					// Entry for an exercise not in pendingExercises (edge case: old data or manual add)
 					// Add at the end to preserve stable ordering of pending exercises
-					groups.set(entry.exerciseName, {
+					groups.set(groupKey, {
 						entries: [entry as EntryData],
 						meta: {
 							name: entry.exerciseName,
 							category: entry.kind === "cardio" ? "cardio" : "lifting",
 							primaryMetric: entry.kind === "cardio" ? "duration" : undefined,
-							measurementType: entry.lifting?.durationSeconds ? "duration" : undefined,
+							measurementType:
+								entry.lifting?.durationSeconds !== undefined
+									? "duration"
+									: undefined,
 						},
 					});
 				}
@@ -361,8 +380,8 @@ export default function ActiveWorkoutPage() {
 		const currentExercise = exerciseList[currentExerciseIndex];
 		if (!currentExercise) return;
 
-		const [name] = currentExercise;
-		const element = exerciseRefs.current.get(name);
+		const [groupKey] = currentExercise;
+		const element = exerciseRefs.current.get(groupKey);
 
 		if (element) {
 			setTimeout(() => {
@@ -391,7 +410,11 @@ export default function ActiveWorkoutPage() {
 			rpe?: number | null;
 		}
 	) => {
-		const group = exerciseGroups.get(exerciseName);
+		const group = exerciseGroups.get(getExerciseGroupKey({
+			name: exerciseName,
+			category: "lifting",
+			measurementType: "reps",
+		}));
 		const existingSets = group?.entries ?? [];
 		const setNumber = existingSets.length + 1;
 
@@ -429,7 +452,11 @@ export default function ActiveWorkoutPage() {
 		exerciseName: string,
 		set: { durationSeconds: number; rpe?: number | null }
 	) => {
-		const group = exerciseGroups.get(exerciseName);
+		const group = exerciseGroups.get(getExerciseGroupKey({
+			name: exerciseName,
+			category: "lifting",
+			measurementType: "duration",
+		}));
 		const existingSets = group?.entries.filter(
 			(entry) => entry.kind === "lifting" && entry.lifting?.durationSeconds !== undefined
 		) ?? [];
@@ -522,7 +549,8 @@ export default function ActiveWorkoutPage() {
 	};
 
 	const handleAddExercise = async (exercise: ExerciseSelection) => {
-		if (!exerciseGroups.has(exercise.name)) {
+		const groupKey = getExerciseGroupKey(exercise);
+		if (!exerciseGroups.has(groupKey)) {
 			if (exercise.muscleGroups && exercise.muscleGroups.length > 0) {
 				try {
 					await createExercise({
@@ -542,7 +570,7 @@ export default function ActiveWorkoutPage() {
 	};
 
 	const handleSwapComplete = (
-		oldExercise: string,
+		oldExercise: { groupKey: string; name: string },
 		selection: {
 			name: string;
 			measurementType: "reps" | "duration";
@@ -551,13 +579,13 @@ export default function ActiveWorkoutPage() {
 	) => {
 		const newExercise = selection.name;
 		const isPendingExercise = pendingExercises.some(
-			(p) => p.name === oldExercise
+			(p) => getExerciseGroupKey(p) === oldExercise.groupKey
 		);
 
 		if (isPendingExercise) {
 			setPendingExercises((prev) =>
 				prev.map((p) =>
-					p.name === oldExercise
+					getExerciseGroupKey(p) === oldExercise.groupKey
 						? {
 								...p,
 								name: newExercise,
@@ -574,7 +602,11 @@ export default function ActiveWorkoutPage() {
 						: p
 				)
 			);
-		} else if (!exerciseGroups.has(newExercise)) {
+		} else if (!exerciseGroups.has(getExerciseGroupKey({
+			name: newExercise,
+			category: "lifting",
+			measurementType: selection.measurementType,
+		}))) {
 			setPendingExercises((prev) => [
 				...prev,
 				{
@@ -586,7 +618,7 @@ export default function ActiveWorkoutPage() {
 			]);
 		}
 		posthog.capture("exercise_swapped", {
-			old_exercise: oldExercise,
+			old_exercise: oldExercise.name,
 			new_exercise: newExercise,
 			workout_id: workout._id,
 		});
@@ -855,14 +887,15 @@ export default function ActiveWorkoutPage() {
 		return { loggedSets, targetSets, totalVolume, unit: preferredUnit };
 	})();
 
-	const currentExerciseName = exerciseList[currentExerciseIndex]?.[0];
-	const nextExerciseName = exerciseList[currentExerciseIndex + 1]?.[0];
+	const currentExerciseName = exerciseList[currentExerciseIndex]?.[1].meta.name;
+	const nextExerciseName = exerciseList[currentExerciseIndex + 1]?.[1].meta.name;
 	const hasPendingCardioSaves = pendingCardioSaveCount > 0;
 	const isWorkoutCompleting = isCompleting || isCompletingWithEditedTime;
 
 	const jumpToCurrentExercise = () => {
-		if (!currentExerciseName) return;
-		const element = exerciseRefs.current.get(currentExerciseName);
+		const currentExerciseKey = exerciseList[currentExerciseIndex]?.[0];
+		if (!currentExerciseKey) return;
+		const element = exerciseRefs.current.get(currentExerciseKey);
 		if (element) {
 			element.scrollIntoView({ behavior: "smooth", block: "center" });
 		}
@@ -946,7 +979,8 @@ export default function ActiveWorkoutPage() {
 
 			<main className="flex-1 space-y-4 p-4">
 				{Array.from(exerciseGroups.entries()).map(
-					([name, { entries: groupEntries, meta }], index) => {
+					([groupKey, { entries: groupEntries, meta }], index) => {
+						const name = meta.name;
 						const getExerciseStatus = ():
 							| "completed"
 							| "current"
@@ -964,9 +998,9 @@ export default function ActiveWorkoutPage() {
 
 							return (
 								<div
-									key={name}
+									key={groupKey}
 									ref={(el) => {
-										if (el) exerciseRefs.current.set(name, el);
+										if (el) exerciseRefs.current.set(groupKey, el);
 									}}
 								>
 									<CardioExerciseCard
@@ -1006,9 +1040,9 @@ export default function ActiveWorkoutPage() {
 
 							return (
 								<div
-									key={name}
+									key={groupKey}
 									ref={(element) => {
-										if (element) exerciseRefs.current.set(name, element);
+										if (element) exerciseRefs.current.set(groupKey, element);
 									}}
 								>
 									<TimedExerciseAccordionWithHistory
@@ -1020,7 +1054,7 @@ export default function ActiveWorkoutPage() {
 										note={getExerciseNote(name)}
 										onAddSet={(set) => handleAddTimedSet(name, set)}
 										onEditSet={(set) => handleEditTimedSet(name, set)}
-										onSwap={() => setSwapExercise(name)}
+										onSwap={() => setSwapExercise({ groupKey, name })}
 										onNoteChange={(note) => handleNoteChange(name, note)}
 										onSelect={() => {
 											setManualNavigation(true);
@@ -1062,9 +1096,9 @@ export default function ActiveWorkoutPage() {
 
 						return (
 							<div
-								key={name}
+								key={groupKey}
 								ref={(el) => {
-									if (el) exerciseRefs.current.set(name, el);
+									if (el) exerciseRefs.current.set(groupKey, el);
 								}}
 							>
 								<ExerciseAccordionWithHistory
@@ -1093,7 +1127,7 @@ export default function ActiveWorkoutPage() {
 										isBodyweight?: boolean;
 										rpe?: number | null;
 									}) => handleEditSet(name, set)}
-									onSwap={() => setSwapExercise(name)}
+									onSwap={() => setSwapExercise({ groupKey, name })}
 									onNoteChange={(note: string) => handleNoteChange(name, note)}
 									onSelect={() => {
 										setManualNavigation(true);
@@ -1134,7 +1168,7 @@ export default function ActiveWorkoutPage() {
 					open={!!swapExercise}
 					onOpenChange={(open) => !open && setSwapExercise(null)}
 					workoutId={workout._id}
-					exerciseName={swapExercise}
+					exerciseName={swapExercise.name}
 					onSwapComplete={(selection) =>
 						handleSwapComplete(swapExercise, selection)
 					}
