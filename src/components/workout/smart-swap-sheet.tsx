@@ -38,7 +38,11 @@ interface SmartSwapSheetProps {
 	onOpenChange: (open: boolean) => void;
 	workoutId: Id<"workouts">;
 	exerciseName: string;
-	onSwapComplete: (newExerciseName: string) => void;
+	onSwapComplete: (selection: {
+		name: string;
+		measurementType: "reps" | "duration";
+		targetHoldSeconds?: number;
+	}) => void;
 }
 
 const SWAP_REASONS: Array<{
@@ -93,6 +97,8 @@ export function SmartSwapSheet({
 			equipmentNeeded: string[];
 			muscleEmphasis: string;
 			difficultyAdjustment?: "easier" | "similar" | "harder";
+			measurementType?: "reps" | "duration";
+			targetHoldSeconds?: number;
 		}>
 	>([]);
 	const [swapId, setSwapId] = useState<Id<"exerciseSwaps"> | null>(null);
@@ -123,17 +129,21 @@ export function SmartSwapSheet({
 		}
 	};
 
-	const handleSelectAlternative = async (alternativeExercise: string) => {
+	const handleSelectAlternative = async (alternative: (typeof alternatives)[number]) => {
 		if (swapId) {
 			try {
-				await confirmSwap({ swapId, selectedExercise: alternativeExercise });
+				await confirmSwap({ swapId, selectedExercise: alternative.exercise });
 			} catch (error) {
 				console.error("Failed to confirm swap:", error);
 			}
 		}
 
-		toast.success(`Swapped to ${alternativeExercise}`);
-		onSwapComplete(alternativeExercise);
+		toast.success(`Swapped to ${alternative.exercise}`);
+		onSwapComplete({
+			name: alternative.exercise,
+			measurementType: alternative.measurementType ?? "reps",
+			targetHoldSeconds: alternative.targetHoldSeconds,
+		});
 		handleClose();
 	};
 
@@ -275,7 +285,7 @@ export function SmartSwapSheet({
 										</div>
 										<Button
 											size="sm"
-											onClick={() => handleSelectAlternative(alt.exercise)}
+											onClick={() => handleSelectAlternative(alt)}
 										>
 											<Check className="h-4 w-4 mr-1.5" />
 											Use

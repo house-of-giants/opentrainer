@@ -962,7 +962,7 @@ export const getExerciseContext = internalQuery({
       .take(9);
 
     const recentSessions = recentEntries
-      .filter((e) => e.kind === "lifting" && e.lifting)
+      .filter((e) => e.kind === "lifting" && e.lifting && e.lifting.durationSeconds === undefined)
       .slice(0, 3)
       .map((e) => ({
         wt: e.lifting!.weight ?? 0,

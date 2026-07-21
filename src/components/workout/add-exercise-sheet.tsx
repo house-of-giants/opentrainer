@@ -21,6 +21,7 @@ export interface ExerciseSelection {
   name: string;
   category: "lifting" | "cardio" | "mobility" | "other";
   primaryMetric?: "duration" | "distance";
+  measurementType?: "reps" | "duration";
   equipment?: string[];
   muscleGroups?: string[];
 }
@@ -41,6 +42,7 @@ export function AddExerciseSheet({
   const [activeTab, setActiveTab] = useState<"lifting" | "cardio">("lifting");
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([]);
   const [showMuscleGroupPicker, setShowMuscleGroupPicker] = useState(false);
+  const [customMeasurementType, setCustomMeasurementType] = useState<"reps" | "duration">("reps");
   const { vibrate } = useHaptic();
 
   const exercises = useQuery(api.exercises.getExercises, {
@@ -57,6 +59,7 @@ export function AddExerciseSheet({
     setSearchQuery("");
     setSelectedMuscleGroups([]);
     setShowMuscleGroupPicker(false);
+    setCustomMeasurementType("reps");
   };
 
   const toggleMuscleGroup = (muscle: string) => {
@@ -80,6 +83,7 @@ export function AddExerciseSheet({
         name: customExercise.trim(),
         category: activeTab,
         primaryMetric: activeTab === "cardio" ? "duration" : undefined,
+        measurementType: activeTab === "lifting" ? customMeasurementType : undefined,
         muscleGroups: selectedMuscleGroups.length > 0 ? selectedMuscleGroups : undefined,
       });
     }
@@ -142,6 +146,18 @@ export function AddExerciseSheet({
 
             {customExercise.trim() && activeTab === "lifting" && (
               <div className="flex flex-col gap-2">
+				<div className="space-y-2">
+				  <span className="text-sm font-medium">Measure By</span>
+				  <Tabs
+					value={customMeasurementType}
+					onValueChange={(value) => setCustomMeasurementType(value as "reps" | "duration")}
+				  >
+					<TabsList className="grid w-full grid-cols-2">
+					  <TabsTrigger value="reps">Reps</TabsTrigger>
+					  <TabsTrigger value="duration">Time</TabsTrigger>
+					</TabsList>
+				  </Tabs>
+				</div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">
                     Muscle Groups {showMuscleGroupPicker && <span className="text-destructive">*</span>}
@@ -197,6 +213,7 @@ export function AddExerciseSheet({
                       name: exercise.name,
                       category: exercise.category,
                       primaryMetric: exercise.primaryMetric,
+                      measurementType: exercise.measurementType,
                       equipment: exercise.equipment,
                       muscleGroups: exercise.muscleGroups,
                     })
@@ -207,6 +224,9 @@ export function AddExerciseSheet({
                     <span className="text-xs text-muted-foreground ml-2 shrink-0">
                       {exercise.primaryMetric === "distance" ? "Distance" : "Time"}
                     </span>
+                  )}
+                  {exercise.category === "lifting" && exercise.measurementType === "duration" && (
+                    <span className="text-xs text-muted-foreground ml-2 shrink-0">Time</span>
                   )}
                 </button>
               ))}

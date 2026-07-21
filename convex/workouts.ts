@@ -591,11 +591,17 @@ export const getRoutineExercisesForWorkout = query({
 
     const exercisesWithEquipment = await Promise.all(
       exercises.map(async (ex) => {
-        if (ex.exerciseId) {
-          const exerciseData = await ctx.db.get(ex.exerciseId);
+        const exerciseData = ex.exerciseId
+          ? await ctx.db.get(ex.exerciseId)
+          : await ctx.db
+              .query("exercises")
+              .withIndex("by_name", (query) => query.eq("name", ex.exerciseName))
+              .first();
+        if (exerciseData) {
           return {
             ...ex,
             equipment: exerciseData?.equipment,
+            measurementType: ex.measurementType ?? exerciseData?.measurementType,
           };
         }
         return ex;
@@ -872,6 +878,7 @@ export const exportWorkoutAsJson = query({
               setNumber: number;
               weight?: number;
               reps?: number;
+              durationSeconds?: number;
               unit: "kg" | "lb";
               rpe?: number;
               isWarmup?: boolean;
@@ -882,6 +889,7 @@ export const exportWorkoutAsJson = query({
             };
             if (e.lifting.weight !== undefined) set.weight = e.lifting.weight;
             if (e.lifting.reps !== undefined) set.reps = e.lifting.reps;
+            if (e.lifting.durationSeconds !== undefined) set.durationSeconds = e.lifting.durationSeconds;
             if (e.lifting.rpe !== undefined) set.rpe = e.lifting.rpe;
             if (e.lifting.isWarmup) set.isWarmup = true;
             if (e.lifting.isBodyweight) set.isBodyweight = true;

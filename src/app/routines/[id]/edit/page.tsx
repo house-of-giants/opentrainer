@@ -113,6 +113,9 @@ function SortableExerciseItem({
 				: `${exercise.targetSets}×${exercise.targetReps}`;
 			return exercise.perSide ? `${base} /side` : base;
 		}
+		if (exercise.measurementType === "duration") {
+			return `${exercise.targetSets}×${exercise.targetHoldSeconds ?? 30}s`;
+		}
 		return `${exercise.targetSets}×${exercise.targetReps}`;
 	};
 	const summary = getSummary();
@@ -183,13 +186,17 @@ export default function EditRoutinePage() {
 	const [showImportDayDialog, setShowImportDayDialog] = useState(false);
 
 	useEffect(() => {
-		if (routine && !isInitialized) {
+		if (routine && exercises && !isInitialized) {
 			setRoutineName(routine.name);
 			setDescription(routine.description || "");
 			const parsedDays = routine.days.map((day) => ({
 				id: crypto.randomUUID(),
 				name: day.name,
 				exercises: day.exercises.map((ex) => {
+					const catalogExercise = exercises.find(
+						(catalogEntry) =>
+							catalogEntry._id === ex.exerciseId || catalogEntry.name === ex.exerciseName
+					);
 					let targetDuration = ex.targetDuration;
 					if (ex.kind === "cardio" && !targetDuration && ex.targetReps) {
 						const match = ex.targetReps.match(/(\d+)/);
@@ -204,6 +211,7 @@ export default function EditRoutinePage() {
 						kind: ex.kind,
 						targetSets: ex.targetSets || 3,
 						targetReps: ex.targetReps || "8-12",
+						measurementType: ex.measurementType ?? catalogExercise?.measurementType,
 						targetDuration: targetDuration || 20,
 						targetHoldSeconds: ex.targetHoldSeconds || 30,
 						perSide: ex.perSide || false,
@@ -217,7 +225,7 @@ export default function EditRoutinePage() {
 			}
 			setIsInitialized(true);
 		}
-	}, [routine, isInitialized]);
+	}, [routine, exercises, isInitialized]);
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -311,7 +319,8 @@ export default function EditRoutinePage() {
 	const addExerciseToDay = (
 		exerciseName: string,
 		exerciseId?: Id<"exercises">,
-		kind: "lifting" | "cardio" | "mobility" = "lifting"
+		kind: "lifting" | "cardio" | "mobility" = "lifting",
+		measurementType?: "reps" | "duration"
 	) => {
 		if (!activeDayId) return;
 		vibrate("medium");
@@ -321,6 +330,8 @@ export default function EditRoutinePage() {
 			exerciseName,
 			...DEFAULT_EXERCISE,
 			kind,
+			measurementType,
+			targetHoldSeconds: measurementType === "duration" ? 30 : DEFAULT_EXERCISE.targetHoldSeconds,
 		};
 		setDays(
 			days.map((d) =>
@@ -389,12 +400,15 @@ export default function EditRoutinePage() {
 						targetSets:
 							e.kind === "lifting" || e.kind === "mobility" ? e.targetSets : 1,
 						targetReps:
-							e.kind === "lifting" || e.kind === "mobility"
+							(e.kind === "lifting" && e.measurementType !== "duration") || e.kind === "mobility"
 								? e.targetReps
 								: undefined,
+						measurementType: e.kind === "lifting" ? e.measurementType : undefined,
 						targetDuration: e.kind === "cardio" ? e.targetDuration : undefined,
 						targetHoldSeconds:
-							e.kind === "mobility" ? e.targetHoldSeconds : undefined,
+							e.kind === "mobility" || e.measurementType === "duration"
+								? e.targetHoldSeconds
+								: undefined,
 						perSide: e.kind === "mobility" ? e.perSide : undefined,
 					})),
 				})),
@@ -771,7 +785,8 @@ export default function EditRoutinePage() {
 												? "cardio"
 												: exercise.category === "mobility"
 													? "mobility"
-													: "lifting"
+													: "lifting",
+											exercise.measurementType
 										)
 									}
 								>

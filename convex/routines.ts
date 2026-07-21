@@ -9,6 +9,7 @@ const routineExerciseValidator = v.object({
   targetSets: v.optional(v.number()),
   targetReps: v.optional(v.string()),
   targetRpe: v.optional(v.number()),
+  measurementType: v.optional(v.union(v.literal("reps"), v.literal("duration"))),
   targetDuration: v.optional(v.number()),
   targetIntensity: v.optional(v.number()),
   targetHoldSeconds: v.optional(v.number()),
@@ -27,6 +28,7 @@ type WorkoutExercise = {
   sets?: Array<{
     weight?: number;
     reps?: number;
+    durationSeconds?: number;
     rpe?: number;
     isWarmup?: boolean;
   }>;
@@ -40,6 +42,8 @@ type RoutineExercise = {
   targetReps?: string;
   targetRpe?: number;
   targetDuration?: number;
+  measurementType?: "reps" | "duration";
+  targetHoldSeconds?: number;
 };
 
 function convertWorkoutExercisesToRoutineFormat(exercises: WorkoutExercise[]): RoutineExercise[] {
@@ -61,10 +65,18 @@ function convertWorkoutExercisesToRoutineFormat(exercises: WorkoutExercise[]): R
       const workingSets = ex.sets.filter((s) => !s.isWarmup);
       if (workingSets.length > 0) {
         exercise.targetSets = workingSets.length;
-        const avgReps = Math.round(
-          workingSets.reduce((sum, s) => sum + (s.reps ?? 0), 0) / workingSets.length
-        );
-        exercise.targetReps = avgReps > 0 ? `${avgReps}` : "8-12";
+        const durationSets = workingSets.filter((s) => (s.durationSeconds ?? 0) > 0);
+        if (durationSets.length > 0) {
+          exercise.measurementType = "duration";
+          exercise.targetHoldSeconds = Math.round(
+            durationSets.reduce((sum, s) => sum + (s.durationSeconds ?? 0), 0) / durationSets.length
+          );
+        } else {
+          const avgReps = Math.round(
+            workingSets.reduce((sum, s) => sum + (s.reps ?? 0), 0) / workingSets.length
+          );
+          exercise.targetReps = avgReps > 0 ? `${avgReps}` : "8-12";
+        }
         const rpes = workingSets.map((s) => s.rpe).filter((r) => r !== undefined);
         if (rpes.length > 0) {
           exercise.targetRpe = Math.round(
@@ -133,25 +145,45 @@ export const createRoutineFromWorkout = mutation({
       .withIndex("by_workout", (q) => q.eq("workoutId", args.workoutId))
       .collect();
 
-    const exerciseMap = new Map<string, { kind: "lifting" | "cardio" | "mobility"; sets: number }>();
+    const exerciseMap = new Map<string, {
+      kind: "lifting" | "cardio" | "mobility";
+      sets: number;
+      durations: number[];
+    }>();
     
     for (const entry of entries) {
       const existing = exerciseMap.get(entry.exerciseName);
       if (!existing) {
-        exerciseMap.set(entry.exerciseName, { kind: entry.kind, sets: 1 });
+        exerciseMap.set(entry.exerciseName, {
+          kind: entry.kind,
+          sets: 1,
+          durations: entry.lifting?.durationSeconds ? [entry.lifting.durationSeconds] : [],
+        });
       } else {
-        exerciseMap.set(entry.exerciseName, { ...existing, sets: existing.sets + 1 });
+        exerciseMap.set(entry.exerciseName, {
+          ...existing,
+          sets: existing.sets + 1,
+          durations: entry.lifting?.durationSeconds
+            ? [...existing.durations, entry.lifting.durationSeconds]
+            : existing.durations,
+        });
       }
     }
 
-    const exercises = Array.from(exerciseMap.entries()).map(([name, data]) => ({
-      exerciseName: name,
-      kind: data.kind,
-      targetSets: data.kind === "lifting" ? data.sets : (data.kind === "mobility" ? data.sets : undefined),
-      targetReps: data.kind === "lifting" ? "8-12" : undefined,
-      targetDuration: data.kind === "cardio" ? 15 : undefined,
-      targetHoldSeconds: data.kind === "mobility" ? 30 : undefined,
-    }));
+    const exercises = Array.from(exerciseMap.entries()).map(([name, data]) => {
+      const isTimedStrength = data.kind === "lifting" && data.durations.length > 0;
+      return {
+        exerciseName: name,
+        kind: data.kind,
+        targetSets: data.kind === "lifting" || data.kind === "mobility" ? data.sets : undefined,
+        targetReps: data.kind === "lifting" && !isTimedStrength ? "8-12" : undefined,
+        measurementType: isTimedStrength ? ("duration" as const) : undefined,
+        targetDuration: data.kind === "cardio" ? 15 : undefined,
+        targetHoldSeconds: isTimedStrength
+          ? Math.round(data.durations.reduce((sum, duration) => sum + duration, 0) / data.durations.length)
+          : data.kind === "mobility" ? 30 : undefined,
+      };
+    });
 
     const now = Date.now();
 
@@ -281,6 +313,7 @@ export const importRoutineFromJson = mutation({
           sets?: Array<{
             weight?: number;
             reps?: number;
+            durationSeconds?: number;
             rpe?: number;
             isWarmup?: boolean;
           }>;
@@ -295,6 +328,7 @@ export const importRoutineFromJson = mutation({
           targetSets?: number;
           targetReps?: string;
           targetRpe?: number;
+          measurementType?: string;
           targetDuration?: number;
           targetIntensity?: number;
           targetHoldSeconds?: number;
@@ -364,6 +398,7 @@ export const importRoutineFromJson = mutation({
           targetSets: typeof ex.targetSets === "number" ? ex.targetSets : undefined,
           targetReps: typeof ex.targetReps === "string" ? ex.targetReps : undefined,
           targetRpe: typeof ex.targetRpe === "number" ? ex.targetRpe : undefined,
+          measurementType: ex.measurementType === "duration" ? "duration" as const : undefined,
           targetDuration: typeof ex.targetDuration === "number" ? ex.targetDuration : undefined,
           targetIntensity: typeof ex.targetIntensity === "number" ? ex.targetIntensity : undefined,
           targetHoldSeconds: typeof ex.targetHoldSeconds === "number" ? ex.targetHoldSeconds : undefined,
@@ -451,6 +486,7 @@ export const importDayToRoutine = mutation({
           sets?: Array<{
             weight?: number;
             reps?: number;
+            durationSeconds?: number;
             rpe?: number;
             isWarmup?: boolean;
           }>;
@@ -463,6 +499,7 @@ export const importDayToRoutine = mutation({
         targetSets?: number;
         targetReps?: string;
         targetRpe?: number;
+        measurementType?: string;
         targetDuration?: number;
         targetIntensity?: number;
         targetHoldSeconds?: number;
@@ -509,6 +546,7 @@ export const importDayToRoutine = mutation({
         targetSets: typeof ex.targetSets === "number" ? ex.targetSets : undefined,
         targetReps: typeof ex.targetReps === "string" ? ex.targetReps : undefined,
         targetRpe: typeof ex.targetRpe === "number" ? ex.targetRpe : undefined,
+        measurementType: ex.measurementType === "duration" ? "duration" as const : undefined,
         targetDuration: typeof ex.targetDuration === "number" ? ex.targetDuration : undefined,
         targetIntensity: typeof ex.targetIntensity === "number" ? ex.targetIntensity : undefined,
         targetHoldSeconds: typeof ex.targetHoldSeconds === "number" ? ex.targetHoldSeconds : undefined,

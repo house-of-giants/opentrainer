@@ -190,7 +190,9 @@ export default function AIRoutineGeneratorPage() {
             exerciseName: ex.exerciseName,
             kind: ex.kind,
             targetSets: ex.targetSets,
-            targetReps: ex.targetReps,
+            targetReps: ex.measurementType === "duration" ? undefined : ex.targetReps,
+            measurementType: ex.measurementType,
+            targetHoldSeconds: ex.targetHoldSeconds,
           })),
         })),
       });
@@ -265,7 +267,7 @@ export default function AIRoutineGeneratorPage() {
     }
   };
   
-  const handleSelectAlternative = (newExerciseName: string) => {
+  const handleSelectAlternative = (alternative: RoutineSwapAlternative) => {
     if (!generatedRoutine) return;
     
     vibrate("medium");
@@ -278,14 +280,25 @@ export default function AIRoutineGeneratorPage() {
           ...day,
           exercises: day.exercises.map((ex, ei) => {
             if (ei !== swapSheet.exerciseIndex) return ex;
-            return { ...ex, exerciseName: newExerciseName };
+            return {
+              ...ex,
+              exerciseName: alternative.exercise,
+              measurementType: alternative.measurementType,
+              targetHoldSeconds: alternative.targetHoldSeconds,
+              targetReps:
+                alternative.measurementType === "duration"
+                  ? ""
+                  : ex.measurementType === "duration"
+                    ? "8-12"
+                    : ex.targetReps,
+            };
           }),
         };
       }),
     };
     
     setGeneratedRoutine(updatedRoutine);
-    toast.success(`Swapped to ${newExerciseName}`);
+    toast.success(`Swapped to ${alternative.exercise}`);
     setSwapSheet((prev) => ({ ...prev, open: false }));
   };
   
@@ -612,7 +625,9 @@ export default function AIRoutineGeneratorPage() {
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <Badge variant="outline" className="text-xs font-mono">
-                                {exercise.targetSets} × {exercise.targetReps}
+                                {exercise.targetSets} × {exercise.measurementType === "duration"
+                                  ? `${exercise.targetHoldSeconds ?? 30}s`
+                                  : exercise.targetReps}
                               </Badge>
                               <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
                             </div>
@@ -762,7 +777,7 @@ export default function AIRoutineGeneratorPage() {
                           )}
                         </div>
                       </div>
-                      <Button size="sm" onClick={() => handleSelectAlternative(alt.exercise)}>
+                      <Button size="sm" onClick={() => handleSelectAlternative(alt)}>
                         <Check className="h-4 w-4 mr-1.5" />
                         Use
                       </Button>

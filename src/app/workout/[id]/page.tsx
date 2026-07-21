@@ -42,6 +42,7 @@ type LiftingEntry = {
     setNumber: number;
     reps?: number;
     weight?: number;
+    durationSeconds?: number;
     unit: "kg" | "lb";
     rpe?: number;
     isWarmup?: boolean;
@@ -380,13 +381,21 @@ export default function WorkoutDetailsPage() {
                               )}
                             </span>
                             <div className="flex items-center gap-3">
-                              <span className="font-medium font-mono tabular-nums">
-                                {entry.lifting.weight ?? 0} {entry.lifting.unit}
-                              </span>
-                              <span className="text-muted-foreground">x</span>
-                              <span className="font-medium font-mono tabular-nums">
-                                {entry.lifting.reps ?? 0} reps
-                              </span>
+                              {entry.lifting.durationSeconds !== undefined ? (
+                                <span className="font-medium font-mono tabular-nums">
+                                  {formatCardioDuration(entry.lifting.durationSeconds)} hold
+                                </span>
+                              ) : (
+                                <>
+                                  <span className="font-medium font-mono tabular-nums">
+                                    {entry.lifting.weight ?? 0} {entry.lifting.unit}
+                                  </span>
+                                  <span className="text-muted-foreground">x</span>
+                                  <span className="font-medium font-mono tabular-nums">
+                                    {entry.lifting.reps ?? 0} reps
+                                  </span>
+                                </>
+                              )}
                               {entry.lifting.rpe && (
                                 <Badge variant="secondary" className="text-xs">
                                   RPE {entry.lifting.rpe}

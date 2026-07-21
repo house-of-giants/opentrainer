@@ -65,6 +65,8 @@ type RoutineExercise = {
   kind: "lifting" | "cardio";
   targetSets: number;
   targetReps: string;
+  measurementType?: "reps" | "duration";
+  targetHoldSeconds?: number;
   restSeconds: number;
 };
 
@@ -157,17 +159,36 @@ function SortableExerciseItem({
           />
         </div>
         <div className="flex-1">
-          <Label className="text-xs text-muted-foreground">Reps</Label>
-          <Input
-            value={exercise.targetReps}
-            onChange={(e) =>
-              onUpdate(dayId, exercise.id, {
-                targetReps: e.target.value,
-              })
-            }
-            placeholder="8-12"
-            className="h-8 text-center"
-          />
+          <Label className="text-xs text-muted-foreground">
+            {exercise.measurementType === "duration" ? "Seconds" : "Reps"}
+          </Label>
+          {exercise.measurementType === "duration" ? (
+            <Input
+              type="number"
+              inputMode="numeric"
+              value={exercise.targetHoldSeconds ?? 30}
+              onChange={(e) => {
+                const parsed = Number.parseInt(e.target.value, 10);
+                onUpdate(dayId, exercise.id, {
+                  targetHoldSeconds: Number.isNaN(parsed) ? 1 : Math.max(1, parsed),
+                });
+              }}
+              className="h-8 text-center"
+              min={1}
+              max={3600}
+            />
+          ) : (
+            <Input
+              value={exercise.targetReps}
+              onChange={(e) =>
+                onUpdate(dayId, exercise.id, {
+                  targetReps: e.target.value,
+                })
+              }
+              placeholder="8-12"
+              className="h-8 text-center"
+            />
+          )}
         </div>
         <div className="flex-1">
           <Label className="text-xs text-muted-foreground">Rest (s)</Label>
@@ -331,7 +352,8 @@ export default function NewRoutinePage() {
   const addExerciseToDay = (
     exerciseName: string,
     exerciseId?: Id<"exercises">,
-    kind: "lifting" | "cardio" = "lifting"
+    kind: "lifting" | "cardio" = "lifting",
+    measurementType?: "reps" | "duration"
   ) => {
     if (!activeDayId) return;
 
@@ -342,6 +364,8 @@ export default function NewRoutinePage() {
       exerciseName,
       ...DEFAULT_EXERCISE,
       kind,
+      measurementType,
+      targetHoldSeconds: measurementType === "duration" ? 30 : undefined,
     };
 
     setDays(
@@ -414,7 +438,9 @@ export default function NewRoutinePage() {
             exerciseName: e.exerciseName,
             kind: e.kind,
             targetSets: e.targetSets || 1,
-            targetReps: e.targetReps,
+            targetReps: e.measurementType === "duration" ? undefined : e.targetReps,
+            measurementType: e.measurementType,
+            targetHoldSeconds: e.measurementType === "duration" ? e.targetHoldSeconds : undefined,
           })),
         })),
       });
@@ -692,7 +718,8 @@ export default function NewRoutinePage() {
                     addExerciseToDay(
                       exercise.name,
                       exercise._id,
-                      exercise.category === "cardio" ? "cardio" : "lifting"
+                      exercise.category === "cardio" ? "cardio" : "lifting",
+                      exercise.measurementType
                     )
                   }
                 >

@@ -20,6 +20,7 @@ export interface EditableSet {
   setNumber: number;
   reps: number;
   weight: number;
+  durationSeconds?: number;
   unit: "lb" | "kg";
   isBodyweight?: boolean;
   rpe?: number | null;
@@ -28,7 +29,7 @@ export interface EditableSet {
 interface EditSetSheetProps {
   set: EditableSet | null;
   onOpenChange: (open: boolean) => void;
-  onSave: (entryId: string, data: { reps: number; weight: number; rpe?: number | null }) => void;
+  onSave: (entryId: string, data: { reps?: number; weight?: number; durationSeconds?: number; rpe?: number | null }) => void;
   onDelete: (entryId: string) => void;
 }
 
@@ -40,15 +41,21 @@ function EditSetContent({
 }: {
   set: EditableSet;
   onOpenChange: (open: boolean) => void;
-  onSave: (entryId: string, data: { reps: number; weight: number; rpe?: number | null }) => void;
+  onSave: (entryId: string, data: { reps?: number; weight?: number; durationSeconds?: number; rpe?: number | null }) => void;
   onDelete: (entryId: string) => void;
 }) {
   const [weight, setWeight] = useState(set.weight);
   const [reps, setReps] = useState(set.reps);
+  const [durationSeconds, setDurationSeconds] = useState(set.durationSeconds ?? 30);
   const [rpe, setRpe] = useState<number | null>(set.rpe ?? null);
 
   const handleSave = () => {
-    onSave(set.entryId, { reps, weight, rpe });
+    onSave(
+      set.entryId,
+      set.durationSeconds !== undefined
+        ? { durationSeconds, rpe }
+        : { reps, weight, rpe }
+    );
     onOpenChange(false);
   };
 
@@ -58,6 +65,9 @@ function EditSetContent({
   };
 
   const formatSetDisplay = () => {
+    if (set.durationSeconds !== undefined) {
+      return `${durationSeconds} seconds`;
+    }
     if (set.isBodyweight && weight === 0) {
       return `BW × ${reps}`;
     }
@@ -78,6 +88,18 @@ function EditSetContent({
 
       <div className="flex-1 px-4 py-6">
         <div className="flex flex-wrap items-end justify-center gap-6">
+          {set.durationSeconds !== undefined ? (
+            <SetStepper
+              label="Duration"
+              value={durationSeconds}
+              onChange={setDurationSeconds}
+              step={5}
+              min={1}
+              max={3600}
+              unit="seconds"
+            />
+          ) : (
+            <>
           {(!set.isBodyweight || weight > 0) && (
             <SetStepper
               label={set.isBodyweight ? "Added Weight" : "Weight"}
@@ -96,6 +118,8 @@ function EditSetContent({
             min={1}
             max={100}
           />
+            </>
+          )}
         </div>
 
         <div className="mt-6">

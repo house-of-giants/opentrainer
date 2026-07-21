@@ -16,6 +16,8 @@ export interface SmartSwapResponse {
     equipmentNeeded: string[];
     muscleEmphasis: string;
     difficultyAdjustment?: "easier" | "similar" | "harder";
+    measurementType?: "reps" | "duration";
+    targetHoldSeconds?: number;
   }>;
   note?: string;
   swapId?: Id<"exerciseSwaps">;
@@ -119,6 +121,18 @@ export const getAlternatives = action({
     });
 
     const result = JSON.parse(response.text) as SmartSwapResponse;
+
+    for (const alternative of result.alternatives) {
+      if (alternative.measurementType === "duration") {
+        alternative.targetHoldSeconds =
+          typeof alternative.targetHoldSeconds === "number" && alternative.targetHoldSeconds > 0
+            ? Math.min(alternative.targetHoldSeconds, 3600)
+            : 30;
+      } else {
+        alternative.measurementType = "reps";
+        alternative.targetHoldSeconds = undefined;
+      }
+    }
 
     const swapId = await ctx.runMutation((internal.ai as any).swapMutations.recordSwap, {
       userId: user._id,
