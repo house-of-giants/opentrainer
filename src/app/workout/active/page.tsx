@@ -6,6 +6,10 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { ExerciseAccordion } from "@/components/workout/exercise-accordion";
+import {
+	TimedExerciseAccordion,
+	type TimedSetData,
+} from "@/components/workout/timed-exercise-accordion";
 import { CardioExerciseCard } from "@/components/workout/cardio-exercise-card";
 import { RestTimerOverlay } from "@/components/workout/rest-timer-overlay";
 import {
@@ -31,7 +35,17 @@ import { useHaptic } from "@/hooks/use-haptic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { calculateProgressionSuggestion } from "@/lib/progression";
-import { convertWeight, type WeightUnit } from "@/lib/units";
+import {
+	calculateVolumeInUnit,
+	displayWeight,
+	editedWeightForStorage,
+	type WeightUnit,
+} from "@/lib/units";
+import {
+	CardioSaveBlockedError,
+	createCardioPersistenceGate,
+} from "@/lib/cardio-persistence";
+import { getExerciseGroupKey } from "@/lib/workout-exercise-group";
 import posthog from "posthog-js";
 
 type EntryData = {
@@ -42,6 +56,7 @@ type EntryData = {
 		setNumber: number;
 		reps?: number;
 		weight?: number;
+		durationSeconds?: number;
 		unit: "kg" | "lb";
 		isBodyweight?: boolean;
 		rpe?: number;
@@ -49,7 +64,7 @@ type EntryData = {
 	cardio?: {
 		durationSeconds: number;
 		distance?: number;
-		distanceUnit?: "km" | "mi";
+		distanceUnit?: "m" | "km" | "mi";
 		rpe?: number;
 		vestWeight?: number;
 		vestWeightUnit?: "kg" | "lb";
@@ -70,13 +85,8 @@ function ExerciseAccordionWithHistory({
 
 	const ghostData = useMemo(() => {
 		if (!history || history.length === 0) return null;
-		return calculateProgressionSuggestion(history, targetReps);
-	}, [history, targetReps]);
-
-	const resolvedUnit =
-		sets.length > 0
-			? sets[sets.length - 1].unit
-			: ghostData?.lastSession.unit ?? unit;
+		return calculateProgressionSuggestion(history, targetReps, unit);
+	}, [history, targetReps, unit]);
 
 	return (
 		<ExerciseAccordion
@@ -85,8 +95,23 @@ function ExerciseAccordionWithHistory({
 			sets={sets}
 			lastSession={ghostData?.lastSession}
 			progressionSuggestion={ghostData?.suggestion}
-			unit={resolvedUnit}
+			unit={unit}
 			{...rest}
+		/>
+	);
+}
+
+function TimedExerciseAccordionWithHistory({
+	exerciseName,
+	...props
+}: Omit<React.ComponentProps<typeof TimedExerciseAccordion>, "lastSession">) {
+	const history = useQuery(api.entries.getTimedExerciseHistory, { exerciseName });
+
+	return (
+		<TimedExerciseAccordion
+			exerciseName={exerciseName}
+			lastSession={history?.[0]}
+			{...props}
 		/>
 	);
 }
@@ -98,9 +123,22 @@ type PendingExercise = {
 	targetSets?: number;
 	targetReps?: string;
 	targetDurationMinutes?: number;
+	measurementType?: "reps" | "duration";
+	targetHoldSeconds?: number;
 	equipment?: string[];
 	muscleGroups?: string[];
 };
+
+function getEntryGroupKey(entry: EntryData) {
+	return getExerciseGroupKey({
+		name: entry.exerciseName,
+		category: entry.kind === "cardio" ? "cardio" : "lifting",
+		measurementType:
+			entry.kind === "lifting" && entry.lifting?.durationSeconds !== undefined
+				? "duration"
+				: "reps",
+	});
+}
 
 function useDuration(startedAt: number | undefined) {
 	const [duration, setDuration] = useState("");
@@ -133,7 +171,10 @@ export default function ActiveWorkoutPage() {
 	const [pendingExercises, setPendingExercises] = useState<PendingExercise[]>(
 		[]
 	);
-	const [swapExercise, setSwapExercise] = useState<string | null>(null);
+	const [swapExercise, setSwapExercise] = useState<{
+		groupKey: string;
+		name: string;
+	} | null>(null);
 	const [showSwapFollowUp, setShowSwapFollowUp] = useState(false);
 	const [editingSet, setEditingSet] = useState<EditableSet | null>(null);
 	const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
@@ -146,9 +187,16 @@ export default function ActiveWorkoutPage() {
 	);
 	const [isCompletingWithEditedTime, setIsCompletingWithEditedTime] =
 		useState(false);
+	const [isCompleting, setIsCompleting] = useState(false);
+	const [pendingCardioSaveCount, setPendingCardioSaveCount] = useState(0);
+	const [cardioPersistenceGate] = useState(() =>
+		createCardioPersistenceGate(setPendingCardioSaveCount)
+	);
 	const exerciseRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
 	const workout = useQuery(api.workouts.getActiveWorkout);
+	const user = useQuery(api.users.getCurrentUser);
+	const preferredUnit: WeightUnit = user?.preferredUnits ?? "lb";
 	const entries = useQuery(
 		api.entries.getEntriesByWorkout,
 		workout ? { workoutId: workout._id } : "skip"
@@ -202,24 +250,29 @@ export default function ActiveWorkoutPage() {
 
 		// First, add all pending exercises to establish stable order and meta (targetSets, targetReps, etc.)
 		for (const pending of pendingExercises) {
-			groups.set(pending.name, { entries: [], meta: pending });
+			groups.set(getExerciseGroupKey(pending), { entries: [], meta: pending });
 		}
 
 		// Then, add entries to their groups (entries may exist for exercises in pendingExercises)
 		if (entries) {
 			for (const entry of entries) {
-				const existing = groups.get(entry.exerciseName);
+				const groupKey = getEntryGroupKey(entry as EntryData);
+				const existing = groups.get(groupKey);
 				if (existing) {
 					existing.entries.push(entry as EntryData);
 				} else {
 					// Entry for an exercise not in pendingExercises (edge case: old data or manual add)
 					// Add at the end to preserve stable ordering of pending exercises
-					groups.set(entry.exerciseName, {
+					groups.set(groupKey, {
 						entries: [entry as EntryData],
 						meta: {
 							name: entry.exerciseName,
 							category: entry.kind === "cardio" ? "cardio" : "lifting",
 							primaryMetric: entry.kind === "cardio" ? "duration" : undefined,
+							measurementType:
+								entry.lifting?.durationSeconds !== undefined
+									? "duration"
+									: undefined,
 						},
 					});
 				}
@@ -254,6 +307,8 @@ export default function ActiveWorkoutPage() {
 					targetSets: ex.targetSets,
 					targetReps: ex.targetReps,
 					targetDurationMinutes: ex.targetDuration,
+					measurementType: ex.measurementType,
+					targetHoldSeconds: ex.targetHoldSeconds,
 					equipment: exerciseWithEquipment.equipment,
 				};
 			});
@@ -301,7 +356,13 @@ export default function ActiveWorkoutPage() {
 			return;
 		}
 
-		const liftingEntries = groupEntries.filter((e) => e.kind === "lifting");
+		const liftingEntries = groupEntries.filter(
+			(e) =>
+				e.kind === "lifting" &&
+				(meta.measurementType === "duration"
+					? e.lifting?.durationSeconds !== undefined
+					: e.lifting?.durationSeconds === undefined)
+		);
 		const isComplete =
 			meta.targetSets !== undefined && liftingEntries.length >= meta.targetSets;
 
@@ -319,8 +380,8 @@ export default function ActiveWorkoutPage() {
 		const currentExercise = exerciseList[currentExerciseIndex];
 		if (!currentExercise) return;
 
-		const [name] = currentExercise;
-		const element = exerciseRefs.current.get(name);
+		const [groupKey] = currentExercise;
+		const element = exerciseRefs.current.get(groupKey);
 
 		if (element) {
 			setTimeout(() => {
@@ -329,7 +390,7 @@ export default function ActiveWorkoutPage() {
 		}
 	}, [currentExerciseIndex, exerciseList]);
 
-	if (workout === undefined || workout === null) {
+	if (workout === undefined || workout === null || user === undefined) {
 		return (
 			<div className="flex min-h-screen flex-col p-4">
 				<Skeleton className="mb-4 h-8 w-48" />
@@ -349,7 +410,11 @@ export default function ActiveWorkoutPage() {
 			rpe?: number | null;
 		}
 	) => {
-		const group = exerciseGroups.get(exerciseName);
+		const group = exerciseGroups.get(getExerciseGroupKey({
+			name: exerciseName,
+			category: "lifting",
+			measurementType: "reps",
+		}));
 		const existingSets = group?.entries ?? [];
 		const setNumber = existingSets.length + 1;
 
@@ -362,7 +427,7 @@ export default function ActiveWorkoutPage() {
 					setNumber,
 					reps: set.reps,
 					weight: set.weight,
-					unit: set.unit,
+					unit: preferredUnit,
 					isBodyweight: set.isBodyweight,
 					rpe: set.rpe ?? undefined,
 				},
@@ -372,7 +437,7 @@ export default function ActiveWorkoutPage() {
 				set_number: setNumber,
 				reps: set.reps,
 				weight: set.weight,
-				unit: set.unit,
+				unit: preferredUnit,
 				is_bodyweight: set.isBodyweight ?? false,
 				rpe: set.rpe ?? null,
 			});
@@ -380,6 +445,46 @@ export default function ActiveWorkoutPage() {
 		} catch (error) {
 			toast.error("Failed to log set");
 			console.error(error);
+		}
+	};
+
+	const handleAddTimedSet = async (
+		exerciseName: string,
+		set: { durationSeconds: number; rpe?: number | null }
+	) => {
+		const group = exerciseGroups.get(getExerciseGroupKey({
+			name: exerciseName,
+			category: "lifting",
+			measurementType: "duration",
+		}));
+		const existingSets = group?.entries.filter(
+			(entry) => entry.kind === "lifting" && entry.lifting?.durationSeconds !== undefined
+		) ?? [];
+		const setNumber = existingSets.length + 1;
+
+		try {
+			await addLiftingEntry({
+				workoutId: workout._id,
+				clientId: generateClientId(),
+				exerciseName,
+				lifting: {
+					setNumber,
+					durationSeconds: set.durationSeconds,
+					unit: "lb",
+					rpe: set.rpe ?? undefined,
+				},
+			});
+			posthog.capture("set_logged", {
+				exercise_name: exerciseName,
+				set_number: setNumber,
+				measurement_type: "duration",
+				duration_seconds: set.durationSeconds,
+				rpe: set.rpe ?? null,
+			});
+			setShowRestTimer(true);
+		} catch (error) {
+			posthog.captureException(error);
+			throw error;
 		}
 	};
 
@@ -396,43 +501,56 @@ export default function ActiveWorkoutPage() {
 		}
 	) => {
 		try {
-			await addCardioEntry({
-				workoutId: workout._id,
-				clientId: generateClientId(),
-				exerciseName,
-				cardio: {
-					mode: "steady",
-					durationSeconds: data.durationSeconds,
+			await cardioPersistenceGate.runSave(async () => {
+				await addCardioEntry({
+					workoutId: workout._id,
+					clientId: generateClientId(),
+					exerciseName,
+					cardio: {
+						mode: "steady",
+						durationSeconds: data.durationSeconds,
+						distance: data.distance,
+						distanceUnit:
+							data.distanceUnit === "km"
+								? "km"
+								: data.distanceUnit === "mi"
+									? "mi"
+									: undefined,
+						rpe: data.rpe,
+						vestWeight: data.vestWeight,
+						vestWeightUnit: data.vestWeightUnit,
+						intensity: data.intensity,
+					},
+				});
+				posthog.capture("cardio_logged", {
+					exercise_name: exerciseName,
+					duration_seconds: data.durationSeconds,
 					distance: data.distance,
-					distanceUnit:
-						data.distanceUnit === "km"
-							? "km"
-							: data.distanceUnit === "mi"
-								? "mi"
-								: undefined,
+					distance_unit: data.distanceUnit,
 					rpe: data.rpe,
-					vestWeight: data.vestWeight,
-					vestWeightUnit: data.vestWeightUnit,
-					intensity: data.intensity,
-				},
-			});
-			posthog.capture("cardio_logged", {
-				exercise_name: exerciseName,
-				duration_seconds: data.durationSeconds,
-				distance: data.distance,
-				distance_unit: data.distanceUnit,
-				rpe: data.rpe,
+				});
 			});
 			// Don't remove from pendingExercises - we need to preserve order and metadata
 			toast.success("Cardio logged!");
 		} catch (error) {
-			toast.error("Failed to log cardio");
+			const reason =
+				error instanceof CardioSaveBlockedError
+					? "workout_completing"
+					: "mutation_failed";
+			posthog.capture("cardio_log_failed", { reason });
+			toast.error(
+				reason === "workout_completing"
+					? "Workout is already finishing"
+					: "Failed to log cardio"
+			);
 			console.error(error);
+			throw error;
 		}
 	};
 
 	const handleAddExercise = async (exercise: ExerciseSelection) => {
-		if (!exerciseGroups.has(exercise.name)) {
+		const groupKey = getExerciseGroupKey(exercise);
+		if (!exerciseGroups.has(groupKey)) {
 			if (exercise.muscleGroups && exercise.muscleGroups.length > 0) {
 				try {
 					await createExercise({
@@ -440,6 +558,7 @@ export default function ActiveWorkoutPage() {
 						category: exercise.category,
 						muscleGroups: exercise.muscleGroups,
 						primaryMetric: exercise.primaryMetric,
+						measurementType: exercise.measurementType,
 					});
 				} catch (error) {
 					console.error("Failed to create exercise:", error);
@@ -450,25 +569,56 @@ export default function ActiveWorkoutPage() {
 		setShowAddExercise(false);
 	};
 
-	const handleSwapComplete = (oldExercise: string, newExercise: string) => {
+	const handleSwapComplete = (
+		oldExercise: { groupKey: string; name: string },
+		selection: {
+			name: string;
+			measurementType: "reps" | "duration";
+			targetHoldSeconds?: number;
+		}
+	) => {
+		const newExercise = selection.name;
 		const isPendingExercise = pendingExercises.some(
-			(p) => p.name === oldExercise
+			(p) => getExerciseGroupKey(p) === oldExercise.groupKey
 		);
 
 		if (isPendingExercise) {
 			setPendingExercises((prev) =>
 				prev.map((p) =>
-					p.name === oldExercise ? { ...p, name: newExercise } : p
+					getExerciseGroupKey(p) === oldExercise.groupKey
+						? {
+								...p,
+								name: newExercise,
+								measurementType: selection.measurementType,
+								targetHoldSeconds:
+									selection.measurementType === "duration"
+										? selection.targetHoldSeconds ?? 30
+										: undefined,
+								targetReps:
+									selection.measurementType === "duration"
+										? undefined
+										: p.targetReps ?? "8-12",
+							}
+						: p
 				)
 			);
-		} else if (!exerciseGroups.has(newExercise)) {
+		} else if (!exerciseGroups.has(getExerciseGroupKey({
+			name: newExercise,
+			category: "lifting",
+			measurementType: selection.measurementType,
+		}))) {
 			setPendingExercises((prev) => [
 				...prev,
-				{ name: newExercise, category: "lifting" as const },
+				{
+					name: newExercise,
+					category: "lifting" as const,
+					measurementType: selection.measurementType,
+					targetHoldSeconds: selection.targetHoldSeconds,
+				},
 			]);
 		}
 		posthog.capture("exercise_swapped", {
-			old_exercise: oldExercise,
+			old_exercise: oldExercise.name,
 			new_exercise: newExercise,
 			workout_id: workout._id,
 		});
@@ -499,6 +649,15 @@ export default function ActiveWorkoutPage() {
 	};
 
 	const handleComplete = async () => {
+		const completionStart = cardioPersistenceGate.tryStartCompletion();
+		if (completionStart !== "started") {
+			if (completionStart === "cardio_save_pending") {
+				toast.info("Wait for cardio to finish saving");
+			}
+			return;
+		}
+
+		setIsCompleting(true);
 		vibrate("success");
 		try {
 			await completeWorkout({ workoutId: workout._id });
@@ -507,10 +666,17 @@ export default function ActiveWorkoutPage() {
 			toast.error("Failed to complete workout");
 			posthog.captureException(error);
 			console.error(error);
+		} finally {
+			setIsCompleting(false);
+			cardioPersistenceGate.finishCompletion();
 		}
 	};
 
 	const handleOpenTimeEditor = () => {
+		if (cardioPersistenceGate.pendingCount > 0) {
+			toast.info("Wait for cardio to finish saving");
+			return;
+		}
 		setTimeEditorInitialEnd(Date.now());
 		setShowTimeEditor(true);
 	};
@@ -519,6 +685,15 @@ export default function ActiveWorkoutPage() {
 		startedAt: number,
 		completedAt: number
 	) => {
+		const completionStart = cardioPersistenceGate.tryStartCompletion();
+		if (completionStart !== "started") {
+			throw new Error(
+				completionStart === "cardio_save_pending"
+					? "Wait for cardio to finish saving"
+					: "Workout completion is already in progress"
+			);
+		}
+
 		setIsCompletingWithEditedTime(true);
 		vibrate("success");
 		try {
@@ -534,6 +709,7 @@ export default function ActiveWorkoutPage() {
 			throw error;
 		} finally {
 			setIsCompletingWithEditedTime(false);
+			cardioPersistenceGate.finishCompletion();
 		}
 	};
 
@@ -595,6 +771,9 @@ export default function ActiveWorkoutPage() {
 		}
 	) => {
 		if (!set.entryId) return;
+		const storedSet = exerciseGroups
+			.get(exerciseName)
+			?.entries.find((entry) => entry._id === set.entryId)?.lifting;
 		setEditingSet({
 			entryId: set.entryId,
 			exerciseName,
@@ -602,28 +781,62 @@ export default function ActiveWorkoutPage() {
 			reps: set.reps,
 			weight: set.weight,
 			unit: set.unit,
+			storedWeight: storedSet?.weight,
+			storedUnit: storedSet?.unit,
 			isBodyweight: set.isBodyweight,
+			rpe: set.rpe,
+		});
+	};
+
+	const handleEditTimedSet = (exerciseName: string, set: TimedSetData) => {
+		if (!set.entryId) return;
+		setEditingSet({
+			entryId: set.entryId,
+			exerciseName,
+			setNumber: set.setNumber,
+			reps: 0,
+			weight: 0,
+			unit: "lb",
+			durationSeconds: set.durationSeconds,
 			rpe: set.rpe,
 		});
 	};
 
 	const handleUpdateSet = async (
 		entryId: string,
-		data: { reps: number; weight: number; rpe?: number | null }
+		data: { reps?: number; weight?: number; durationSeconds?: number; rpe?: number | null }
 	) => {
 		if (!editingSet) return;
 		try {
 			await updateLiftingEntry({
 				entryId:
 					entryId as unknown as import("../../../../convex/_generated/dataModel").Id<"entries">,
-				lifting: {
-					setNumber: editingSet.setNumber,
-					reps: data.reps,
-					weight: data.weight,
-					unit: editingSet.unit,
-					isBodyweight: editingSet.isBodyweight,
-					rpe: data.rpe ?? undefined,
-				},
+				lifting:
+					data.durationSeconds !== undefined
+						? {
+								setNumber: editingSet.setNumber,
+								durationSeconds: data.durationSeconds,
+								unit: editingSet.unit,
+								rpe: data.rpe ?? undefined,
+							}
+						: {
+								setNumber: editingSet.setNumber,
+								reps: data.reps,
+								weight:
+									data.weight === undefined
+										? undefined
+										: editedWeightForStorage({
+												displayedWeight: data.weight,
+												displayUnit: editingSet.unit,
+												storedUnit:
+													editingSet.storedUnit ?? editingSet.unit,
+												originalDisplayedWeight: editingSet.weight,
+												originalStoredWeight: editingSet.storedWeight,
+											}),
+								unit: editingSet.storedUnit ?? editingSet.unit,
+								isBodyweight: editingSet.isBodyweight,
+								rpe: data.rpe ?? undefined,
+							},
 			});
 			vibrate("success");
 			toast.success("Set updated");
@@ -651,8 +864,6 @@ export default function ActiveWorkoutPage() {
 		let loggedSets = 0;
 		let targetSets = 0;
 		let totalVolume = 0;
-		// Normalize all lifting volume to lb so mixed-unit workouts sum correctly.
-		const unit: WeightUnit = "lb";
 
 		for (const [, { entries: groupEntries, meta }] of exerciseGroups) {
 			if (meta.category === "cardio") {
@@ -665,23 +876,26 @@ export default function ActiveWorkoutPage() {
 			loggedSets += liftingEntries.length;
 			targetSets += meta.targetSets ?? Math.max(liftingEntries.length, 1);
 
-			for (const entry of liftingEntries) {
-				if (!entry.lifting) continue;
-				const weight = entry.lifting.weight ?? 0;
-				const weightLb = convertWeight(weight, entry.lifting.unit ?? unit, unit);
-				totalVolume += weightLb * (entry.lifting.reps ?? 0);
-			}
+			totalVolume += calculateVolumeInUnit(
+				liftingEntries.flatMap((entry) =>
+					entry.lifting ? [entry.lifting] : []
+				),
+				preferredUnit
+			);
 		}
 
-		return { loggedSets, targetSets, totalVolume, unit };
+		return { loggedSets, targetSets, totalVolume, unit: preferredUnit };
 	})();
 
-	const currentExerciseName = exerciseList[currentExerciseIndex]?.[0];
-	const nextExerciseName = exerciseList[currentExerciseIndex + 1]?.[0];
+	const currentExerciseName = exerciseList[currentExerciseIndex]?.[1].meta.name;
+	const nextExerciseName = exerciseList[currentExerciseIndex + 1]?.[1].meta.name;
+	const hasPendingCardioSaves = pendingCardioSaveCount > 0;
+	const isWorkoutCompleting = isCompleting || isCompletingWithEditedTime;
 
 	const jumpToCurrentExercise = () => {
-		if (!currentExerciseName) return;
-		const element = exerciseRefs.current.get(currentExerciseName);
+		const currentExerciseKey = exerciseList[currentExerciseIndex]?.[0];
+		if (!currentExerciseKey) return;
+		const element = exerciseRefs.current.get(currentExerciseKey);
 		if (element) {
 			element.scrollIntoView({ behavior: "smooth", block: "center" });
 		}
@@ -704,6 +918,7 @@ export default function ActiveWorkoutPage() {
 								size="sm"
 								className="h-auto px-1.5 py-0 text-xs text-muted-foreground"
 								onClick={handleOpenTimeEditor}
+								disabled={hasPendingCardioSaves || isWorkoutCompleting}
 							>
 								Edit time
 							</Button>
@@ -718,9 +933,32 @@ export default function ActiveWorkoutPage() {
 						>
 							Cancel
 						</Button>
-						<Button size="sm" onClick={handleComplete}>
-							Finish
+						<Button
+							size="sm"
+							onClick={handleComplete}
+							disabled={hasPendingCardioSaves || isWorkoutCompleting}
+							aria-describedby={
+								hasPendingCardioSaves ? "cardio-save-status" : undefined
+							}
+						>
+							{hasPendingCardioSaves
+								? "Saving..."
+								: isWorkoutCompleting
+									? "Finishing..."
+									: "Finish"}
 						</Button>
+						<span
+							id="cardio-save-status"
+							className="sr-only"
+							role="status"
+							aria-live="polite"
+						>
+							{hasPendingCardioSaves
+								? `${pendingCardioSaveCount} cardio ${
+										pendingCardioSaveCount === 1 ? "entry is" : "entries are"
+									} still saving.`
+								: ""}
+						</span>
 					</div>
 				</div>
 			</header>
@@ -741,7 +979,8 @@ export default function ActiveWorkoutPage() {
 
 			<main className="flex-1 space-y-4 p-4">
 				{Array.from(exerciseGroups.entries()).map(
-					([name, { entries: groupEntries, meta }], index) => {
+					([groupKey, { entries: groupEntries, meta }], index) => {
+						const name = meta.name;
 						const getExerciseStatus = ():
 							| "completed"
 							| "current"
@@ -752,27 +991,27 @@ export default function ActiveWorkoutPage() {
 						};
 
 						if (meta.category === "cardio") {
-							const hasLogged = groupEntries.some((e) => e.kind === "cardio");
+							const loggedCardioEntry = groupEntries.find(
+								(entry) => entry.kind === "cardio"
+							);
 							const status = getExerciseStatus();
 
 							return (
 								<div
-									key={name}
+									key={groupKey}
 									ref={(el) => {
-										if (el) exerciseRefs.current.set(name, el);
+										if (el) exerciseRefs.current.set(groupKey, el);
 									}}
 								>
 									<CardioExerciseCard
 										exerciseName={name}
 										primaryMetric={meta.primaryMetric ?? "duration"}
+										unit={preferredUnit}
 										status={status}
 										defaultMinutes={meta.targetDurationMinutes}
 										note={getExerciseNote(name)}
-										onLog={
-											hasLogged
-												? () => {}
-												: (data) => handleLogCardio(name, data)
-										}
+										loggedData={loggedCardioEntry?.cardio}
+										onLog={(data) => handleLogCardio(name, data)}
 										onNoteChange={(note: string) =>
 											handleNoteChange(name, note)
 										}
@@ -785,17 +1024,65 @@ export default function ActiveWorkoutPage() {
 							);
 						}
 
+						if (meta.measurementType === "duration") {
+							const timedSets = groupEntries
+								.filter(
+									(entry) =>
+										entry.kind === "lifting" &&
+										entry.lifting?.durationSeconds !== undefined
+								)
+								.map((entry) => ({
+									entryId: entry._id,
+									setNumber: entry.lifting!.setNumber,
+									durationSeconds: entry.lifting!.durationSeconds!,
+									rpe: entry.lifting!.rpe ?? null,
+								}));
+
+							return (
+								<div
+									key={groupKey}
+									ref={(element) => {
+										if (element) exerciseRefs.current.set(groupKey, element);
+									}}
+								>
+									<TimedExerciseAccordionWithHistory
+										exerciseName={name}
+										sets={timedSets}
+										status={getExerciseStatus()}
+										targetSets={meta.targetSets}
+										targetDurationSeconds={meta.targetHoldSeconds}
+										note={getExerciseNote(name)}
+										onAddSet={(set) => handleAddTimedSet(name, set)}
+										onEditSet={(set) => handleEditTimedSet(name, set)}
+										onSwap={() => setSwapExercise({ groupKey, name })}
+										onNoteChange={(note) => handleNoteChange(name, note)}
+										onSelect={() => {
+											setManualNavigation(true);
+											setCurrentExerciseIndex(index);
+										}}
+									/>
+								</div>
+							);
+						}
+
 						const sets = groupEntries
 							.filter((e) => e.kind === "lifting" && e.lifting)
-							.map((e) => ({
-								entryId: e._id,
-								setNumber: e.lifting!.setNumber,
-								reps: e.lifting!.reps ?? 0,
-								weight: e.lifting!.weight ?? 0,
-								unit: (e.lifting!.unit ?? "lb") as "lb" | "kg",
-								isBodyweight: e.lifting!.isBodyweight,
-								rpe: e.lifting!.rpe ?? null,
-							}));
+							.map((e) => {
+								const sourceUnit = e.lifting!.unit ?? "lb";
+								return {
+									entryId: e._id,
+									setNumber: e.lifting!.setNumber,
+									reps: e.lifting!.reps ?? 0,
+									weight: displayWeight(
+										e.lifting!.weight ?? 0,
+										sourceUnit,
+										preferredUnit
+									),
+									unit: preferredUnit,
+									isBodyweight: e.lifting!.isBodyweight,
+									rpe: e.lifting!.rpe ?? null,
+								};
+							});
 
 						const parseTargetReps = (
 							targetReps?: string
@@ -809,15 +1096,16 @@ export default function ActiveWorkoutPage() {
 
 						return (
 							<div
-								key={name}
+								key={groupKey}
 								ref={(el) => {
-									if (el) exerciseRefs.current.set(name, el);
+									if (el) exerciseRefs.current.set(groupKey, el);
 								}}
 							>
 								<ExerciseAccordionWithHistory
 									exerciseName={name}
 									sets={sets}
 									status={status}
+									unit={preferredUnit}
 									equipment={meta.equipment}
 									defaultReps={parseTargetReps(meta.targetReps)}
 									targetSets={meta.targetSets}
@@ -839,7 +1127,7 @@ export default function ActiveWorkoutPage() {
 										isBodyweight?: boolean;
 										rpe?: number | null;
 									}) => handleEditSet(name, set)}
-									onSwap={() => setSwapExercise(name)}
+									onSwap={() => setSwapExercise({ groupKey, name })}
 									onNoteChange={(note: string) => handleNoteChange(name, note)}
 									onSelect={() => {
 										setManualNavigation(true);
@@ -880,9 +1168,9 @@ export default function ActiveWorkoutPage() {
 					open={!!swapExercise}
 					onOpenChange={(open) => !open && setSwapExercise(null)}
 					workoutId={workout._id}
-					exerciseName={swapExercise}
-					onSwapComplete={(newExercise) =>
-						handleSwapComplete(swapExercise, newExercise)
+					exerciseName={swapExercise.name}
+					onSwapComplete={(selection) =>
+						handleSwapComplete(swapExercise, selection)
 					}
 				/>
 			)}

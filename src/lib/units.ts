@@ -1,5 +1,11 @@
 export type WeightUnit = "lb" | "kg";
 
+export type WeightedReps = {
+  weight?: number;
+  reps?: number;
+  unit?: WeightUnit;
+};
+
 const LB_TO_KG = 0.453592;
 const KG_TO_LB = 2.20462;
 
@@ -27,4 +33,35 @@ export function displayWeight(
 ): number {
   const converted = convertWeight(weight, fromUnit, toUnit);
   return roundWeight(converted, toUnit);
+}
+
+export function calculateVolumeInUnit(
+  sets: WeightedReps[],
+  toUnit: WeightUnit
+): number {
+  return sets.reduce((total, set) => {
+    const weight = set.weight ?? 0;
+    const reps = set.reps ?? 0;
+    const sourceUnit = set.unit ?? toUnit;
+    return total + convertWeight(weight, sourceUnit, toUnit) * reps;
+  }, 0);
+}
+
+export function editedWeightForStorage({
+  displayedWeight,
+  displayUnit,
+  storedUnit,
+  originalDisplayedWeight,
+  originalStoredWeight,
+}: {
+  displayedWeight: number;
+  displayUnit: WeightUnit;
+  storedUnit: WeightUnit;
+  originalDisplayedWeight: number;
+  originalStoredWeight?: number;
+}): number | undefined {
+  if (displayedWeight === originalDisplayedWeight) {
+    return originalStoredWeight;
+  }
+  return displayWeight(displayedWeight, displayUnit, storedUnit);
 }

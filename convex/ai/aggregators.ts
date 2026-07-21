@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalQuery } from "../_generated/server";
 import type { Id, Doc } from "../_generated/dataModel";
+import { getMondayWeekKey, getMondayWeekStartUtc, WEEK_IN_MS } from "../lib/week";
 
 const MODALITY_METS: Record<string, number> = {
   run: 9.8,
@@ -164,11 +165,12 @@ export const aggregateWorkoutData = internalQuery({
   args: {
     userId: v.id("users"),
     days: v.number(),
+    periodStart: v.optional(v.number()),
     includeHistoricalContext: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<AggregatedWorkoutData> => {
     const now = Date.now();
-    const periodStart = now - args.days * 24 * 60 * 60 * 1000;
+    const periodStart = args.periodStart ?? now - args.days * 24 * 60 * 60 * 1000;
 
     const workouts = await ctx.db
       .query("workouts")
@@ -364,7 +366,7 @@ function computeConsistency(
 
   const weeklyWorkouts = new Map<string, number>();
   for (const workout of workouts) {
-    const weekKey = getWeekStart(workout.startedAt);
+    const weekKey = getMondayWeekKey(workout.startedAt);
     weeklyWorkouts.set(weekKey, (weeklyWorkouts.get(weekKey) ?? 0) + 1);
   }
 
@@ -377,16 +379,16 @@ function computeConsistency(
   let longestStreak = 0;
   let tempStreak = 0;
 
-  const now = new Date();
-  const currentWeek = getWeekStart(now.getTime());
-  const lastWeek = getWeekStart(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const now = Date.now();
+  const currentWeekStart = getMondayWeekStartUtc(now);
+  const currentWeek = getMondayWeekKey(now);
+  const lastWeek = getMondayWeekKey(currentWeekStart - WEEK_IN_MS);
 
   const allWeeks: string[] = [];
   if (weeks.length > 0) {
-    const startDate = new Date(weeks[0]);
-    const endDate = new Date(currentWeek);
-    for (let d = startDate; d <= endDate; d.setDate(d.getDate() + 7)) {
-      allWeeks.push(getWeekStart(d.getTime()));
+    const firstWeekStart = Date.parse(`${weeks[0]}T00:00:00.000Z`);
+    for (let weekStart = firstWeekStart; weekStart <= currentWeekStart; weekStart += WEEK_IN_MS) {
+      allWeeks.push(getMondayWeekKey(weekStart));
     }
   }
 
@@ -524,7 +526,7 @@ function aggregateVolumeByMuscleOverTime(
     const workoutDate = workoutDateMap.get(entry.workoutId);
     if (!workoutDate) continue;
 
-    const weekStart = getWeekStart(workoutDate);
+    const weekStart = getMondayWeekKey(workoutDate);
     const exercise = exerciseMap.get(entry.exerciseName);
     const muscleGroups = exercise?.muscleGroups ?? ["other"];
 
@@ -919,14 +921,6 @@ function calculateTrend(
   return "flat";
 }
 
-function getWeekStart(timestamp: number): string {
-  const date = new Date(timestamp);
-  const dayOfWeek = date.getDay();
-  date.setDate(date.getDate() - dayOfWeek);
-  date.setHours(0, 0, 0, 0);
-  return date.toISOString().split("T")[0];
-}
-
 export const getLastAssessmentSummary = internalQuery({
   args: {
     userId: v.id("users"),
@@ -962,7 +956,7 @@ export const getExerciseContext = internalQuery({
       .take(9);
 
     const recentSessions = recentEntries
-      .filter((e) => e.kind === "lifting" && e.lifting)
+      .filter((e) => e.kind === "lifting" && e.lifting && e.lifting.durationSeconds === undefined)
       .slice(0, 3)
       .map((e) => ({
         wt: e.lifting!.weight ?? 0,

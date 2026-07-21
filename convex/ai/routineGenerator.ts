@@ -13,6 +13,8 @@ export interface RoutineSwapAlternative {
   reasoning: string;
   equipmentNeeded: string[];
   difficultyAdjustment: "easier" | "similar" | "harder";
+  measurementType?: "reps" | "duration";
+  targetHoldSeconds?: number;
 }
 
 export interface RoutineSwapResponse {
@@ -29,6 +31,8 @@ export interface GeneratedRoutineDay {
     kind: "lifting" | "cardio" | "mobility";
     targetSets: number;
     targetReps: string;
+    measurementType?: "reps" | "duration";
+    targetHoldSeconds?: number;
     notes?: string;
   }>;
 }
@@ -199,6 +203,14 @@ export const generateRoutine = action({
         if (typeof exercise.targetReps !== "string") {
           exercise.targetReps = "8-12";
         }
+        if (exercise.measurementType === "duration") {
+          exercise.targetHoldSeconds =
+            typeof exercise.targetHoldSeconds === "number" && exercise.targetHoldSeconds > 0
+              ? Math.min(exercise.targetHoldSeconds, 3600)
+              : 30;
+        } else {
+          exercise.measurementType = "reps";
+        }
       }
     }
 
@@ -309,6 +321,15 @@ export const getRoutineSwapAlternatives = action({
       ) {
         logger.fail(new Error("Invalid alternative exercise name"));
         throw new Error("Invalid alternative exercise name");
+      }
+      if (alt.measurementType === "duration") {
+        alt.targetHoldSeconds =
+          typeof alt.targetHoldSeconds === "number" && alt.targetHoldSeconds > 0
+            ? Math.min(alt.targetHoldSeconds, 3600)
+            : 30;
+      } else {
+        alt.measurementType = "reps";
+        alt.targetHoldSeconds = undefined;
       }
     }
 

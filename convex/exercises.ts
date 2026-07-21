@@ -99,7 +99,7 @@ const SYSTEM_EXERCISES = [
   // --------------------------------------------------------------------------
   // Core
   // --------------------------------------------------------------------------
-  { name: "Plank", aliases: ["Front Plank"], category: "lifting", muscleGroups: ["core"], equipment: ["bodyweight"] },
+  { name: "Plank", aliases: ["Front Plank"], category: "lifting", muscleGroups: ["core"], equipment: ["bodyweight"], measurementType: "duration" },
   { name: "Crunch", aliases: ["Ab Crunch"], category: "lifting", muscleGroups: ["core"], equipment: ["bodyweight"] },
   { name: "Leg Raise", aliases: ["Hanging Leg Raise", "Lying Leg Raise"], category: "lifting", muscleGroups: ["core"], equipment: ["bodyweight"] },
   { name: "Russian Twist", aliases: ["Seated Russian Twist"], category: "lifting", muscleGroups: ["core"], equipment: ["bodyweight", "dumbbell"] },
@@ -242,6 +242,7 @@ export const seedSystemExercises = mutation({
         equipment: exercise.equipment?.length ? [...exercise.equipment] : undefined,
         modality: "modality" in exercise ? exercise.modality : undefined,
         primaryMetric: "primaryMetric" in exercise ? (exercise.primaryMetric as "duration" | "distance") : undefined,
+        measurementType: "measurementType" in exercise ? (exercise.measurementType as "duration") : undefined,
         isSystemExercise: true,
         createdAt: now,
       });
@@ -279,7 +280,8 @@ export const updateSystemExercises = mutation({
         JSON.stringify(existingExercise.aliases ?? []) !== JSON.stringify(exercise.aliases ?? []) ||
         JSON.stringify(existingExercise.equipment ?? []) !== JSON.stringify(exercise.equipment ?? []) ||
         JSON.stringify(existingExercise.muscleGroups ?? []) !== JSON.stringify(exercise.muscleGroups ?? []) ||
-        existingExercise.category !== exercise.category;
+        existingExercise.category !== exercise.category ||
+        existingExercise.measurementType !== ("measurementType" in exercise ? exercise.measurementType : undefined);
 
       if (needsUpdate) {
         await ctx.db.patch(existingExercise._id, {
@@ -287,6 +289,7 @@ export const updateSystemExercises = mutation({
           equipment: exercise.equipment?.length ? [...exercise.equipment] : undefined,
           muscleGroups: exercise.muscleGroups?.length ? [...exercise.muscleGroups] : undefined,
           category: exercise.category as "lifting" | "cardio" | "mobility" | "other",
+          measurementType: "measurementType" in exercise ? (exercise.measurementType as "duration") : undefined,
         });
         updated++;
       }
@@ -313,6 +316,7 @@ export const createExercise = mutation({
     equipment: v.optional(v.array(v.string())),
     modality: v.optional(v.string()),
     primaryMetric: v.optional(v.union(v.literal("duration"), v.literal("distance"))),
+    measurementType: v.optional(v.union(v.literal("reps"), v.literal("duration"))),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -327,6 +331,7 @@ export const createExercise = mutation({
       equipment: args.equipment,
       modality: args.modality,
       primaryMetric: args.primaryMetric,
+      measurementType: args.measurementType,
       isSystemExercise: false,
       createdAt: Date.now(),
     });
@@ -344,6 +349,7 @@ export const updateExercise = mutation({
     id: v.id("exercises"),
     muscleGroups: v.optional(v.array(v.string())),
     name: v.optional(v.string()),
+    measurementType: v.optional(v.union(v.literal("reps"), v.literal("duration"))),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -364,6 +370,7 @@ export const updateExercise = mutation({
     const updates: Partial<{
       muscleGroups?: string[];
       name?: string;
+      measurementType?: "reps" | "duration";
     }> = {};
 
     if (args.muscleGroups !== undefined) {
@@ -372,6 +379,10 @@ export const updateExercise = mutation({
 
     if (args.name !== undefined) {
       updates.name = args.name;
+    }
+
+    if (args.measurementType !== undefined) {
+      updates.measurementType = args.measurementType;
     }
 
     await ctx.db.patch(args.id, updates);
