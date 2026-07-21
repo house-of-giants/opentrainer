@@ -1,4 +1,4 @@
-import { displayWeight, type WeightUnit } from "./units";
+import { convertWeight, displayWeight, type WeightUnit } from "./units";
 
 type ExerciseSession = {
   workoutId: string;
@@ -24,7 +24,7 @@ function convertSessionToUnit(
 ): ExerciseSession {
   const sets = session.sets.map((set) => ({
     ...set,
-    weight: displayWeight(set.weight, set.unit, unit),
+    weight: convertWeight(set.weight, set.unit, unit),
     unit,
   }));
   const workingSets = sets.filter((set) => set.reps > 0);
@@ -32,7 +32,7 @@ function convertSessionToUnit(
     (best, current) => (current.weight > best.weight ? current : best),
     {
       ...session.bestSet,
-      weight: displayWeight(
+      weight: convertWeight(
         session.bestSet.weight,
         session.bestSet.unit,
         unit
@@ -217,7 +217,7 @@ export function calculateProgressionSuggestion(
 
   return {
     lastSession: {
-      weight: bestSet.weight,
+      weight: displayWeight(bestSet.weight, bestSet.unit, bestSet.unit),
       reps: bestSet.reps,
       rpe: bestSet.rpe,
       date: lastSession.date,
@@ -225,7 +225,10 @@ export function calculateProgressionSuggestion(
     },
     suggestion: {
       type: suggestionType,
-      targetWeight,
+      targetWeight:
+        targetWeight === null
+          ? null
+          : displayWeight(targetWeight, bestSet.unit, bestSet.unit),
       targetReps,
       reasoning,
     },

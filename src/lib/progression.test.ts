@@ -18,9 +18,20 @@ describe("progression unit normalization", () => {
           workoutId: "previous",
           date: "2026-07-07T00:00:00.000Z",
           sets: [
-            { setNumber: 1, weight: 220.5, reps: 8, rpe: null, unit: "lb" },
+            {
+              setNumber: 1,
+              weight: 100 / 0.453592,
+              reps: 8,
+              rpe: null,
+              unit: "lb",
+            },
           ],
-          bestSet: { weight: 220.5, reps: 8, rpe: null, unit: "lb" },
+          bestSet: {
+            weight: 100 / 0.453592,
+            reps: 8,
+            rpe: null,
+            unit: "lb",
+          },
         },
       ],
       "8",
@@ -65,6 +76,39 @@ describe("progression unit normalization", () => {
       rpe: 8,
       date: "2026-07-14T00:00:00.000Z",
       unit: "kg",
+    });
+  });
+
+  test("does not collapse distinct canonical weights that display the same", () => {
+    const result = calculateProgressionSuggestion(
+      [
+        {
+          workoutId: "latest",
+          date: "2026-07-14T00:00:00.000Z",
+          sets: [
+            { setNumber: 1, weight: 100, reps: 8, rpe: null, unit: "kg" },
+          ],
+          bestSet: { weight: 100, reps: 8, rpe: null, unit: "kg" },
+        },
+        {
+          workoutId: "previous",
+          date: "2026-07-07T00:00:00.000Z",
+          sets: [
+            { setNumber: 1, weight: 220.4, reps: 8, rpe: null, unit: "lb" },
+          ],
+          bestSet: { weight: 220.4, reps: 8, rpe: null, unit: "lb" },
+        },
+      ],
+      "8",
+      "kg"
+    );
+
+    assert.equal(result?.lastSession.weight, 100);
+    assert.deepEqual(result?.suggestion, {
+      type: "hold",
+      targetWeight: 100,
+      targetReps: 8,
+      reasoning: "Build consistency at this weight.",
     });
   });
 });
