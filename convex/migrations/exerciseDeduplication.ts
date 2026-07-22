@@ -1,16 +1,29 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
-	internalMutation,
-	internalQuery,
+	mutation,
+	query,
 	type MutationCtx,
 	type QueryCtx,
 } from "../_generated/server";
 import { getExerciseCleanupPlan } from "../../src/lib/exercise-deduplication";
 
+const MIGRATION_OPERATOR_ISSUER = "https://opentrainer.app/migrations";
+const MIGRATION_OPERATOR_SUBJECT = "exercise-deduplication";
+
 type ExerciseCleanupGroup = ReturnType<
 	typeof getExerciseCleanupPlan<Doc<"exercises">>
 >[number];
+
+async function requireMigrationOperator(ctx: QueryCtx | MutationCtx) {
+	const identity = await ctx.auth.getUserIdentity();
+	if (
+		identity?.issuer !== MIGRATION_OPERATOR_ISSUER ||
+		identity.subject !== MIGRATION_OPERATOR_SUBJECT
+	) {
+		throw new Error("Exercise deduplication requires an operator identity");
+	}
+}
 
 async function loadCleanupState(ctx: QueryCtx | MutationCtx) {
 	const [exercises, routines, entries] = await Promise.all([
@@ -100,9 +113,10 @@ function serializeGroup(
 	};
 }
 
-export const audit = internalQuery({
+export const audit = query({
 	args: {},
 	handler: async (ctx) => {
+		await requireMigrationOperator(ctx);
 		const state = await loadCleanupState(ctx);
 		return {
 			...state.summary,
@@ -117,13 +131,14 @@ export const audit = internalQuery({
 	},
 });
 
-export const apply = internalMutation({
+export const apply = mutation({
 	args: {
 		confirmation: v.literal("deduplicate-exercises"),
 		expectedExerciseCount: v.number(),
 		expectedRemovableExerciseCount: v.number(),
 	},
 	handler: async (ctx, args) => {
+		await requireMigrationOperator(ctx);
 		const state = await loadCleanupState(ctx);
 		if (state.summary.exerciseCount !== args.expectedExerciseCount) {
 			throw new Error(
