@@ -6,6 +6,7 @@ import {
   cleanExerciseName,
   normalizeExerciseName,
 } from "../src/lib/exercise-names";
+import { deduplicateVisibleExercises } from "../src/lib/exercise-deduplication";
 
 function hasExerciseName(exercise: Doc<"exercises">, normalizedName: string) {
   return (
@@ -53,31 +54,7 @@ async function getVisibleExercises(ctx: QueryCtx | MutationCtx) {
 }
 
 function deduplicateExercises(exercises: Doc<"exercises">[]) {
-  const preferredExercises = [...exercises].sort((a, b) => {
-    if (a.isSystemExercise !== b.isSystemExercise) {
-      return a.isSystemExercise ? -1 : 1;
-    }
-    return a.createdAt - b.createdAt;
-  });
-  const uniqueExercises = new Map<string, Doc<"exercises">>();
-
-  for (const exercise of preferredExercises) {
-    const normalizedName = normalizeExerciseName(exercise.name);
-    const matchesExistingExercise = Array.from(uniqueExercises.values()).some(
-      (existingExercise) =>
-        hasExerciseName(existingExercise, normalizedName) ||
-        hasExerciseName(
-          exercise,
-          normalizeExerciseName(existingExercise.name)
-        )
-    );
-
-    if (!matchesExistingExercise) {
-      uniqueExercises.set(normalizedName, exercise);
-    }
-  }
-
-  return Array.from(uniqueExercises.values());
+  return deduplicateVisibleExercises(exercises);
 }
 
 // ============================================================================
