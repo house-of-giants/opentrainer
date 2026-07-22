@@ -162,6 +162,10 @@ async function seedReferencedDuplicates(t: ReturnType<typeof createTest>) {
 describe("exercise deduplication migration", () => {
 	test("requires the dedicated operator identity", async () => {
 		const t = convexTest(schema, modules);
+		const nonOperator = t.withIdentity({
+			issuer: "https://clerk.opentrainer.app",
+			subject: "app-user",
+		});
 
 		await assert.rejects(
 			t.query(audit, {}),
@@ -169,6 +173,18 @@ describe("exercise deduplication migration", () => {
 		);
 		await assert.rejects(
 			t.mutation(apply, {
+				confirmation: "deduplicate-exercises",
+				expectedExerciseCount: 0,
+				expectedRemovableExerciseCount: 0,
+			}),
+			/Exercise deduplication requires an operator identity/
+		);
+		await assert.rejects(
+			nonOperator.query(audit, {}),
+			/Exercise deduplication requires an operator identity/
+		);
+		await assert.rejects(
+			nonOperator.mutation(apply, {
 				confirmation: "deduplicate-exercises",
 				expectedExerciseCount: 0,
 				expectedRemovableExerciseCount: 0,
