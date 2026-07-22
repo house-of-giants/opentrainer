@@ -27,23 +27,32 @@ async function loadCleanupState(ctx: QueryCtx | MutationCtx) {
 		}
 	}
 
+	const routineReferenceCounts = new Map<Id<"exercises">, number>();
 	let routineReferenceCount = 0;
 	for (const routine of routines) {
 		for (const day of routine.days) {
 			for (const exercise of day.exercises) {
-				if (
-					exercise.exerciseId &&
-					duplicateToCanonical.has(exercise.exerciseId)
-				) {
+				if (!exercise.exerciseId) continue;
+				routineReferenceCounts.set(
+					exercise.exerciseId,
+					(routineReferenceCounts.get(exercise.exerciseId) ?? 0) + 1
+				);
+				if (duplicateToCanonical.has(exercise.exerciseId)) {
 					routineReferenceCount += 1;
 				}
 			}
 		}
 	}
 
+	const entryReferenceCounts = new Map<Id<"exercises">, number>();
 	let entryReferenceCount = 0;
 	for (const entry of entries) {
-		if (entry.exerciseId && duplicateToCanonical.has(entry.exerciseId)) {
+		if (!entry.exerciseId) continue;
+		entryReferenceCounts.set(
+			entry.exerciseId,
+			(entryReferenceCounts.get(entry.exerciseId) ?? 0) + 1
+		);
+		if (duplicateToCanonical.has(entry.exerciseId)) {
 			entryReferenceCount += 1;
 		}
 	}
@@ -54,6 +63,8 @@ async function loadCleanupState(ctx: QueryCtx | MutationCtx) {
 		entries,
 		groups,
 		duplicateToCanonical,
+		routineReferenceCounts,
+		entryReferenceCounts,
 		summary: {
 			exerciseCount: exercises.length,
 			duplicateGroupCount: groups.length,
@@ -69,8 +80,8 @@ async function loadCleanupState(ctx: QueryCtx | MutationCtx) {
 
 function serializeGroup(
 	group: ExerciseCleanupGroup,
-	routines: Doc<"routines">[],
-	entries: Doc<"entries">[]
+	routineReferenceCounts: Map<Id<"exercises">, number>,
+	entryReferenceCounts: Map<Id<"exercises">, number>
 ) {
 	return {
 		ownerId: group.ownerId,
@@ -82,22 +93,9 @@ function serializeGroup(
 		duplicates: group.duplicates.map((duplicate) => ({
 			id: duplicate._id,
 			name: duplicate.name,
-			routineReferenceCount: routines.reduce(
-				(count, routine) =>
-					count +
-					routine.days.reduce(
-						(dayCount, day) =>
-							dayCount +
-							day.exercises.filter(
-								(exercise) => exercise.exerciseId === duplicate._id
-							).length,
-						0
-					),
-				0
-			),
-			entryReferenceCount: entries.filter(
-				(entry) => entry.exerciseId === duplicate._id
-			).length,
+			routineReferenceCount:
+				routineReferenceCounts.get(duplicate._id) ?? 0,
+			entryReferenceCount: entryReferenceCounts.get(duplicate._id) ?? 0,
 		})),
 	};
 }
@@ -109,7 +107,11 @@ export const audit = internalQuery({
 		return {
 			...state.summary,
 			groups: state.groups.map((group) =>
-				serializeGroup(group, state.routines, state.entries)
+				serializeGroup(
+					group,
+					state.routineReferenceCounts,
+					state.entryReferenceCounts
+				)
 			),
 		};
 	},

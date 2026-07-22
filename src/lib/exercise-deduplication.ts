@@ -39,7 +39,7 @@ export function getExerciseDeduplicationGroups<
 	T extends DeduplicableExercise,
 >(exercises: readonly T[]): Array<ExerciseDeduplicationGroup<T>> {
 	const preferredExercises = [...exercises].sort((left, right) => {
-		if (left.isSystemExercise !== right.isSystemExercise) {
+		if (Boolean(left.isSystemExercise) !== Boolean(right.isSystemExercise)) {
 			return left.isSystemExercise ? -1 : 1;
 		}
 		return left.createdAt - right.createdAt;
@@ -47,8 +47,12 @@ export function getExerciseDeduplicationGroups<
 	const groups: Array<ExerciseDeduplicationGroup<T>> = [];
 
 	for (const exercise of preferredExercises) {
-		const existingGroup = groups.find(({ canonical }) =>
-			exerciseNamesOverlap(canonical, exercise)
+		const existingGroup = groups.find(
+			({ canonical, duplicates }) =>
+				exerciseNamesOverlap(canonical, exercise) ||
+				duplicates.some((duplicate) =>
+					exerciseNamesOverlap(duplicate, exercise)
+				)
 		);
 		if (existingGroup) {
 			existingGroup.duplicates.push(exercise);

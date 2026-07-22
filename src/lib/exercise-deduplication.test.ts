@@ -59,6 +59,52 @@ describe("exercise deduplication", () => {
 		assert.deepEqual(deduplicateVisibleExercises([newest, oldest]), [oldest]);
 	});
 
+	test("treats an unset system flag as false when choosing the oldest custom exercise", () => {
+		const oldest: Exercise = {
+			id: "plank-1",
+			name: "Plank",
+			userId: "user-1",
+			isSystemExercise: false,
+			createdAt: 1,
+		};
+		const newest: Exercise = {
+			id: "plank-2",
+			name: "Plank",
+			userId: "user-1",
+			createdAt: 2,
+		};
+
+		assert.deepEqual(deduplicateVisibleExercises([newest, oldest]), [oldest]);
+	});
+
+	test("joins chained aliases through an existing duplicate", () => {
+		const canonical: Exercise = {
+			id: "bench-press",
+			name: "Bench Press",
+			userId: "user-1",
+			createdAt: 1,
+		};
+		const bridge: Exercise = {
+			id: "flat-bench",
+			name: "Flat Bench",
+			aliases: ["Bench Press"],
+			userId: "user-1",
+			createdAt: 2,
+		};
+		const chainedAlias: Exercise = {
+			id: "chest-press",
+			name: "Chest Press",
+			aliases: ["Flat Bench"],
+			userId: "user-1",
+			createdAt: 3,
+		};
+
+		assert.deepEqual(
+			deduplicateVisibleExercises([chainedAlias, bridge, canonical]),
+			[canonical]
+		);
+	});
+
 	test("builds owner-scoped cleanup mappings without merging custom exercises across users", () => {
 		const systemPlank: Exercise = {
 			id: "system-plank",
