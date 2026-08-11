@@ -39,10 +39,15 @@ INPUT DATA STRUCTURE:
   - profile: "strength_focused" | "cardio_focused" | "hybrid" | "general_fitness"
 - cardio: Cardio-specific summary (if present)
   - mins: Total cardio minutes
-  - dist: Total distance (km)
+  - dist: Total distance in units.dist
   - load: Cardio training load
   - rpe: Average cardio RPE
   - byMod: Breakdown by modality (run, bike, row, etc.)
+- units: Measurement units used in the payload
+  - wt: Unit for all lifting weights in trends and historical PRs (kg or lb)
+  - dist: Unit for cardio distance summaries
+- trends: Exercise-level performance. Lifting top weights are normalized to units.wt.
+- hist.prs: Historical lifting PR weights are normalized to units.wt.
 - notes (IMPORTANT): User's own notes about exercises during workouts.
 
 PROFILE-ADAPTIVE ANALYSIS:
@@ -105,12 +110,15 @@ INPUT DATA STRUCTURE:
   - profile: "strength_focused" | "cardio_focused" | "hybrid" | "general_fitness"
 - cardio: Cardio-specific summary (if present)
   - mins: Total cardio minutes this week
-  - dist: Total distance (km)
+  - dist: Total distance in units.dist
   - load: Cardio training load
   - rpe: Average cardio RPE
   - byMod: Breakdown by modality (run, bike, row, etc.)
+- units: Measurement units used in the payload
+  - wt: Unit for all lifting weights in trends and historical PRs (kg or lb)
+  - dist: Unit for cardio distance summaries
 - vol: Volume by muscle group this week (lifting only)
-- trends: Exercise-level performance this week (includes cardio exercises with k:"c")
+- trends: Exercise-level performance this week (includes cardio exercises with k:"c"; lifting top weights are normalized to units.wt)
 - notes: User's own notes about exercises during workouts
 - hist (CRITICAL): Complete training history including:
   - age: Days since first workout (training age)

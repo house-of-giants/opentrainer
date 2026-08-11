@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalQuery } from "../_generated/server";
 import type { Id, Doc } from "../_generated/dataModel";
 import { getMondayWeekKey, getMondayWeekStartUtc, WEEK_IN_MS } from "../lib/week";
+import { convertWeight, roundWeight, type WeightUnit } from "../../src/lib/units";
 
 const MODALITY_METS: Record<string, number> = {
   run: 9.8,
@@ -34,9 +35,8 @@ function calculateCardioLoad(
   return Math.round(adjustedMET * effectiveBodyweight * (durationMinutes / 60));
 }
 
-function convertToKg(weight: number, unit: "kg" | "lb" | undefined): number {
-  if (unit === "lb") return weight * 0.453592;
-  return weight;
+function convertToKg(weight: number, unit: WeightUnit | undefined): number {
+  return convertWeight(weight, unit ?? "kg", "kg");
 }
 
 function convertToKm(distance: number, unit: "m" | "km" | "mi" | undefined): number {
@@ -104,6 +104,7 @@ export interface HistoricalContext {
   personalRecords: Array<{
     exercise: string;
     topWeight: number;
+    topWeightUnit: WeightUnit;
     topWeightDate: string;
     totalSessions: number;
   }>;
@@ -121,6 +122,7 @@ export interface ExerciseNote {
 }
 
 export interface AggregatedWorkoutData {
+  weightUnit: WeightUnit;
   period: {
     start: string;
     end: string;
@@ -143,6 +145,7 @@ export interface AggregatedWorkoutData {
     sessions: number;
     totalSets: number;
     topWeight?: number;
+    weightUnit?: WeightUnit;
     avgRpe?: number;
     trend: "up" | "down" | "flat";
   }>;
@@ -196,10 +199,12 @@ export const aggregateWorkoutData = internalQuery({
 
     const exercises = await ctx.db.query("exercises").collect();
     const exerciseMap = new Map(exercises.map((e) => [e.name, e]));
+    const user = await ctx.db.get(args.userId);
+    const preferredUnit: WeightUnit = user?.preferredUnits ?? "lb";
 
     const volumeByMuscle = aggregateVolumeByMuscle(entries, exerciseMap);
     const volumeByMuscleOverTime = aggregateVolumeByMuscleOverTime(entries, workouts, exerciseMap);
-    const exerciseTrends = aggregateExerciseTrends(entries, workouts);
+    const exerciseTrends = aggregateExerciseTrends(entries, workouts, preferredUnit);
     const rpeByWorkout = aggregateRpeByWorkout(entries, workouts);
 
     const swaps = await ctx.db
@@ -217,7 +222,6 @@ export const aggregateWorkoutData = internalQuery({
       }
     }
 
-    const user = await ctx.db.get(args.userId);
     const userBodyweightKg = user?.bodyweight
       ? convertToKg(user.bodyweight, user.bodyweightUnit)
       : DEFAULT_BODYWEIGHT_KG;
@@ -276,7 +280,7 @@ export const aggregateWorkoutData = internalQuery({
           firstWorkoutDate: new Date(firstWorkout.startedAt).toISOString().split("T")[0],
           monthlyFrequency: computeMonthlyFrequency(allWorkouts, allEntries),
           consistency: computeConsistency(allWorkouts),
-          personalRecords: computePersonalRecords(allEntries, allWorkouts),
+          personalRecords: computePersonalRecords(allEntries, allWorkouts, preferredUnit),
           muscleDistribution: computeMuscleDistribution(allEntries, exerciseMap, allTimeSets),
         };
       } else {
@@ -294,6 +298,7 @@ export const aggregateWorkoutData = internalQuery({
     }
 
     return {
+      weightUnit: preferredUnit,
       period: {
         start: new Date(periodStart).toISOString().split("T")[0],
         end: new Date(now).toISOString().split("T")[0],
@@ -410,11 +415,40 @@ function computeConsistency(
   return { avgWorkoutsPerWeek, currentStreakWeeks: currentStreak, longestStreakWeeks: longestStreak };
 }
 
-function computePersonalRecords(
-  entries: Doc<"entries">[],
-  workouts: Doc<"workouts">[]
-): Array<{ exercise: string; topWeight: number; topWeightDate: string; totalSessions: number }> {
-  const workoutDateMap = new Map(workouts.map((w) => [w._id.toString(), w.startedAt]));
+type IdLike = string | { toString(): string };
+
+type TrainingLabWorkoutRef = {
+  _id: IdLike;
+  startedAt: number;
+};
+
+type TrainingLabWeightedEntry = {
+  workoutId: IdLike;
+  exerciseName: string;
+  kind: "lifting" | "cardio" | "mobility";
+  lifting?: {
+    weight?: number;
+    unit?: WeightUnit;
+    rpe?: number;
+  };
+};
+
+function idKey(id: IdLike): string {
+  return id.toString();
+}
+
+export function computePersonalRecords(
+  entries: TrainingLabWeightedEntry[],
+  workouts: TrainingLabWorkoutRef[],
+  preferredUnit: WeightUnit = "lb"
+): Array<{
+  exercise: string;
+  topWeight: number;
+  topWeightUnit: WeightUnit;
+  topWeightDate: string;
+  totalSessions: number;
+}> {
+  const workoutDateMap = new Map(workouts.map((w) => [idKey(w._id), w.startedAt]));
   const exerciseStats = new Map<string, {
     topWeight: number;
     topWeightDate: number;
@@ -430,11 +464,17 @@ function computePersonalRecords(
       sessions: new Set(),
     };
 
-    existing.sessions.add(entry.workoutId.toString());
+    existing.sessions.add(idKey(entry.workoutId));
 
-    if (entry.lifting.weight > existing.topWeight) {
-      existing.topWeight = entry.lifting.weight;
-      existing.topWeightDate = workoutDateMap.get(entry.workoutId.toString()) ?? 0;
+    const normalizedWeight = convertWeight(
+      entry.lifting.weight,
+      entry.lifting.unit ?? preferredUnit,
+      preferredUnit
+    );
+
+    if (normalizedWeight > existing.topWeight) {
+      existing.topWeight = normalizedWeight;
+      existing.topWeightDate = workoutDateMap.get(idKey(entry.workoutId)) ?? 0;
     }
 
     exerciseStats.set(entry.exerciseName, existing);
@@ -446,7 +486,8 @@ function computePersonalRecords(
     .slice(0, 5)
     .map(([exercise, stats]) => ({
       exercise,
-      topWeight: stats.topWeight,
+      topWeight: roundWeight(stats.topWeight, preferredUnit),
+      topWeightUnit: preferredUnit,
       topWeightDate: new Date(stats.topWeightDate).toISOString().split("T")[0],
       totalSessions: stats.sessions.size,
     }));
@@ -549,24 +590,26 @@ function aggregateVolumeByMuscleOverTime(
   return result.sort((a, b) => a.week.localeCompare(b.week));
 }
 
-function aggregateExerciseTrends(
-  entries: Doc<"entries">[],
-  workouts: Doc<"workouts">[]
+export function aggregateExerciseTrends(
+  entries: TrainingLabWeightedEntry[],
+  workouts: TrainingLabWorkoutRef[],
+  preferredUnit: WeightUnit = "lb"
 ): Array<{
   exercise: string;
   kind: "lifting" | "cardio" | "mobility";
   sessions: number;
   totalSets: number;
   topWeight?: number;
+  weightUnit?: WeightUnit;
   avgRpe?: number;
   trend: "up" | "down" | "flat";
 }> {
-  const workoutDateMap = new Map(workouts.map((w) => [w._id, w.startedAt]));
+  const workoutDateMap = new Map(workouts.map((w) => [idKey(w._id), w.startedAt]));
   const exerciseStats = new Map<
     string,
     {
       kind: "lifting" | "cardio" | "mobility";
-      sessions: Set<Id<"workouts">>;
+      sessions: Set<string>;
       totalSets: number;
       topWeight: number;
       totalRpe: number;
@@ -586,21 +629,26 @@ function aggregateExerciseTrends(
       weightHistory: [],
     };
 
-    existing.sessions.add(entry.workoutId);
+    existing.sessions.add(idKey(entry.workoutId));
     
     if (entry.kind === "lifting" && entry.lifting) {
       existing.totalSets++;
-      if (entry.lifting.weight && entry.lifting.weight > existing.topWeight) {
-        existing.topWeight = entry.lifting.weight;
+
+      const normalizedWeight = entry.lifting.weight
+        ? convertWeight(entry.lifting.weight, entry.lifting.unit ?? preferredUnit, preferredUnit)
+        : undefined;
+
+      if (normalizedWeight && normalizedWeight > existing.topWeight) {
+        existing.topWeight = normalizedWeight;
       }
       if (entry.lifting.rpe) {
         existing.totalRpe += entry.lifting.rpe;
         existing.rpeCount++;
       }
-      if (entry.lifting.weight) {
-        const workoutDate = workoutDateMap.get(entry.workoutId);
+      if (normalizedWeight) {
+        const workoutDate = workoutDateMap.get(idKey(entry.workoutId));
         if (workoutDate) {
-          existing.weightHistory.push({ date: workoutDate, weight: entry.lifting.weight });
+          existing.weightHistory.push({ date: workoutDate, weight: normalizedWeight });
         }
       }
     }
@@ -614,7 +662,8 @@ function aggregateExerciseTrends(
       kind: stats.kind,
       sessions: stats.sessions.size,
       totalSets: stats.totalSets,
-      topWeight: stats.topWeight > 0 ? stats.topWeight : undefined,
+      topWeight: stats.topWeight > 0 ? roundWeight(stats.topWeight, preferredUnit) : undefined,
+      weightUnit: stats.topWeight > 0 ? preferredUnit : undefined,
       avgRpe: stats.rpeCount > 0 ? Math.round((stats.totalRpe / stats.rpeCount) * 10) / 10 : undefined,
       trend: calculateTrend(stats.weightHistory),
     }))

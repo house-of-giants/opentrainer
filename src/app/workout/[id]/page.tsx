@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   ArrowLeft,
+  CalendarClock,
   Clock,
   Download,
   Dumbbell,
@@ -220,7 +221,7 @@ export default function WorkoutDetailsPage() {
         from_completed_at: workout.completedAt ?? editableCompletedAt,
         to_completed_at: completedAt,
       });
-      toast.success("Workout times updated");
+      toast.success("Workout date/time updated");
     } catch (error) {
       console.error(error);
       throw error;
@@ -295,7 +296,8 @@ export default function WorkoutDetailsPage() {
                   size="sm"
                   onClick={() => setShowTimeEditor(true)}
                 >
-                  Edit times
+                  <CalendarClock data-icon="inline-start" />
+                  Edit date/time
                 </Button>
               )}
             </div>

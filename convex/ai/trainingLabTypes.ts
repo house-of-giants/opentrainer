@@ -1,3 +1,5 @@
+import type { MuscleAnalyticsResult } from "../lib/muscleAnalytics";
+
 export interface TrainingLabReport {
   type: "full";
   summary: string;
@@ -19,6 +21,7 @@ export interface TrainingLabReport {
     message: string;
   }>;
   chartData: {
+    weightUnit?: "kg" | "lb";
     volumeByMuscle: Array<{ muscle: string; week: string; sets: number }>;
     rpeByWorkout: Array<{ date: string; avgRpe: number }>;
     exerciseTrends: Array<{
@@ -26,6 +29,7 @@ export interface TrainingLabReport {
       sessions: number;
       trend: "up" | "down" | "flat";
       topWeight: number;
+      weightUnit?: "kg" | "lb";
       avgRpe: number;
     }>;
   };
@@ -97,6 +101,7 @@ export type TrainingProfile =
   | "general_fitness";
 
 export interface TrainingLabDashboardStats {
+  preferredUnits: "kg" | "lb";
   workoutsThisWeek: number;
   weeklyTarget: number;
   totalSetsThisWeek: number;
@@ -106,6 +111,7 @@ export interface TrainingLabDashboardStats {
   recentPRs: Array<{
     exercise: string;
     weight: number;
+    unit: "kg" | "lb";
     date: string;
   }>;
   trainingProfile: TrainingProfile;
@@ -124,4 +130,5 @@ export interface TrainingLabDashboardStats {
     avgRpe: number;
     topModality: string | null;
   } | null;
+  muscleAnalytics: MuscleAnalyticsResult | null;
 }

@@ -1,8 +1,93 @@
 import { v } from "convex/values";
-import { query, internalMutation } from "../_generated/server";
+import { query, internalMutation, type QueryCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../auth";
 import type { TrainingLabReport, TrainingSnapshot, TrainingLabCTAState, TrainingLabDashboardStats } from "./trainingLabTypes";
 import { getMondayWeekKey, getMondayWeekStartUtc, WEEK_IN_MS } from "../lib/week";
+import {
+  calculateMuscleAnalytics,
+  type MuscleAnalyticsEntry,
+  type MuscleAnalyticsExercise,
+  type MuscleAnalyticsResult,
+  type MuscleAnalyticsWorkout,
+} from "../lib/muscleAnalytics";
+import { convertWeight, roundWeight, type WeightUnit } from "../../src/lib/units";
+
+type RecentPrSourceSet = {
+  workoutId: string;
+  exercise: string;
+  weight: number;
+  unit?: WeightUnit;
+  workoutDate: number;
+};
+
+export function findRecentPersonalRecords(
+  sourceSets: RecentPrSourceSet[],
+  preferredUnit: WeightUnit,
+  since: number,
+  limit = 3
+): TrainingLabDashboardStats["recentPRs"] {
+  const exerciseMaxWeights = new Map<string, { weight: number }>();
+  const sessionMaxWeights = new Map<
+    string,
+    { workoutId: string; exercise: string; weight: number; workoutDate: number }
+  >();
+  const recentPRs: Array<TrainingLabDashboardStats["recentPRs"][number] & { workoutDate: number }> =
+    [];
+
+  for (const set of sourceSets) {
+    if (!Number.isFinite(set.weight) || set.weight <= 0) continue;
+
+    const sourceUnit = set.unit ?? preferredUnit;
+    const normalizedWeight = convertWeight(set.weight, sourceUnit, preferredUnit);
+    const sessionKey = `${set.workoutId}:${set.exercise}`;
+    const existingSession = sessionMaxWeights.get(sessionKey);
+
+    if (!existingSession || normalizedWeight > existingSession.weight) {
+      sessionMaxWeights.set(sessionKey, {
+        workoutId: set.workoutId,
+        exercise: set.exercise,
+        weight: normalizedWeight,
+        workoutDate: set.workoutDate,
+      });
+    }
+  }
+
+  const sortedSessions = Array.from(sessionMaxWeights.values()).sort(
+    (a, b) =>
+      a.workoutDate - b.workoutDate ||
+      a.workoutId.localeCompare(b.workoutId) ||
+      a.exercise.localeCompare(b.exercise)
+  );
+
+  for (const session of sortedSessions) {
+    const existing = exerciseMaxWeights.get(session.exercise);
+
+    if (!existing || session.weight > existing.weight) {
+      if (existing && session.workoutDate > since) {
+        recentPRs.push({
+          exercise: session.exercise,
+          weight: roundWeight(session.weight, preferredUnit),
+          unit: preferredUnit,
+          date: new Date(session.workoutDate).toISOString().split("T")[0],
+          workoutDate: session.workoutDate,
+        });
+      }
+
+      exerciseMaxWeights.set(session.exercise, { weight: session.weight });
+    }
+  }
+
+  return recentPRs
+    .sort((a, b) => b.workoutDate - a.workoutDate || a.exercise.localeCompare(b.exercise))
+    .slice(0, limit)
+    .map((pr) => ({
+      exercise: pr.exercise,
+      weight: pr.weight,
+      unit: pr.unit,
+      date: pr.date,
+    }));
+}
 
 export const storeAssessment = internalMutation({
   args: {
@@ -188,19 +273,17 @@ export const getDashboardStats = query({
     if (!user) return null;
 
     const now = Date.now();
+    const preferredUnits: WeightUnit = user.preferredUnits ?? "lb";
     const weekStart = getMondayWeekStartUtc(now);
     const twoWeeksAgo = weekStart - WEEK_IN_MS;
     const fourWeeksAgo = weekStart - 4 * WEEK_IN_MS;
 
     const recentWorkouts = await ctx.db
       .query("workouts")
-      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("status"), "completed"),
-          q.gte(q.field("startedAt"), fourWeeksAgo)
-        )
+      .withIndex("by_user_started", (q) =>
+        q.eq("userId", user._id).gte("startedAt", fourWeeksAgo).lte("startedAt", now)
       )
+      .filter((q) => q.eq(q.field("status"), "completed"))
       .collect();
 
     const thisWeekWorkouts = recentWorkouts.filter((w) => w.startedAt >= weekStart);
@@ -209,13 +292,7 @@ export const getDashboardStats = query({
     );
     const fourWeekWorkouts = recentWorkouts.filter((w) => w.startedAt >= fourWeeksAgo);
 
-    const allEntries: Array<{
-      workoutId: string;
-      kind: "lifting" | "cardio" | "mobility";
-      lifting?: { rpe?: number; weight?: number };
-      cardio?: { durationSeconds: number; rpe?: number; intensity?: number; distance?: number; distanceUnit?: string };
-      exerciseName: string;
-    }> = [];
+    const allEntries: EntryData[] = [];
 
     for (const workout of recentWorkouts) {
       const entries = await ctx.db
@@ -225,8 +302,16 @@ export const getDashboardStats = query({
       for (const e of entries) {
         allEntries.push({
           workoutId: workout._id.toString(),
+          exerciseId: e.exerciseId?.toString(),
           kind: e.kind,
-          lifting: e.lifting ? { rpe: e.lifting.rpe, weight: e.lifting.weight } : undefined,
+          lifting: e.lifting ? {
+            reps: e.lifting.reps,
+            weight: e.lifting.weight,
+            durationSeconds: e.lifting.durationSeconds,
+            unit: e.lifting.unit,
+            rpe: e.lifting.rpe,
+            isWarmup: e.lifting.isWarmup,
+          } : undefined,
           cardio: e.cardio ? {
             durationSeconds: e.cardio.durationSeconds,
             rpe: e.cardio.rpe,
@@ -296,8 +381,7 @@ export const getDashboardStats = query({
     }
 
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-    const recentPRs: Array<{ exercise: string; weight: number; date: string }> = [];
-    const exerciseMaxWeights = new Map<string, { weight: number; date: number }>();
+    const recentPrSourceSets: RecentPrSourceSet[] = [];
     
     for (const workout of allWorkouts) {
       const entries = await ctx.db
@@ -308,23 +392,21 @@ export const getDashboardStats = query({
 
       for (const entry of entries) {
         if (!entry.lifting?.weight) continue;
-        
-        const existing = exerciseMaxWeights.get(entry.exerciseName);
-        if (!existing || entry.lifting.weight > existing.weight) {
-          if (existing && workout.startedAt > thirtyDaysAgo && entry.lifting.weight > existing.weight) {
-            recentPRs.push({
-              exercise: entry.exerciseName,
-              weight: entry.lifting.weight,
-              date: new Date(workout.startedAt).toISOString().split("T")[0],
-            });
-          }
-          exerciseMaxWeights.set(entry.exerciseName, {
-            weight: entry.lifting.weight,
-            date: workout.startedAt,
-          });
-        }
+
+        recentPrSourceSets.push({
+          workoutId: workout._id.toString(),
+          exercise: entry.exerciseName,
+          weight: entry.lifting.weight,
+          unit: entry.lifting.unit,
+          workoutDate: workout.startedAt,
+        });
       }
     }
+    const recentPRs = findRecentPersonalRecords(
+      recentPrSourceSets,
+      preferredUnits,
+      thirtyDaysAgo
+    );
 
     const { trainingLoad, trainingProfile } = calculateTrainingLoadStats(
       fourWeekEntries,
@@ -335,28 +417,35 @@ export const getDashboardStats = query({
     );
 
     const cardioSummary = calculateCardioSummaryStats(thisWeekEntries);
+    const muscleAnalytics = await calculateDashboardMuscleAnalytics({
+      ctx,
+      userId: user._id,
+      isPro: user.tier === "pro",
+      now,
+      weekStart,
+      workouts: recentWorkouts,
+      entries: allEntries,
+    });
 
     return {
+      preferredUnits,
       workoutsThisWeek: thisWeekWorkouts.length,
       weeklyTarget: user.weeklyAvailability ?? 4,
       totalSetsThisWeek: thisWeekSets,
       currentStreakWeeks: currentStreak,
       longestStreakWeeks: longestStreak,
       volumeChangePercent,
-      recentPRs: recentPRs.slice(0, 3),
+      recentPRs,
       trainingProfile,
       trainingLoad,
       cardioSummary,
+      muscleAnalytics,
     };
   },
 });
 
-type EntryData = {
-  workoutId: string;
-  kind: "lifting" | "cardio" | "mobility";
-  lifting?: { rpe?: number; weight?: number };
+type EntryData = MuscleAnalyticsEntry & {
   cardio?: { durationSeconds: number; rpe?: number; intensity?: number; distance?: number; distanceUnit?: string };
-  exerciseName: string;
 };
 
 type WorkoutData = {
@@ -364,6 +453,70 @@ type WorkoutData = {
   startedAt: number;
   completedAt?: number;
 };
+
+async function calculateDashboardMuscleAnalytics({
+  ctx,
+  userId,
+  isPro,
+  now,
+  weekStart,
+  workouts,
+  entries,
+}: {
+  ctx: QueryCtx;
+  userId: Id<"users">;
+  isPro: boolean;
+  now: number;
+  weekStart: number;
+  workouts: Array<WorkoutData & { status: MuscleAnalyticsWorkout["status"] }>;
+  entries: MuscleAnalyticsEntry[];
+}): Promise<MuscleAnalyticsResult | null> {
+  if (!isPro) return null;
+
+  const analyticsWorkouts: MuscleAnalyticsWorkout[] = workouts.map((workout) => ({
+    id: workout._id.toString(),
+    status: workout.status,
+    startedAt: workout.startedAt,
+    completedAt: workout.completedAt,
+  }));
+
+  if (workouts.length === 0 || entries.length === 0) {
+    return calculateMuscleAnalytics({
+      now,
+      weekStart,
+      workouts: analyticsWorkouts,
+      entries,
+      exercises: [],
+    });
+  }
+
+  const [systemExercises, userExercises] = await Promise.all([
+    ctx.db
+      .query("exercises")
+      .withIndex("by_system", (q) => q.eq("isSystemExercise", true))
+      .collect(),
+    ctx.db
+      .query("exercises")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  ]);
+
+  const exercises: MuscleAnalyticsExercise[] = [...systemExercises, ...userExercises].map(
+    (exercise) => ({
+      id: exercise._id.toString(),
+      name: exercise.name,
+      muscleGroups: exercise.muscleGroups,
+    })
+  );
+
+  return calculateMuscleAnalytics({
+    now,
+    weekStart,
+    workouts: analyticsWorkouts,
+    entries,
+    exercises,
+  });
+}
 
 function calculateTrainingLoadStats(
   fourWeekEntries: EntryData[],

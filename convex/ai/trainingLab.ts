@@ -13,8 +13,15 @@ import { getMondayWeekStartUtc } from "../lib/week";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-function buildTrainingLabPayload(
-  user: Doc<"users">,
+type TrainingLabPayloadUser = {
+  goals?: Doc<"users">["goals"];
+  experienceLevel?: Doc<"users">["experienceLevel"];
+  equipment?: Doc<"users">["equipment"];
+  weeklyAvailability?: Doc<"users">["weeklyAvailability"];
+};
+
+export function buildTrainingLabPayload(
+  user: TrainingLabPayloadUser,
   aggregated: AggregatedWorkoutData,
   previousSummary?: string
 ) {
@@ -33,6 +40,10 @@ function buildTrainingLabPayload(
       start: aggregated.period.start,
       end: aggregated.period.end,
       n: aggregated.period.workouts,
+    },
+    units: {
+      wt: aggregated.weightUnit,
+      dist: cardio?.distanceUnit ?? "km",
     },
     load: load ? {
       total: load.totalLoad,
@@ -65,6 +76,7 @@ function buildTrainingLabPayload(
       n: t.sessions,
       s: t.totalSets,
       w: t.topWeight,
+      wu: t.weightUnit ?? aggregated.weightUnit,
       r: t.avgRpe,
       d: t.trend === "up" ? "u" : t.trend === "down" ? "d" : "f",
     })),
@@ -100,6 +112,7 @@ function buildTrainingLabPayload(
       prs: hist.personalRecords.map((pr) => ({
         ex: pr.exercise,
         wt: pr.topWeight,
+        unit: pr.topWeightUnit ?? aggregated.weightUnit,
         date: pr.topWeightDate,
         sess: pr.totalSessions,
       })),
@@ -300,6 +313,7 @@ export const generateReport = action({
       type: "full",
       ...result,
       chartData: {
+        weightUnit: aggregated.weightUnit,
         volumeByMuscle: aggregated.volumeByMuscleOverTime,
         rpeByWorkout: aggregated.rpeByWorkout,
         exerciseTrends: aggregated.exerciseTrends.slice(0, 6).map((t) => ({
@@ -307,6 +321,7 @@ export const generateReport = action({
           sessions: t.sessions,
           trend: t.trend,
           topWeight: t.topWeight ?? 0,
+          weightUnit: t.weightUnit ?? aggregated.weightUnit,
           avgRpe: t.avgRpe ?? 0,
         })),
       },

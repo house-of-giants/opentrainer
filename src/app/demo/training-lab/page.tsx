@@ -13,8 +13,30 @@ import {
   Dumbbell,
   AlertTriangle,
 } from "lucide-react";
-import { ScoreCard, VolumeBarChart } from "@/components/training-lab/charts";
+import { VolumeBarChart } from "@/components/training-lab/charts";
+import { MuscleAnalyticsSection } from "@/components/training-lab/muscle-analytics-section";
 import { MOCK_TRAINING_LAB_INSIGHTS, MOCK_DASHBOARD_STATS } from "@/lib/demo-data";
+
+const MOCK_MUSCLE_ANALYTICS = {
+  generatedAt: Date.parse("2026-08-11T18:00:00.000Z"),
+  weekStart: Date.parse("2026-08-10T00:00:00.000Z"),
+  weekEnd: Date.parse("2026-08-11T18:00:00.000Z"),
+  recoveryWindowHours: 48,
+  recoveryLookbackDays: 14,
+  totalWorkingSets: 18,
+  totalMuscleSetContributions: 34,
+  unmappedWorkingSets: 0,
+  split: [],
+  recovery: [],
+  workload: [
+    { muscle: "chest", label: "Chest", setsThisWeek: 8, lastTrainedAt: Date.parse("2026-08-11T16:00:00.000Z"), lastTrainedDate: "2026-08-11", isUnmapped: false },
+    { muscle: "triceps", label: "Triceps", setsThisWeek: 8, lastTrainedAt: Date.parse("2026-08-11T16:00:00.000Z"), lastTrainedDate: "2026-08-11", isUnmapped: false },
+    { muscle: "shoulders", label: "Shoulders", setsThisWeek: 6, lastTrainedAt: Date.parse("2026-08-11T16:00:00.000Z"), lastTrainedDate: "2026-08-11", isUnmapped: false },
+    { muscle: "back", label: "Back", setsThisWeek: 6, lastTrainedAt: Date.parse("2026-08-10T17:00:00.000Z"), lastTrainedDate: "2026-08-10", isUnmapped: false },
+    { muscle: "biceps", label: "Biceps", setsThisWeek: 6, lastTrainedAt: Date.parse("2026-08-10T17:00:00.000Z"), lastTrainedDate: "2026-08-10", isUnmapped: false },
+    { muscle: "quads", label: "Quads", setsThisWeek: 0, lastTrainedAt: Date.parse("2026-08-07T18:00:00.000Z"), lastTrainedDate: "2026-08-07", isUnmapped: false },
+  ],
+};
 
 export default function DemoTrainingLab() {
   const router = useRouter();
@@ -79,6 +101,8 @@ export default function DemoTrainingLab() {
           </Card>
         </div>
 
+        <MuscleAnalyticsSection analytics={MOCK_MUSCLE_ANALYTICS} />
+
         <Card className="overflow-hidden">
           <button
             className="w-full p-4 flex items-start gap-3 text-left"
@@ -106,36 +130,12 @@ export default function DemoTrainingLab() {
         </Card>
 
         <Card className="p-4">
-          <h3 className="font-semibold mb-4">Volume by Muscle</h3>
+          <h3 className="font-semibold mb-4">Report-period muscle volume</h3>
           <VolumeBarChart
             data={MOCK_TRAINING_LAB_INSIGHTS.volumeByMuscle}
             className="min-h-[220px]"
-            onMuscleClick={() => {}}
           />
         </Card>
-
-        <div className="grid grid-cols-2 gap-3">
-          <ScoreCard
-            label="Volume"
-            score={MOCK_TRAINING_LAB_INSIGHTS.scores.volumeAdherence}
-            description="Target adherence"
-          />
-          <ScoreCard
-            label="Intensity"
-            score={MOCK_TRAINING_LAB_INSIGHTS.scores.intensityManagement}
-            description="RPE management"
-          />
-          <ScoreCard
-            label="Balance"
-            score={MOCK_TRAINING_LAB_INSIGHTS.scores.muscleBalance}
-            description="Push/pull ratio"
-          />
-          <ScoreCard
-            label="Recovery"
-            score={MOCK_TRAINING_LAB_INSIGHTS.scores.recoveryBalance}
-            description="Fatigue signals"
-          />
-        </div>
 
         <Card className="p-4">
           <h3 className="font-semibold mb-4">Insights</h3>

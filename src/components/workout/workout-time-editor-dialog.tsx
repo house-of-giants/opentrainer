@@ -12,6 +12,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  buildWorkoutTimeEditRange,
+  getLocalDateInputValue,
+  getLocalTimeInputValue,
+  validateWorkoutTimeEditRange,
+} from "@/lib/workout-time-edit";
 
 interface WorkoutTimeEditorDialogProps {
   open: boolean;
@@ -21,37 +27,6 @@ interface WorkoutTimeEditorDialogProps {
   mode: "finish" | "edit";
   onSubmit: (startedAt: number, completedAt: number) => Promise<void>;
   isSubmitting: boolean;
-}
-
-function toTimeValue(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
-
-function buildTimestampForWorkoutDate(baseTimestamp: number, timeValue: string) {
-  if (!timeValue) return null;
-
-  const [hoursString, minutesString] = timeValue.split(":");
-  const hours = Number(hoursString);
-  const minutes = Number(minutesString);
-
-  if (
-    Number.isNaN(hours) ||
-    Number.isNaN(minutes) ||
-    hours < 0 ||
-    hours > 23 ||
-    minutes < 0 ||
-    minutes > 59
-  ) {
-    return null;
-  }
-
-  const date = new Date(baseTimestamp);
-  date.setHours(hours, minutes, 0, 0);
-  return date.getTime();
 }
 
 function formatDuration(startedAt: number, completedAt: number) {
@@ -74,40 +49,6 @@ function formatWorkoutDate(timestamp: number) {
   });
 }
 
-type ValidationState = {
-  message: string | null;
-  startInvalid?: boolean;
-  endInvalid?: boolean;
-};
-
-function validateValues(
-  startedAt: number | null,
-  completedAt: number | null
-): ValidationState {
-  if (startedAt === null) {
-    return { message: "Choose a start time", startInvalid: true };
-  }
-
-  if (completedAt === null) {
-    return { message: "Choose an end time", endInvalid: true };
-  }
-
-  if (startedAt >= completedAt) {
-    return { message: "End time must be after start time", endInvalid: true };
-  }
-
-  const now = Date.now();
-  if (startedAt > now || completedAt > now) {
-    return {
-      message: "Times can't be in the future",
-      startInvalid: startedAt > now,
-      endInvalid: completedAt > now,
-    };
-  }
-
-  return { message: null };
-}
-
 export function WorkoutTimeEditorDialog({
   open,
   onOpenChange,
@@ -117,23 +58,30 @@ export function WorkoutTimeEditorDialog({
   onSubmit,
   isSubmitting,
 }: WorkoutTimeEditorDialogProps) {
+  const [openedAt] = useState(() => Date.now());
+  const [workoutDateValue, setWorkoutDateValue] = useState(() =>
+    getLocalDateInputValue(initialStartedAt)
+  );
   const [startedAtValue, setStartedAtValue] = useState(() =>
-    toTimeValue(initialStartedAt)
+    getLocalTimeInputValue(initialStartedAt)
   );
   const [completedAtValue, setCompletedAtValue] = useState(() =>
-    toTimeValue(initialCompletedAt)
+    getLocalTimeInputValue(initialCompletedAt)
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const workoutDateLabel = formatWorkoutDate(initialStartedAt);
-  const parsedStartedAt = buildTimestampForWorkoutDate(
+  const selectedWorkoutDateValue =
+    mode === "edit" ? workoutDateValue : getLocalDateInputValue(initialStartedAt);
+  const parsedRange = buildWorkoutTimeEditRange({
     initialStartedAt,
-    startedAtValue
-  );
-  const parsedCompletedAt = buildTimestampForWorkoutDate(
     initialCompletedAt,
-    completedAtValue
-  );
-  const validationState = validateValues(parsedStartedAt, parsedCompletedAt);
+    dateValue: selectedWorkoutDateValue,
+    startedAtTimeValue: startedAtValue,
+    completedAtTimeValue: completedAtValue,
+  });
+  const validationState = validateWorkoutTimeEditRange(parsedRange, openedAt);
+  const { startedAt: parsedStartedAt, completedAt: parsedCompletedAt } =
+    parsedRange;
 
   const durationPreview =
     parsedStartedAt !== null &&
@@ -142,21 +90,28 @@ export function WorkoutTimeEditorDialog({
       ? formatDuration(parsedStartedAt, parsedCompletedAt)
       : null;
 
-  const title = mode === "finish" ? "Edit workout time" : "Edit workout times";
+  const title =
+    mode === "finish" ? "Edit workout time" : "Edit workout date/time";
   const description =
     mode === "finish"
       ? "Fix the start and end time before finishing this workout."
-      : "Correct the workout start and end time.";
+      : "Correct the workout date, start time, and end time.";
   const submitLabel = mode === "finish" ? "Finish Workout" : "Save";
+  const todayDateValue = getLocalDateInputValue(openedAt);
 
   const handleSubmit = async () => {
-    if (validationState.message) {
-      setSubmitError(validationState.message);
+    const submissionValidationState = validateWorkoutTimeEditRange(
+      parsedRange,
+      Date.now()
+    );
+
+    if (submissionValidationState.message) {
+      setSubmitError(submissionValidationState.message);
       return;
     }
 
     if (parsedStartedAt === null || parsedCompletedAt === null) {
-      setSubmitError("Choose a valid start and end time");
+      setSubmitError("Choose a valid workout date and times");
       return;
     }
 
@@ -167,12 +122,13 @@ export function WorkoutTimeEditorDialog({
       onOpenChange(false);
     } catch (error) {
       setSubmitError(
-        error instanceof Error ? error.message : "Failed to update workout times"
+        error instanceof Error ? error.message : "Failed to update workout"
       );
     }
   };
 
   const errorMessage = submitError ?? validationState.message;
+  const dateInputInvalid = validationState.dateInvalid ? true : undefined;
   const startInputInvalid = validationState.startInvalid ? true : undefined;
   const endInputInvalid = validationState.endInvalid ? true : undefined;
 
@@ -185,12 +141,32 @@ export function WorkoutTimeEditorDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground">Date</span>
-              <span className="font-medium font-mono">{workoutDateLabel}</span>
+          {mode === "edit" ? (
+            <div className="space-y-2">
+              <Label htmlFor="workout-date">Date</Label>
+              <Input
+                id="workout-date"
+                type="date"
+                value={workoutDateValue}
+                max={todayDateValue}
+                onChange={(event) => {
+                  setWorkoutDateValue(event.target.value);
+                  setSubmitError(null);
+                }}
+                aria-invalid={dateInputInvalid}
+                disabled={isSubmitting}
+              />
             </div>
-          </div>
+          ) : (
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">Date</span>
+                <span className="font-medium font-mono">
+                  {workoutDateLabel}
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="workout-start-time">Start</Label>

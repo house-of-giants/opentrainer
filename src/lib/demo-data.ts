@@ -50,7 +50,7 @@ export const MOCK_DASHBOARD_STATS = {
 };
 
 export const MOCK_TRAINING_LAB_INSIGHTS = {
-  summary: "Strong progress on upper body lifts with good recovery indicators. Volume is trending upward sustainably.",
+  summary: "Strong progress on upper body lifts with consistent logged workload. Volume is trending upward sustainably.",
   insights: [
     {
       category: "Volume Trend",
@@ -65,9 +65,9 @@ export const MOCK_TRAINING_LAB_INSIGHTS = {
       priority: "low" as const,
     },
     {
-      category: "Recovery",
-      observation: "Average rest between sessions is 48 hours - ideal for hypertrophy",
-      recommendation: "No changes needed",
+      category: "Frequency",
+      observation: "You logged sessions with at least one rest day between them this week",
+      recommendation: "Keep the spacing if your next sessions feel productive",
       priority: "low" as const,
     },
     {
