@@ -39,7 +39,7 @@ INPUT DATA STRUCTURE:
   - profile: "strength_focused" | "cardio_focused" | "hybrid" | "general_fitness"
 - cardio: Cardio-specific summary (if present)
   - mins: Total cardio minutes
-  - dist: Total distance (km)
+  - dist: Total distance in units.dist
   - load: Cardio training load
   - rpe: Average cardio RPE
   - byMod: Breakdown by modality (run, bike, row, etc.)
@@ -110,7 +110,7 @@ INPUT DATA STRUCTURE:
   - profile: "strength_focused" | "cardio_focused" | "hybrid" | "general_fitness"
 - cardio: Cardio-specific summary (if present)
   - mins: Total cardio minutes this week
-  - dist: Total distance (km)
+  - dist: Total distance in units.dist
   - load: Cardio training load
   - rpe: Average cardio RPE
   - byMod: Breakdown by modality (run, bike, row, etc.)

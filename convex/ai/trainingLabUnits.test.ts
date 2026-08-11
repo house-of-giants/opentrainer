@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { aggregateExerciseTrends, computePersonalRecords } from "./aggregators";
+import { TRAINING_LAB_FULL_PROMPT, TRAINING_LAB_SNAPSHOT_PROMPT } from "./prompts";
 import { buildTrainingLabPayload } from "./trainingLab";
 import { findRecentPersonalRecords } from "./trainingLabMutations";
 
@@ -37,6 +38,13 @@ function liftingEntry(
 }
 
 describe("Training Lab preferred weight units", () => {
+  test("AI prompts describe cardio distance through units.dist", () => {
+    for (const prompt of [TRAINING_LAB_FULL_PROMPT, TRAINING_LAB_SNAPSHOT_PROMPT]) {
+      assert.match(prompt, /dist: Total distance in units\.dist/);
+      assert.doesNotMatch(prompt, /dist: Total distance \(km\)/);
+    }
+  });
+
   test("recent PRs compare mixed source units and display the user's kg preference", () => {
     const prs = findRecentPersonalRecords(
       [

@@ -2,7 +2,7 @@
 
 ## react-muscle-highlighter@1.2.0
 
-Source: https://github.com/soroojshehryar/react-muscle-highlighter
+Source: https://github.com/soroojshehryar/react-muscle-highlighter/tree/d5e25d83fb6d0d4930b72ecfa9aff8dfe957611c
 
 License: MIT
 
