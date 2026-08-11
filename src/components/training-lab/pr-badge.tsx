@@ -32,6 +32,7 @@ interface RecentPrCardProps {
   prs: Array<{
     exercise: string;
     weight: number;
+    unit: "kg" | "lb";
     date: string;
   }>;
 }
@@ -50,7 +51,9 @@ export function RecentPrCard({ prs }: RecentPrCardProps) {
           <div key={i} className="flex items-center justify-between text-sm">
             <span className="truncate flex-1">{pr.exercise}</span>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="font-mono font-semibold">{pr.weight} lb</span>
+              <span className="font-mono font-semibold">
+                {pr.weight} {pr.unit}
+              </span>
               <TrendingUp className="h-3.5 w-3.5 text-green-500" />
             </div>
           </div>

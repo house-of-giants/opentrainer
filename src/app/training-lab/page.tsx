@@ -23,21 +23,16 @@ import { toast } from "sonner";
 import {
   VolumeBarChart,
   ExerciseTrendChart,
-  ScoreCard,
   RpeTrendChart,
   ProgressRing,
-  type ExerciseTrendData,
 } from "@/components/training-lab/charts";
-import { MuscleDrawer } from "@/components/training-lab/muscle-drawer";
-import { ExerciseHistorySheet } from "@/components/training-lab/exercise-history-sheet";
 import { StreakBadge, RecentPrCard, CardioSummaryCard, TrainingLoadCard } from "@/components/training-lab";
+import { MuscleAnalyticsSection } from "@/components/training-lab/muscle-analytics-section";
 
 export default function TrainingLabPage() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(true);
-  const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
-  const [selectedExercise, setSelectedExercise] = useState<ExerciseTrendData | null>(null);
 
   const ctaState = useQuery(api.ai.trainingLabMutations.getCtaState);
   const latestReport = useQuery(api.ai.trainingLabMutations.getLatestReport);
@@ -110,6 +105,8 @@ export default function TrainingLabPage() {
 
   const canGenerate = ctaState.canGenerate;
   const hasReport = ctaState.hasReport;
+  const muscleAnalytics =
+    dashboardStats === undefined ? undefined : dashboardStats?.muscleAnalytics ?? null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -230,6 +227,8 @@ export default function TrainingLabPage() {
           />
         )}
 
+        <MuscleAnalyticsSection analytics={muscleAnalytics} />
+
         {!canGenerate && !hasReport && ctaState.totalWorkouts === 0 && (
           <Card className="p-4">
             <div className="flex items-center gap-3">
@@ -267,7 +266,10 @@ export default function TrainingLabPage() {
         )}
 
         {latestReport && (
-          <div className="space-y-4">
+          <section className="space-y-4" aria-labelledby="ai-report-heading">
+            <h2 id="ai-report-heading" className="font-semibold">
+              AI Report
+            </h2>
             <Card className="overflow-hidden">
               <button
                 className="w-full p-4 flex items-start gap-3 text-left"
@@ -316,7 +318,7 @@ export default function TrainingLabPage() {
               <>
                 {dashboardStats?.trainingProfile !== "cardio_focused" && (
                   <Card className="p-4">
-                    <h3 className="font-semibold mb-4">Volume by Muscle</h3>
+                    <h3 className="font-semibold mb-4">Report-period muscle volume</h3>
                     <VolumeBarChart
                       data={latestReport.chartData.volumeByMuscle.reduce(
                         (acc, item) => {
@@ -331,34 +333,8 @@ export default function TrainingLabPage() {
                         [] as Array<{ muscle: string; sets: number }>
                       )}
                       className="min-h-[220px]"
-                      onMuscleClick={setSelectedMuscle}
                     />
                   </Card>
-                )}
-
-                {dashboardStats?.trainingProfile !== "cardio_focused" && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <ScoreCard
-                      label="Volume"
-                      score={latestReport.scores.volumeAdherence}
-                      description="Target adherence"
-                    />
-                    <ScoreCard
-                      label="Intensity"
-                      score={latestReport.scores.intensityManagement}
-                      description="RPE management"
-                    />
-                    <ScoreCard
-                      label="Balance"
-                      score={latestReport.scores.muscleBalance}
-                      description="Push/pull ratio"
-                    />
-                    <ScoreCard
-                      label="Recovery"
-                      score={latestReport.scores.recoveryBalance}
-                      description="Fatigue signals"
-                    />
-                  </div>
                 )}
 
                 {dashboardStats?.trainingProfile !== "cardio_focused" &&
@@ -378,7 +354,7 @@ export default function TrainingLabPage() {
                     <h3 className="font-semibold mb-4">Exercise Trends</h3>
                     <ExerciseTrendChart
                       data={latestReport.chartData.exerciseTrends}
-                      onExerciseClick={setSelectedExercise}
+                      weightUnit={latestReport.chartData.weightUnit}
                     />
                   </Card>
                 )}
@@ -417,11 +393,10 @@ export default function TrainingLabPage() {
                 {dashboardStats?.trainingProfile !== "cardio_focused" &&
                   latestReport.chartData?.volumeByMuscle && (
                   <Card className="p-4">
-                    <h3 className="font-semibold mb-4">Volume Distribution</h3>
+                    <h3 className="font-semibold mb-4">Report-period muscle volume</h3>
                     <VolumeBarChart
                       data={latestReport.chartData.volumeByMuscle}
                       className="min-h-[200px]"
-                      onMuscleClick={setSelectedMuscle}
                     />
                   </Card>
                 )}
@@ -567,12 +542,9 @@ export default function TrainingLabPage() {
                 )}
               </>
             )}
-          </div>
+          </section>
         )}
       </main>
-
-      <MuscleDrawer muscle={selectedMuscle} onClose={() => setSelectedMuscle(null)} />
-      <ExerciseHistorySheet exercise={selectedExercise} onClose={() => setSelectedExercise(null)} />
     </div>
   );
 }

@@ -6,19 +6,21 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import type { WeightUnit } from "@/lib/units";
 
 export interface ExerciseTrendData {
   exercise: string;
   sessions: number;
   trend: "up" | "down" | "flat";
   topWeight: number;
+  weightUnit?: WeightUnit;
   avgRpe: number;
 }
 
 interface ExerciseTrendChartProps {
   data: ExerciseTrendData[];
   className?: string;
-  onExerciseClick?: (exercise: ExerciseTrendData) => void;
+  weightUnit?: WeightUnit;
 }
 
 function TrendIcon({ trend }: { trend: "up" | "down" | "flat" }) {
@@ -42,7 +44,11 @@ function TrendBadge({ trend }: { trend: "up" | "down" | "flat" }) {
   );
 }
 
-export function ExerciseTrendChart({ data, className, onExerciseClick }: ExerciseTrendChartProps) {
+export function ExerciseTrendChart({
+  data,
+  className,
+  weightUnit,
+}: ExerciseTrendChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
@@ -54,39 +60,62 @@ export function ExerciseTrendChart({ data, className, onExerciseClick }: Exercis
   return (
     <div className={className}>
       <div className="space-y-3">
-        {data.slice(0, 6).map((exercise) => (
-          <button
-            key={exercise.exercise}
-            className="w-full flex items-center justify-between rounded-lg border bg-card p-3 text-left hover:bg-muted/50 transition-colors"
-            onClick={() => onExerciseClick?.(exercise)}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-medium truncate">{exercise.exercise}</span>
-                <TrendBadge trend={exercise.trend} />
-              </div>
-              <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
-                <span>{exercise.sessions} sessions</span>
-                {exercise.avgRpe > 0 && (
-                  <span>Avg RPE: {exercise.avgRpe.toFixed(1)}</span>
-                )}
-              </div>
-            </div>
-            <div className="text-right">
-              {exercise.topWeight > 0 ? (
-                <div className="font-mono font-semibold">
-                  {exercise.topWeight} lb
+        {data.slice(0, 6).map((exercise) => {
+          const topWeight = formatTopWeight(exercise.topWeight, exercise.weightUnit ?? weightUnit);
+
+          return (
+            <article
+              key={exercise.exercise}
+              className="flex w-full items-center justify-between rounded-lg border bg-card p-3 text-left"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium truncate">{exercise.exercise}</span>
+                  <TrendBadge trend={exercise.trend} />
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">—</div>
-              )}
-              <div className="text-xs text-muted-foreground">Top weight</div>
-            </div>
-          </button>
-        ))}
+                <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+                  <span>{exercise.sessions} sessions</span>
+                  {exercise.avgRpe > 0 && (
+                    <span>Avg RPE: {exercise.avgRpe.toFixed(1)}</span>
+                  )}
+                </div>
+              </div>
+              <div className="text-right">
+                {exercise.topWeight > 0 ? (
+                  <>
+                    <div className="font-mono font-semibold">{topWeight.label}</div>
+                    {topWeight.unitUnavailable && (
+                      <div className="text-xs text-muted-foreground">Stored unit unavailable</div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm text-muted-foreground">—</div>
+                )}
+                <div className="text-xs text-muted-foreground">Top weight</div>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </div>
   );
+}
+
+export function formatTopWeight(
+  topWeight: number,
+  weightUnit: WeightUnit | undefined
+): { label: string; unitUnavailable: boolean } {
+  const formattedWeight = `${topWeight}`;
+
+  if (topWeight <= 0) {
+    return { label: "—", unitUnavailable: false };
+  }
+
+  if (!weightUnit) {
+    return { label: formattedWeight, unitUnavailable: true };
+  }
+
+  return { label: `${formattedWeight} ${weightUnit}`, unitUnavailable: false };
 }
 
 export function ExerciseSparkline({ 
