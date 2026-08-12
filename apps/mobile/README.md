@@ -1,56 +1,82 @@
-# Welcome to your Expo app 👋
+# OpenTrainer for iOS
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+The Expo SDK 57 client for OpenTrainer, built with Expo Router, NativeWind, Clerk authentication, and the shared Convex backend.
 
-## Get started
+## Setup
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Install dependencies once from the repository root:
 
 ```bash
-npm run reset-project
+bun install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Then create the mobile environment file:
 
-### Other setup steps
+```bash
+cd apps/mobile
+cp .env.example .env
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Set these variables in `.env`:
 
-## Learn more
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `EXPO_PUBLIC_CONVEX_URL` | Yes | Convex deployment URL |
+| `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Clerk publishable key |
+| `EXPO_PUBLIC_POSTHOG_KEY` | No | PostHog analytics key |
 
-To learn more about developing your project with Expo, look at the following resources:
+## Running
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+From `apps/mobile`, start the Expo development server:
 
-## Join the community
+```bash
+bunx expo start
+```
 
-Join our community of developers creating universal apps.
+The app needs a development build or an iOS simulator. On macOS with Xcode, build and launch it locally with:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+bunx expo run:ios
+```
+
+After the native development build is installed, use `bunx expo start` for normal development sessions.
+
+## Testing and checks
+
+Run these commands from `apps/mobile`:
+
+```bash
+bunx jest
+bunx tsc --noEmit
+bunx expo lint
+```
+
+Jest uses the `jest-expo` preset configured in `package.json`.
+
+## EAS builds
+
+The configured iOS profiles are `production`, `preview`, and `development`:
+
+```bash
+bunx eas-cli build --platform ios --profile production
+bunx eas-cli build --platform ios --profile preview
+bunx eas-cli build --platform ios --profile development
+```
+
+Production build values come from the EAS project's production environment variables, not the local `.env` file.
+
+## Project structure
+
+| Path | Purpose |
+| --- | --- |
+| `src/app` | Expo Router routes and layouts |
+| `src/app/(auth)` | Sign-in and sign-up routes |
+| `src/app/(app)` | Authenticated app routes and layouts |
+| `src/app/(app)/(tabs)` | Dashboard, routines, workout start, history, and profile tabs |
+| `src/components/ui` | Reusable mobile design-system components |
+| `src/theme` | Design tokens and the theme provider |
+| `src/lib/analytics.ts` | Analytics integration |
+| `src/lib/rest-timer-notifications.ts` | Rest-timer notification scheduling |
+| `src/__tests__` | Jest component and screen tests |
+
+Expo Router group names do not appear in URLs. The development gallery route is available at `/gallery`.
