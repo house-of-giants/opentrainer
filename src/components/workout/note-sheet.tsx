@@ -16,6 +16,7 @@ interface NoteSheetProps {
   exerciseName: string;
   note: string;
   onSave: (note: string) => void;
+  title?: string;
 }
 
 function NoteSheetContent({
@@ -23,6 +24,7 @@ function NoteSheetContent({
   note,
   onOpenChange,
   onSave,
+  title,
 }: Omit<NoteSheetProps, "open">) {
   const [localNote, setLocalNote] = useState(note);
 
@@ -42,8 +44,10 @@ function NoteSheetContent({
   return (
     <DrawerContent className="flex flex-col">
       <DrawerHeader>
-        <DrawerTitle>Note</DrawerTitle>
-        <p className="text-sm text-muted-foreground">{exerciseName}</p>
+        <DrawerTitle>{title ?? "Note"}</DrawerTitle>
+        {exerciseName && (
+          <p className="text-sm text-muted-foreground">{exerciseName}</p>
+        )}
       </DrawerHeader>
 
       <div className="flex-1 px-4 py-4">
@@ -78,6 +82,7 @@ export function NoteSheet({
   exerciseName,
   note,
   onSave,
+  title,
 }: NoteSheetProps) {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -87,6 +92,7 @@ export function NoteSheet({
           note={note}
           onOpenChange={onOpenChange}
           onSave={onSave}
+          title={title}
         />
       )}
     </Drawer>

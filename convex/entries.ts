@@ -3,6 +3,7 @@ import { mutation, query, internalQuery } from "./_generated/server";
 import { getCurrentUser } from "./auth";
 import type { Id } from "./_generated/dataModel";
 import { createConvexLogger, truncateId } from "./lib/logger";
+import { recomputeWorkoutSummary } from "./workoutSummary";
 
 const liftingDataValidator = v.object({
   setNumber: v.number(),
@@ -255,6 +256,43 @@ export const updateLiftingEntry = mutation({
       notes: args.notes ?? entry.notes,
     });
 
+    await recomputeWorkoutSummary(ctx, entry.workoutId);
+
+    return args.entryId;
+  },
+});
+
+export const updateCardioEntry = mutation({
+  args: {
+    entryId: v.id("entries"),
+    cardio: cardioDataValidator,
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const entry = await ctx.db.get(args.entryId);
+    if (!entry || entry.userId !== user._id) {
+      throw new Error("Entry not found or not authorized");
+    }
+
+    if (entry.kind !== "cardio") {
+      throw new Error("Entry is not a cardio entry");
+    }
+
+    const { durationSeconds } = args.cardio;
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+      throw new Error("Duration must be greater than zero");
+    }
+
+    await ctx.db.patch(args.entryId, {
+      cardio: args.cardio,
+      notes: args.notes ?? entry.notes,
+    });
+
+    await recomputeWorkoutSummary(ctx, entry.workoutId);
+
     return args.entryId;
   },
 });
@@ -332,6 +370,8 @@ export const updateMobilityEntry = mutation({
       notes: args.notes ?? entry.notes,
     });
 
+    await recomputeWorkoutSummary(ctx, entry.workoutId);
+
     return args.entryId;
   },
 });
@@ -358,6 +398,8 @@ export const deleteEntry = mutation({
     }
 
     await ctx.db.delete(args.entryId);
+
+    await recomputeWorkoutSummary(ctx, entry.workoutId);
 
     logger.success({
       entry: { id: truncateId(args.entryId), kind: entry.kind, exercise: entry.exerciseName },
