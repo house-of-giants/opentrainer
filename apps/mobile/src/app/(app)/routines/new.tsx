@@ -17,6 +17,7 @@ import {
   GripVertical,
   Plus,
   Save,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react-native";
@@ -34,8 +35,6 @@ import { useTheme } from "@/theme/theme-provider";
 // Port of apps/web/src/app/routines/new/page.tsx.
 //
 // Differences from web, on purpose:
-// - The "Generate with AI" card links to /routines/new/ai, which is not ported
-//   to mobile yet, so the card and its "or build manually" divider are omitted.
 // - dnd-kit (pointer/touch/keyboard sensors) is replaced by
 //   react-native-draggable-flatlist: long-press the grip to drag an exercise
 //   within its day. Web's per-day DndContext never allowed cross-day drags, so
@@ -390,6 +389,35 @@ export default function NewRoutineScreen() {
 
       <NestableScrollContainer contentContainerStyle={{ paddingBottom: 96 }}>
         <View className="gap-6 p-4">
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/(app)/routines/new/ai")}
+          >
+            <Card className="border-violet-500/20 bg-violet-500/10 p-4 active:border-violet-500/40">
+              <View className="flex-row items-center gap-3">
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-violet-500/20">
+                  <Sparkles size={20} color="#8b5cf6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-foreground">
+                    Generate with AI
+                  </Text>
+                  <Text className="text-xs text-muted-foreground">
+                    Create a personalized routine based on your goals and equipment
+                  </Text>
+                </View>
+              </View>
+            </Card>
+          </Pressable>
+
+          <View className="flex-row items-center gap-2">
+            <View className="h-px flex-1 bg-border" />
+            <Text className="text-xs uppercase text-muted-foreground">
+              or build manually
+            </Text>
+            <View className="h-px flex-1 bg-border" />
+          </View>
+
           <View className="gap-4">
             <View className="gap-2">
               <Label>Routine Name</Label>
