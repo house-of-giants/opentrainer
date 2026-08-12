@@ -49,15 +49,43 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
     if (busy) return;
     setBusy(true);
     try {
-      const { createdSessionId, setActive } = await startSSOFlow({
-        strategy: "oauth_google",
-        redirectUrl: AuthSession.makeRedirectUri(),
-      });
+      const { createdSessionId, setActive, signIn, signUp } =
+        await startSSOFlow({
+          strategy: "oauth_google",
+          redirectUrl: AuthSession.makeRedirectUri(),
+        });
+
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
         router.replace("/(app)/(tabs)");
+        return;
       }
-      // No created session + no error: user dismissed the browser — no-op.
+
+      // First-time Google users come back as an incomplete sign-up whose
+      // external account is already verified — completing it mints the session
+      // (Clerk "transfer" flow).
+      if (
+        setActive &&
+        signUp?.verifications?.externalAccount?.status === "verified" &&
+        signUp.status === "missing_requirements" &&
+        signUp.missingFields.length === 0
+      ) {
+        const completed = await signUp.update({});
+        if (completed.status === "complete" && completed.createdSessionId) {
+          await setActive({ session: completed.createdSessionId });
+          router.replace("/(app)/(tabs)");
+          return;
+        }
+      }
+
+      // Anything else that isn't a plain browser dismissal: surface the state
+      // so failures are debuggable instead of silent.
+      if (signIn?.status || signUp?.status) {
+        onError?.(
+          `Sign-in needs another step (${signIn?.status ?? signUp?.status}). ` +
+            "Try again, or sign in on opentrainer.app first.",
+        );
+      }
     } catch (err) {
       onError?.(
         err instanceof Error ? err.message : "Google sign-in failed. Try again.",

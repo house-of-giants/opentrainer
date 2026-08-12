@@ -76,8 +76,8 @@ export default function SignInScreen() {
         </Button>
         <View className="mt-6 flex-row justify-center">
           <Text className="text-muted-foreground">New here? </Text>
-          <Link href="/(auth)/sign-up" className="font-semibold text-primary">
-            Create an account
+          <Link href="/(auth)/sign-up" asChild>
+            <Text className="font-semibold text-primary">Create an account</Text>
           </Link>
         </View>
       </KeyboardAvoidingView>
