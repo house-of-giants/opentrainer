@@ -43,19 +43,22 @@ interface TabsTriggerProps {
   value: string;
   children: ReactNode;
   className?: string;
+  disabled?: boolean;
 }
 
-function TabsTrigger({ value, children, className }: TabsTriggerProps) {
+function TabsTrigger({ value, children, className, disabled }: TabsTriggerProps) {
   const ctx = useContext(TabsContext);
   const active = ctx.value === value;
   return (
     <Pressable
       accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ selected: active, disabled: !!disabled }}
+      disabled={disabled}
       onPress={() => ctx.onValueChange?.(value)}
       className={cn(
         "flex-1 flex-row items-center justify-center gap-1.5 rounded-md px-3 py-1.5",
         active && "bg-background",
+        disabled && "opacity-50",
         className,
       )}
     >
