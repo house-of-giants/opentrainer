@@ -24,6 +24,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
 import { useHaptic } from "@/hooks/use-haptic";
+import { analytics } from "@/lib/analytics";
 import { useTheme } from "@/theme/theme-provider";
 
 // Port of apps/web/src/components/workout/start-workout-sheet.tsx.
@@ -104,8 +105,7 @@ export function StartWorkoutSheet({
     try {
       vibrate("medium");
       await createWorkout({});
-      // analytics: web fires posthog.capture("workout_started", { source: "empty" });
-      // mobile has no PostHog provider wired yet.
+      analytics.capture("workout_started", { source: "empty" });
       onOpenChange(false);
       router.push("/(app)/workout/active");
     } catch (error) {
@@ -125,7 +125,13 @@ export function StartWorkoutSheet({
         routineId: routine._id,
         routineDayIndex: dayIndex,
       });
-      // analytics: web fires posthog.capture("workout_started", { source: "routine", ... }).
+      analytics.capture("workout_started", {
+        source: "routine",
+        routine_name: routine.name,
+        day_name: day.name,
+        day_index: dayIndex,
+        exercise_count: day.exercises.length,
+      });
       onOpenChange(false);
       router.push("/(app)/workout/active");
     } catch (error) {

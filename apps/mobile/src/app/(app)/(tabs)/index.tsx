@@ -13,6 +13,7 @@ import { AsciiLogo } from "@/components/ui/ascii-logo";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStartWorkout } from "@/components/workout/start-workout-provider";
+import { analytics } from "@/lib/analytics";
 import { formatDuration } from "@/lib/utils";
 import { useTheme } from "@/theme/theme-provider";
 
@@ -35,14 +36,22 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     if (isClerkLoaded && clerkUser && user === null) {
-      // analytics: web also runs posthog.identify / capture("user_signed_up")
-      // here; mobile has no PostHog provider wired yet.
       getOrCreateUser({
         clerkId: clerkUser.id,
         email: clerkUser.primaryEmailAddress?.emailAddress,
         name: clerkUser.fullName ?? undefined,
         imageUrl: clerkUser.imageUrl,
-      }).catch(console.error);
+      })
+        .then((result) => {
+          analytics.identify(clerkUser.id, {
+            name: clerkUser.fullName,
+            email: clerkUser.primaryEmailAddress?.emailAddress,
+          });
+          if (result && (result as { isNew?: boolean }).isNew) {
+            analytics.capture("user_signed_up", { clerk_id: clerkUser.id });
+          }
+        })
+        .catch(console.error);
     }
   }, [isClerkLoaded, clerkUser, user, getOrCreateUser]);
 
@@ -97,6 +106,10 @@ export default function DashboardScreen() {
 
   const handleSaveGoal = async (newGoal: number) => {
     await updateWeeklyGoal({ weeklyGoal: newGoal });
+    analytics.capture("weekly_goal_updated", {
+      new_goal: newGoal,
+      previous_goal: dashboardStats?.weeklyGoal,
+    });
   };
 
   return (

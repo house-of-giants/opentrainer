@@ -56,6 +56,7 @@ import { NoteSheet } from "@/components/workout/note-sheet";
 import { WorkoutExerciseCard } from "@/components/workout/workout-exercise-card";
 import { WorkoutTimeEditorDialog } from "@/components/workout/workout-time-editor-dialog";
 import { useHaptic } from "@/hooks/use-haptic";
+import { analytics } from "@/lib/analytics";
 import { useTheme } from "@/theme/theme-provider";
 
 // Port of apps/web/src/app/workout/[id]/page.tsx.
@@ -242,6 +243,13 @@ export default function WorkoutDetailsScreen() {
         startedAt,
         completedAt,
       });
+      analytics.capture("workout_times_edited", {
+        workout_id: workoutId,
+        from_started_at: workout.startedAt,
+        to_started_at: startedAt,
+        from_completed_at: workout.completedAt ?? completedAt,
+        to_completed_at: completedAt,
+      });
       toast.success("Workout date/time updated");
     } catch (error) {
       console.error(error);
@@ -255,6 +263,11 @@ export default function WorkoutDetailsScreen() {
     setIsDeleting(true);
     try {
       await deleteWorkout({ workoutId });
+      analytics.capture("workout_deleted", {
+        workout_id: workoutId,
+        status: workout.status,
+        entry_count: workout.entries.length,
+      });
       toast.success("Workout deleted");
       router.replace("/(app)/(tabs)/history");
     } catch (error) {
@@ -276,6 +289,7 @@ export default function WorkoutDetailsScreen() {
     if (!trimmed || trimmed === (workout.title ?? "Workout")) return;
     try {
       await updateWorkoutTitle({ workoutId, title: trimmed });
+      analytics.capture("workout_title_edited", { workout_id: workoutId });
       vibrate("success");
       toast.success("Title updated");
     } catch (error) {
@@ -287,6 +301,10 @@ export default function WorkoutDetailsScreen() {
   const handleSaveWorkoutNotes = async (note: string) => {
     try {
       await updateWorkoutNotes({ workoutId, notes: note });
+      analytics.capture("workout_notes_edited", {
+        workout_id: workoutId,
+        cleared: note.trim() === "",
+      });
       vibrate("success");
       toast.success("Notes saved");
     } catch (error) {
@@ -302,6 +320,11 @@ export default function WorkoutDetailsScreen() {
         workoutId,
         exerciseName: noteExercise,
         note,
+      });
+      analytics.capture("exercise_note_edited", {
+        workout_id: workoutId,
+        exercise_name: noteExercise,
+        cleared: note.trim() === "",
       });
       vibrate("success");
       toast.success("Note saved");
@@ -353,6 +376,17 @@ export default function WorkoutDetailsScreen() {
             ? buildTimedLiftingUpdate(editingSet, data)
             : buildRepLiftingUpdate(editingSet, data),
       });
+      analytics.capture("set_edited", {
+        workout_id: workoutId,
+        exercise_name: editingSet.exerciseName,
+        set_number: editingSet.setNumber,
+        reps: data.reps,
+        weight: data.weight,
+        unit: editingSet.unit,
+        duration_seconds: data.durationSeconds,
+        rpe: data.rpe,
+        is_warmup: data.isWarmup,
+      });
       vibrate("success");
       toast.success("Set updated");
     } catch (error) {
@@ -365,6 +399,11 @@ export default function WorkoutDetailsScreen() {
     vibrate("warning");
     try {
       await deleteEntry({ entryId: entryId as Id<"entries"> });
+      analytics.capture("set_deleted", {
+        workout_id: workoutId,
+        exercise_name: editingSet?.exerciseName,
+        set_number: editingSet?.setNumber,
+      });
       toast.success("Set deleted");
     } catch (error) {
       toast.error("Failed to delete set");
@@ -415,6 +454,13 @@ export default function WorkoutDetailsScreen() {
           vestWeight,
         },
       });
+      analytics.capture("cardio_edited", {
+        workout_id: workoutId,
+        exercise_name: editingCardio.exerciseName,
+        duration_seconds: data.durationSeconds,
+        intensity,
+        vest_weight: vestWeight,
+      });
       vibrate("success");
       toast.success("Cardio updated");
     } catch (error) {
@@ -427,6 +473,10 @@ export default function WorkoutDetailsScreen() {
     vibrate("warning");
     try {
       await deleteEntry({ entryId: entryId as Id<"entries"> });
+      analytics.capture("cardio_deleted", {
+        workout_id: workoutId,
+        exercise_name: editingCardio?.exerciseName,
+      });
       toast.success("Cardio entry deleted");
     } catch (error) {
       toast.error("Failed to delete entry");

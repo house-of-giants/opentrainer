@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
+import { analytics } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/theme/theme-provider";
 
@@ -150,10 +151,19 @@ export default function OnboardingScreen() {
           weeklyAvailability: days,
           sessionDuration: duration,
         });
-        // analytics: web calls posthog.identify(user.clerkId, { name, email })
-        // and posthog.capture("onboarding_completed", { goals,
-        // experience_level, equipment_count, weekly_availability,
-        // session_duration }) here; mobile has no PostHog provider wired yet.
+        if (user?.clerkId) {
+          analytics.identify(user.clerkId, {
+            name: user.name,
+            email: user.email,
+          });
+        }
+        analytics.capture("onboarding_completed", {
+          goals,
+          experience_level: experience,
+          equipment_count: equipment.length,
+          weekly_availability: days,
+          session_duration: duration,
+        });
         router.replace("/(app)/(tabs)");
       } catch {
         toast.error("Failed to save. Please try again.");
