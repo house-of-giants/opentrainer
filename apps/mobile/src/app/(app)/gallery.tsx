@@ -20,6 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldTitle,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -131,6 +138,29 @@ export default function GalleryScreen() {
             <Label>{`Days per week: ${sliderValue}`}</Label>
             <Slider value={sliderValue} onValueChange={setSliderValue} min={1} max={7} />
           </View>
+        </Section>
+
+        <Section title="Field">
+          <RadioGroup value={radio} onValueChange={setRadio}>
+            {[
+              { id: "beginner", description: "New to structured training" },
+              { id: "intermediate", description: "6+ months of consistent lifting" },
+            ].map((option) => (
+              <FieldLabel
+                key={option.id}
+                selected={radio === option.id}
+                onPress={() => setRadio(option.id)}
+              >
+                <Field orientation="horizontal">
+                  <RadioGroupItem value={option.id} />
+                  <FieldContent>
+                    <FieldTitle className="capitalize">{option.id}</FieldTitle>
+                    <FieldDescription>{option.description}</FieldDescription>
+                  </FieldContent>
+                </Field>
+              </FieldLabel>
+            ))}
+          </RadioGroup>
         </Section>
 
         <Section title="Tabs">
