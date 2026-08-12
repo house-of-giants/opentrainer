@@ -2,13 +2,26 @@ import { Tabs } from "expo-router";
 import { Pressable, View } from "react-native";
 import { Dumbbell, History, Home, Plus, User } from "lucide-react-native";
 
+import {
+  StartWorkoutProvider,
+  useStartWorkout,
+} from "@/components/workout/start-workout-provider";
 import { useTheme } from "@/theme/theme-provider";
 
 // Mirrors apps/web/src/components/navigation/bottom-nav.tsx: 4 tabs with a
-// center Start-workout FAB (not a route). The FAB opens StartWorkoutSheet once
-// that ships (Phase 4); until then it is rendered but inert.
+// center Start-workout FAB (not a route). The provider owns the single
+// StartWorkoutSheet instance so the FAB and any tab screen can open it.
 export default function TabsLayout() {
+  return (
+    <StartWorkoutProvider>
+      <TabsNavigator />
+    </StartWorkoutProvider>
+  );
+}
+
+function TabsNavigator() {
   const { colors } = useTheme();
+  const { open } = useStartWorkout();
   return (
     <Tabs
       screenOptions={{
@@ -43,12 +56,14 @@ export default function TabsLayout() {
         options={{
           title: "",
           // Custom center button: never navigates to the (empty) "start"
-          // route — Phase 4 wires this to StartWorkoutSheet.
+          // route — it opens StartWorkoutSheet, matching web's bottom-nav
+          // onStartWorkout.
           tabBarButton: () => (
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel="Start workout"
               className="flex-1 items-center justify-center"
-              onPress={() => {}}
+              onPress={open}
             >
               <View className="-translate-y-2 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg">
                 <Plus color={colors.primaryForeground} size={28} />
