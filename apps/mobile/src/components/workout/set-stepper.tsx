@@ -6,8 +6,6 @@ import { Input } from "@/components/ui/input";
 import { useHaptic } from "@/hooks/use-haptic";
 import { cn } from "@/lib/cn";
 
-// Port of apps/web/src/components/workout/set-stepper.tsx.
-// Same props/behavior; tap the value to type an exact number.
 interface SetStepperProps {
   label: string;
   value: number;
@@ -68,12 +66,13 @@ export function SetStepper({
   const displayValue = formatValue ? formatValue(value) : value.toString();
 
   return (
-    <View className="items-center gap-1">
+    <View className="flex-col items-center gap-1">
       <Text className="text-xs font-medium text-muted-foreground">{label}</Text>
       <View className="flex-row items-center gap-2">
         <Button
           variant="outline"
-          size="icon"
+          size="lg"
+          className="h-11 w-11 px-0"
           textClassName="text-xl font-bold"
           onPress={handleDecrement}
           disabled={value <= min}
@@ -82,31 +81,30 @@ export function SetStepper({
           −
         </Button>
 
-        <View className="min-w-[64px] items-center justify-center">
+        <View className="min-w-[64px] flex-col items-center justify-center">
           {isEditing ? (
             <Input
+              autoFocus
+              selectTextOnFocus
+              keyboardType="decimal-pad"
+              returnKeyType="done"
               value={inputValue}
               onChangeText={setInputValue}
               onBlur={commitValue}
               onSubmitEditing={commitValue}
-              keyboardType="decimal-pad"
-              returnKeyType="done"
-              selectTextOnFocus
-              autoFocus
-              accessibilityLabel={`${label} value`}
               className="h-10 w-20 text-center font-mono text-xl font-bold"
             />
           ) : (
             <Pressable
               onPress={handleValuePress}
-              accessibilityRole="button"
-              accessibilityLabel={`Edit ${label}`}
               className={cn(
-                "items-center rounded-md px-2 py-0.5",
+                "flex-col items-center rounded-md px-2 py-0.5",
                 "active:bg-muted",
               )}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit ${label}`}
             >
-              <Text className="font-mono text-2xl font-bold text-foreground">
+              <Text className="font-mono text-2xl font-bold tabular-nums text-foreground">
                 {displayValue}
               </Text>
               {unit && (
@@ -120,7 +118,8 @@ export function SetStepper({
 
         <Button
           variant="outline"
-          size="icon"
+          size="lg"
+          className="h-11 w-11 px-0"
           textClassName="text-xl font-bold"
           onPress={handleIncrement}
           disabled={value >= max}

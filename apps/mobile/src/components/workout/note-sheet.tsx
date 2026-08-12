@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { useState, useEffect } from "react";
+import { Text, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Sheet, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useTheme } from "@/theme/theme-provider";
 
-// Port of apps/web/src/components/workout/note-sheet.tsx (vaul drawer →
-// bottom sheet). Props identical.
 interface NoteSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,7 +21,6 @@ function NoteSheetContent({
   onSave,
   title,
 }: Omit<NoteSheetProps, "open">) {
-  const { colors } = useTheme();
   const [localNote, setLocalNote] = useState(note);
 
   useEffect(() => {
@@ -49,7 +46,7 @@ function NoteSheetContent({
       </SheetHeader>
 
       <View className="py-4">
-        <TextInput
+        <Input
           value={localNote}
           onChangeText={setLocalNote}
           placeholder={
@@ -57,18 +54,20 @@ function NoteSheetContent({
               ? "Add a note about this exercise..."
               : "Add a note about this workout..."
           }
-          placeholderTextColor={colors.mutedForeground}
           multiline
           textAlignVertical="top"
+          className="h-32 py-2"
           autoFocus
-          accessibilityLabel={title ?? "Note"}
-          className="h-32 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
         />
       </View>
 
-      <View className="flex-row items-center gap-2">
+      <View className="flex-row gap-2 pb-4">
         {localNote ? (
-          <Button variant="ghost" textClassName="text-muted-foreground" onPress={handleClear}>
+          <Button
+            variant="ghost"
+            textClassName="text-muted-foreground"
+            onPress={handleClear}
+          >
             Clear
           </Button>
         ) : null}
