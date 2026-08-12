@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/drawer";
 import { SetStepper } from "./set-stepper";
 import { RpeSelector } from "./rpe-selector";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Trash2 } from "lucide-react";
 
 export interface EditableSet {
@@ -25,13 +27,14 @@ export interface EditableSet {
   storedWeight?: number;
   storedUnit?: "lb" | "kg";
   isBodyweight?: boolean;
+  isWarmup?: boolean;
   rpe?: number | null;
 }
 
 interface EditSetSheetProps {
   set: EditableSet | null;
   onOpenChange: (open: boolean) => void;
-  onSave: (entryId: string, data: { reps?: number; weight?: number; durationSeconds?: number; rpe?: number | null }) => void;
+  onSave: (entryId: string, data: { reps?: number; weight?: number; durationSeconds?: number; rpe?: number | null; isWarmup?: boolean }) => void;
   onDelete: (entryId: string) => void;
 }
 
@@ -43,20 +46,21 @@ function EditSetContent({
 }: {
   set: EditableSet;
   onOpenChange: (open: boolean) => void;
-  onSave: (entryId: string, data: { reps?: number; weight?: number; durationSeconds?: number; rpe?: number | null }) => void;
+  onSave: (entryId: string, data: { reps?: number; weight?: number; durationSeconds?: number; rpe?: number | null; isWarmup?: boolean }) => void;
   onDelete: (entryId: string) => void;
 }) {
   const [weight, setWeight] = useState(set.weight);
   const [reps, setReps] = useState(set.reps);
   const [durationSeconds, setDurationSeconds] = useState(set.durationSeconds ?? 30);
   const [rpe, setRpe] = useState<number | null>(set.rpe ?? null);
+  const [isWarmup, setIsWarmup] = useState(set.isWarmup ?? false);
 
   const handleSave = () => {
     onSave(
       set.entryId,
       set.durationSeconds !== undefined
-        ? { durationSeconds, rpe }
-        : { reps, weight, rpe }
+        ? { durationSeconds, rpe, isWarmup }
+        : { reps, weight, rpe, isWarmup }
     );
     onOpenChange(false);
   };
@@ -122,6 +126,17 @@ function EditSetContent({
           />
             </>
           )}
+        </div>
+
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <Checkbox
+            id="edit-set-warmup"
+            checked={isWarmup}
+            onCheckedChange={(checked) => setIsWarmup(checked === true)}
+          />
+          <Label htmlFor="edit-set-warmup" className="text-muted-foreground">
+            Warmup set
+          </Label>
         </div>
 
         <div className="mt-6">

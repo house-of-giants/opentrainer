@@ -6,6 +6,7 @@ type StoredLiftingEntry = {
 	lifting?: {
 		weight?: number;
 		unit: WeightUnit;
+		isWarmup?: boolean;
 	};
 };
 
@@ -24,6 +25,7 @@ export type EditableLiftingSet = DisplayedLiftingSet & {
 	exerciseName: string;
 	storedWeight?: number;
 	storedUnit?: WeightUnit;
+	isWarmup?: boolean;
 };
 
 export function createEditableLiftingSet(
@@ -48,12 +50,13 @@ export function createEditableLiftingSet(
 		exerciseName,
 		storedWeight: storedSet?.weight,
 		storedUnit: storedSet?.unit,
+		isWarmup: storedSet?.isWarmup,
 	};
 }
 
 export function buildRepLiftingUpdate(
 	editingSet: EditableLiftingSet,
-	data: { reps?: number; weight?: number; rpe?: number | null }
+	data: { reps?: number; weight?: number; rpe?: number | null; isWarmup?: boolean }
 ) {
 	return {
 		setNumber: editingSet.setNumber,
@@ -71,5 +74,19 @@ export function buildRepLiftingUpdate(
 		unit: editingSet.storedUnit ?? editingSet.unit,
 		isBodyweight: editingSet.isBodyweight,
 		rpe: data.rpe ?? undefined,
+		isWarmup: data.isWarmup,
+	};
+}
+
+export function buildTimedLiftingUpdate(
+	editingSet: EditableLiftingSet,
+	data: { durationSeconds?: number; rpe?: number | null; isWarmup?: boolean }
+) {
+	return {
+		setNumber: editingSet.setNumber,
+		durationSeconds: data.durationSeconds,
+		unit: editingSet.storedUnit ?? editingSet.unit,
+		rpe: data.rpe ?? undefined,
+		isWarmup: data.isWarmup,
 	};
 }

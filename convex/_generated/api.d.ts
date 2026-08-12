@@ -27,11 +27,16 @@ import type * as feedback from "../feedback.js";
 import type * as http from "../http.js";
 import type * as lib_equipment from "../lib/equipment.js";
 import type * as lib_logger from "../lib/logger.js";
+import type * as lib_muscleAnalytics from "../lib/muscleAnalytics.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
+import type * as lib_routineMeasurements from "../lib/routineMeasurements.js";
+import type * as lib_week from "../lib/week.js";
+import type * as migrations_exerciseDeduplication from "../migrations/exerciseDeduplication.js";
 import type * as routines from "../routines.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 import type * as webhooks from "../webhooks.js";
+import type * as workoutSummary from "../workoutSummary.js";
 import type * as workouts from "../workouts.js";
 
 import type {
@@ -60,11 +65,16 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/equipment": typeof lib_equipment;
   "lib/logger": typeof lib_logger;
+  "lib/muscleAnalytics": typeof lib_muscleAnalytics;
   "lib/rateLimit": typeof lib_rateLimit;
+  "lib/routineMeasurements": typeof lib_routineMeasurements;
+  "lib/week": typeof lib_week;
+  "migrations/exerciseDeduplication": typeof migrations_exerciseDeduplication;
   routines: typeof routines;
   seed: typeof seed;
   users: typeof users;
   webhooks: typeof webhooks;
+  workoutSummary: typeof workoutSummary;
   workouts: typeof workouts;
 }>;
 

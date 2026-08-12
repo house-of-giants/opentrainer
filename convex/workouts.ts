@@ -1,80 +1,9 @@
 import { v } from "convex/values";
-import type { Doc, Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./auth";
 import { createConvexLogger, truncateId } from "./lib/logger";
 import { getMondayWeekStartUtc, WEEK_IN_MS } from "./lib/week";
-
-type WorkoutSummary = NonNullable<Doc<"workouts">["summary"]>;
-
-async function getWorkoutEntries(
-  ctx: MutationCtx,
-  workoutId: Id<"workouts">
-): Promise<Doc<"entries">[]> {
-  return ctx.db
-    .query("entries")
-    .withIndex("by_workout_created", (q) => q.eq("workoutId", workoutId))
-    .collect();
-}
-
-function buildWorkoutSummary(
-  entries: Doc<"entries">[],
-  startedAt: number,
-  completedAt: number
-): WorkoutSummary {
-  let totalVolume = 0;
-  let totalSets = 0;
-  let totalCardioDurationSeconds = 0;
-  let totalDistanceKm = 0;
-  let hasCardio = false;
-  let hasMobility = false;
-  const exerciseNames = new Set<string>();
-
-  for (const entry of entries) {
-    exerciseNames.add(entry.exerciseName);
-
-    if (entry.kind === "lifting" && entry.lifting) {
-      totalSets++;
-      if (entry.lifting.weight && entry.lifting.reps) {
-        totalVolume += entry.lifting.weight * entry.lifting.reps;
-      }
-      continue;
-    }
-
-    if (entry.kind === "cardio" && entry.cardio) {
-      hasCardio = true;
-      totalCardioDurationSeconds += entry.cardio.durationSeconds;
-      if (entry.cardio.distance && entry.cardio.distanceUnit) {
-        const distanceKm =
-          entry.cardio.distanceUnit === "km"
-            ? entry.cardio.distance
-            : entry.cardio.distanceUnit === "mi"
-              ? entry.cardio.distance * 1.60934
-              : entry.cardio.distance / 1000;
-        totalDistanceKm += distanceKm;
-      }
-      continue;
-    }
-
-    if (entry.kind === "mobility") {
-      hasMobility = true;
-    }
-  }
-
-  const totalDurationMinutes = Math.round((completedAt - startedAt) / 60000);
-
-  return {
-    totalVolume,
-    totalSets,
-    totalDurationMinutes,
-    exerciseCount: exerciseNames.size,
-    totalCardioDurationSeconds: hasCardio ? totalCardioDurationSeconds : undefined,
-    totalDistanceKm: totalDistanceKm > 0 ? totalDistanceKm : undefined,
-    hasCardio: hasCardio || undefined,
-    hasMobility: hasMobility || undefined,
-  };
-}
+import { buildWorkoutSummary, getWorkoutEntries } from "./workoutSummary";
 
 function validateWorkoutTimeRange({
   startedAt,
@@ -649,6 +578,33 @@ export const updateWorkoutTitle = mutation({
 
     await ctx.db.patch(args.workoutId, {
       title: args.title,
+    });
+
+    return args.workoutId;
+  },
+});
+
+export const updateWorkoutNotes = mutation({
+  args: {
+    workoutId: v.id("workouts"),
+    notes: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    const workout = await ctx.db.get(args.workoutId);
+    if (!workout) {
+      throw new Error("Workout not found");
+    }
+
+    if (workout.userId !== user._id) {
+      throw new Error("Not authorized");
+    }
+
+    const trimmed = args.notes.trim();
+    await ctx.db.patch(args.workoutId, {
+      notes: trimmed === "" ? undefined : trimmed,
     });
 
     return args.workoutId;

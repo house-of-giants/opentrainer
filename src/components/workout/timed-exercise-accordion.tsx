@@ -17,6 +17,7 @@ export interface TimedSetData {
 	setNumber: number;
 	durationSeconds: number;
 	rpe?: number | null;
+	isWarmup?: boolean;
 }
 
 interface TimedExerciseAccordionProps {

@@ -47,6 +47,7 @@ import {
 import { getExerciseGroupKey } from "@/lib/workout-exercise-group";
 import {
 	buildRepLiftingUpdate,
+	buildTimedLiftingUpdate,
 	createEditableLiftingSet,
 } from "@/lib/workout-set-edit";
 import posthog from "posthog-js";
@@ -63,6 +64,7 @@ type EntryData = {
 		unit: "kg" | "lb";
 		isBodyweight?: boolean;
 		rpe?: number;
+		isWarmup?: boolean;
 	};
 	cardio?: {
 		durationSeconds: number;
@@ -792,12 +794,13 @@ export default function ActiveWorkoutPage() {
 			unit: "lb",
 			durationSeconds: set.durationSeconds,
 			rpe: set.rpe,
+			isWarmup: set.isWarmup,
 		});
 	};
 
 	const handleUpdateSet = async (
 		entryId: string,
-		data: { reps?: number; weight?: number; durationSeconds?: number; rpe?: number | null }
+		data: { reps?: number; weight?: number; durationSeconds?: number; rpe?: number | null; isWarmup?: boolean }
 	) => {
 		if (!editingSet) return;
 		try {
@@ -806,12 +809,7 @@ export default function ActiveWorkoutPage() {
 					entryId as unknown as import("../../../../convex/_generated/dataModel").Id<"entries">,
 				lifting:
 					data.durationSeconds !== undefined
-						? {
-								setNumber: editingSet.setNumber,
-								durationSeconds: data.durationSeconds,
-								unit: editingSet.unit,
-								rpe: data.rpe ?? undefined,
-							}
+						? buildTimedLiftingUpdate(editingSet, data)
 						: buildRepLiftingUpdate(editingSet, data),
 			});
 			vibrate("success");
@@ -1012,6 +1010,7 @@ export default function ActiveWorkoutPage() {
 									setNumber: entry.lifting!.setNumber,
 									durationSeconds: entry.lifting!.durationSeconds!,
 									rpe: entry.lifting!.rpe ?? null,
+									isWarmup: entry.lifting!.isWarmup,
 								}));
 
 							return (
