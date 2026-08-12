@@ -1,0 +1,23 @@
+{
+  "name": "@opentrainer/backend",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "dev": "convex dev",
+    "deploy": "convex deploy",
+    "typecheck": "tsc -p convex"
+  },
+  "dependencies": {
+    "@opentrainer/lib": "workspace:*",
+    "convex": "^1.31.2",
+    "evlog": "^1.2.0",
+    "svix": "^1.82.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "convex-test": "0.0.41",
+    "typescript": "^5"
+  }
+}

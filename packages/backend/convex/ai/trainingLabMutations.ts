@@ -1,0 +1,654 @@
+import { v } from "convex/values";
+import { query, internalMutation, type QueryCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import { getCurrentUser } from "../auth";
+import type { TrainingLabReport, TrainingSnapshot, TrainingLabCTAState, TrainingLabDashboardStats } from "./trainingLabTypes";
+import { getMondayWeekKey, getMondayWeekStartUtc, WEEK_IN_MS } from "../lib/week";
+import {
+  calculateMuscleAnalytics,
+  type MuscleAnalyticsEntry,
+  type MuscleAnalyticsExercise,
+  type MuscleAnalyticsResult,
+  type MuscleAnalyticsWorkout,
+} from "../lib/muscleAnalytics";
+import { convertWeight, roundWeight, type WeightUnit } from "@opentrainer/lib/units";
+
+type RecentPrSourceSet = {
+  workoutId: string;
+  exercise: string;
+  weight: number;
+  unit?: WeightUnit;
+  workoutDate: number;
+};
+
+export function findRecentPersonalRecords(
+  sourceSets: RecentPrSourceSet[],
+  preferredUnit: WeightUnit,
+  since: number,
+  limit = 3
+): TrainingLabDashboardStats["recentPRs"] {
+  const exerciseMaxWeights = new Map<string, { weight: number }>();
+  const sessionMaxWeights = new Map<
+    string,
+    { workoutId: string; exercise: string; weight: number; workoutDate: number }
+  >();
+  const recentPRs: Array<TrainingLabDashboardStats["recentPRs"][number] & { workoutDate: number }> =
+    [];
+
+  for (const set of sourceSets) {
+    if (!Number.isFinite(set.weight) || set.weight <= 0) continue;
+
+    const sourceUnit = set.unit ?? preferredUnit;
+    const normalizedWeight = convertWeight(set.weight, sourceUnit, preferredUnit);
+    const sessionKey = `${set.workoutId}:${set.exercise}`;
+    const existingSession = sessionMaxWeights.get(sessionKey);
+
+    if (!existingSession || normalizedWeight > existingSession.weight) {
+      sessionMaxWeights.set(sessionKey, {
+        workoutId: set.workoutId,
+        exercise: set.exercise,
+        weight: normalizedWeight,
+        workoutDate: set.workoutDate,
+      });
+    }
+  }
+
+  const sortedSessions = Array.from(sessionMaxWeights.values()).sort(
+    (a, b) =>
+      a.workoutDate - b.workoutDate ||
+      a.workoutId.localeCompare(b.workoutId) ||
+      a.exercise.localeCompare(b.exercise)
+  );
+
+  for (const session of sortedSessions) {
+    const existing = exerciseMaxWeights.get(session.exercise);
+
+    if (!existing || session.weight > existing.weight) {
+      if (existing && session.workoutDate > since) {
+        recentPRs.push({
+          exercise: session.exercise,
+          weight: roundWeight(session.weight, preferredUnit),
+          unit: preferredUnit,
+          date: new Date(session.workoutDate).toISOString().split("T")[0],
+          workoutDate: session.workoutDate,
+        });
+      }
+
+      exerciseMaxWeights.set(session.exercise, { weight: session.weight });
+    }
+  }
+
+  return recentPRs
+    .sort((a, b) => b.workoutDate - a.workoutDate || a.exercise.localeCompare(b.exercise))
+    .slice(0, limit)
+    .map((pr) => ({
+      exercise: pr.exercise,
+      weight: pr.weight,
+      unit: pr.unit,
+      date: pr.date,
+    }));
+}
+
+export const storeAssessment = internalMutation({
+  args: {
+    userId: v.id("users"),
+    subjectType: v.literal("weekly_review"),
+    subjectSubtype: v.union(v.literal("snapshot"), v.literal("full")),
+    model: v.string(),
+    summary: v.string(),
+    scores: v.optional(
+      v.object({
+        volumeAdherence: v.number(),
+        intensityManagement: v.number(),
+        muscleBalance: v.number(),
+        recoveryBalance: v.number(),
+      })
+    ),
+    insights: v.optional(
+      v.array(
+        v.object({
+          category: v.string(),
+          observation: v.string(),
+          recommendation: v.optional(v.string()),
+          priority: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
+        })
+      )
+    ),
+    report: v.any(),
+    tokenUsage: v.object({
+      input: v.number(),
+      output: v.number(),
+    }),
+    latencyMs: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const assessmentId = await ctx.db.insert("assessments", {
+      userId: args.userId,
+      subjectType: args.subjectType,
+      model: args.model,
+      promptVersion: "1.0",
+      status: "success",
+      summary: args.summary,
+      scores: args.scores
+        ? {
+            volumeAdherence: args.scores.volumeAdherence,
+            intensityManagement: args.scores.intensityManagement,
+            muscleBalance: args.scores.muscleBalance,
+            recoveryBalance: args.scores.recoveryBalance,
+          }
+        : undefined,
+      insights: args.insights,
+      tokenUsage: {
+        input: args.tokenUsage.input,
+        output: args.tokenUsage.output,
+      },
+      createdAt: Date.now(),
+    });
+
+    await ctx.db.insert("assessmentDetails", {
+      assessmentId,
+      userId: args.userId,
+      contentMarkdown: JSON.stringify(args.report),
+      createdAt: Date.now(),
+    });
+
+    return assessmentId;
+  },
+});
+
+export const getCtaState = query({
+  args: {},
+  handler: async (ctx): Promise<TrainingLabCTAState | null> => {
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
+    if (!user) return null;
+
+    const allWorkouts = await ctx.db
+      .query("workouts")
+      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+
+    const totalWorkouts = allWorkouts.length;
+    
+    const now = Date.now();
+    const weekStart = getMondayWeekStartUtc(now);
+    const currentWeekWorkouts = allWorkouts.filter((w) => w.startedAt >= weekStart);
+    const oldestWorkout = allWorkouts.length > 0 
+      ? Math.min(...allWorkouts.map(w => w.startedAt))
+      : now;
+    const dataRangeDays = Math.floor((now - oldestWorkout) / (24 * 60 * 60 * 1000));
+
+    if (user.tier !== "pro") {
+      return {
+        show: true,
+        isPro: false,
+        workoutsSinceLastReport: 0,
+        totalWorkouts,
+        hasReport: false,
+        canGenerate: false,
+        message: "Unlock AI-powered training insights",
+        dataRangeDays,
+      };
+    }
+
+    const lastAssessment = await ctx.db
+      .query("assessments")
+      .withIndex("by_user_created", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("subjectType"), "weekly_review"))
+      .order("desc")
+      .first();
+
+    const hasReport = !!lastAssessment;
+    const lastAssessmentDate = lastAssessment?.createdAt ?? 0;
+
+    const workoutsSince = currentWeekWorkouts.filter((w) => w.startedAt > lastAssessmentDate);
+    const count = workoutsSince.length;
+
+    const canGenerate = hasReport ? count > 0 : currentWeekWorkouts.length > 0;
+
+    let message: string;
+    if (totalWorkouts === 0) {
+      message = "Complete your first workout to unlock insights";
+    } else if (currentWeekWorkouts.length === 0) {
+      message = "Complete a workout this week to generate your analysis";
+    } else if (!hasReport) {
+      message = currentWeekWorkouts.length === 1
+        ? "Your first analysis is ready"
+        : `${currentWeekWorkouts.length} workouts this week. Generate your analysis`;
+    } else if (count === 0) {
+      message = "Log a workout to refresh your analysis";
+    } else {
+      message = count === 1
+        ? "1 new workout. Refresh your analysis"
+        : `${count} new workouts. Refresh your analysis`;
+    }
+
+    return {
+      show: true,
+      isPro: true,
+      workoutsSinceLastReport: count,
+      totalWorkouts,
+      hasReport,
+      canGenerate,
+      message,
+      dataRangeDays,
+    };
+  },
+});
+
+export const getLatestReport = query({
+  args: {},
+  handler: async (ctx): Promise<TrainingLabReport | TrainingSnapshot | null> => {
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
+    if (!user) return null;
+
+    const latestAssessment = await ctx.db
+      .query("assessments")
+      .withIndex("by_user_created", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("subjectType"), "weekly_review"))
+      .order("desc")
+      .first();
+
+    if (!latestAssessment) return null;
+
+    const details = await ctx.db
+      .query("assessmentDetails")
+      .withIndex("by_assessment", (q) => q.eq("assessmentId", latestAssessment._id))
+      .first();
+
+    if (!details) return null;
+
+    try {
+      return JSON.parse(details.contentMarkdown);
+    } catch {
+      return null;
+    }
+  },
+});
+
+export const getDashboardStats = query({
+  args: {},
+  handler: async (ctx): Promise<TrainingLabDashboardStats | null> => {
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
+    if (!user) return null;
+
+    const now = Date.now();
+    const preferredUnits: WeightUnit = user.preferredUnits ?? "lb";
+    const weekStart = getMondayWeekStartUtc(now);
+    const twoWeeksAgo = weekStart - WEEK_IN_MS;
+    const fourWeeksAgo = weekStart - 4 * WEEK_IN_MS;
+
+    const recentWorkouts = await ctx.db
+      .query("workouts")
+      .withIndex("by_user_started", (q) =>
+        q.eq("userId", user._id).gte("startedAt", fourWeeksAgo).lte("startedAt", now)
+      )
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+
+    const thisWeekWorkouts = recentWorkouts.filter((w) => w.startedAt >= weekStart);
+    const lastWeekWorkouts = recentWorkouts.filter(
+      (w) => w.startedAt >= twoWeeksAgo && w.startedAt < weekStart
+    );
+    const fourWeekWorkouts = recentWorkouts.filter((w) => w.startedAt >= fourWeeksAgo);
+
+    const allEntries: EntryData[] = [];
+
+    for (const workout of recentWorkouts) {
+      const entries = await ctx.db
+        .query("entries")
+        .withIndex("by_workout", (q) => q.eq("workoutId", workout._id))
+        .collect();
+      for (const e of entries) {
+        allEntries.push({
+          workoutId: workout._id.toString(),
+          exerciseId: e.exerciseId?.toString(),
+          kind: e.kind,
+          lifting: e.lifting ? {
+            reps: e.lifting.reps,
+            weight: e.lifting.weight,
+            durationSeconds: e.lifting.durationSeconds,
+            unit: e.lifting.unit,
+            rpe: e.lifting.rpe,
+            isWarmup: e.lifting.isWarmup,
+          } : undefined,
+          cardio: e.cardio ? {
+            durationSeconds: e.cardio.durationSeconds,
+            rpe: e.cardio.rpe,
+            intensity: e.cardio.intensity,
+            distance: e.cardio.distance,
+            distanceUnit: e.cardio.distanceUnit,
+          } : undefined,
+          exerciseName: e.exerciseName,
+        });
+      }
+    }
+
+    const thisWeekEntries = allEntries.filter((e) => 
+      thisWeekWorkouts.some((w) => w._id.toString() === e.workoutId)
+    );
+    const lastWeekEntries = allEntries.filter((e) =>
+      lastWeekWorkouts.some((w) => w._id.toString() === e.workoutId)
+    );
+    const fourWeekEntries = allEntries.filter((e) =>
+      fourWeekWorkouts.some((w) => w._id.toString() === e.workoutId)
+    );
+
+    const thisWeekSets = thisWeekEntries.filter((e) => e.kind === "lifting").length;
+    const lastWeekSets = lastWeekEntries.filter((e) => e.kind === "lifting").length;
+
+    const volumeChangePercent =
+      lastWeekSets > 0
+        ? Math.round(((thisWeekSets - lastWeekSets) / lastWeekSets) * 100)
+        : null;
+
+    const allWorkouts = await ctx.db
+      .query("workouts")
+      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .order("asc")
+      .collect();
+
+    const weeklyWorkouts = new Map<string, number>();
+    for (const workout of allWorkouts) {
+      const weekKey = getMondayWeekKey(workout.startedAt);
+      weeklyWorkouts.set(weekKey, (weeklyWorkouts.get(weekKey) ?? 0) + 1);
+    }
+
+    let currentStreak = 0;
+    let longestStreak = 0;
+    let tempStreak = 0;
+    const currentWeek = getMondayWeekKey(now);
+    const lastWeek = getMondayWeekKey(weekStart - WEEK_IN_MS);
+
+    const weeks = Array.from(weeklyWorkouts.keys()).sort().reverse();
+    for (const week of weeks) {
+      if (weeklyWorkouts.has(week) && weeklyWorkouts.get(week)! > 0) {
+        tempStreak++;
+        if (week === currentWeek || week === lastWeek) {
+          currentStreak = tempStreak;
+        }
+      } else {
+        longestStreak = Math.max(longestStreak, tempStreak);
+        if (week !== currentWeek) {
+          tempStreak = 0;
+        }
+      }
+    }
+    longestStreak = Math.max(longestStreak, tempStreak);
+    if (currentStreak === 0 && weeklyWorkouts.has(currentWeek)) {
+      currentStreak = 1;
+    }
+
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const recentPrSourceSets: RecentPrSourceSet[] = [];
+    
+    for (const workout of allWorkouts) {
+      const entries = await ctx.db
+        .query("entries")
+        .withIndex("by_workout", (q) => q.eq("workoutId", workout._id))
+        .filter((q) => q.eq(q.field("kind"), "lifting"))
+        .collect();
+
+      for (const entry of entries) {
+        if (!entry.lifting?.weight) continue;
+
+        recentPrSourceSets.push({
+          workoutId: workout._id.toString(),
+          exercise: entry.exerciseName,
+          weight: entry.lifting.weight,
+          unit: entry.lifting.unit,
+          workoutDate: workout.startedAt,
+        });
+      }
+    }
+    const recentPRs = findRecentPersonalRecords(
+      recentPrSourceSets,
+      preferredUnits,
+      thirtyDaysAgo
+    );
+
+    const { trainingLoad, trainingProfile } = calculateTrainingLoadStats(
+      fourWeekEntries,
+      thisWeekEntries,
+      lastWeekEntries,
+      fourWeekWorkouts,
+      thisWeekWorkouts
+    );
+
+    const cardioSummary = calculateCardioSummaryStats(thisWeekEntries);
+    const muscleAnalytics = await calculateDashboardMuscleAnalytics({
+      ctx,
+      userId: user._id,
+      isPro: user.tier === "pro",
+      now,
+      weekStart,
+      workouts: recentWorkouts,
+      entries: allEntries,
+    });
+
+    return {
+      preferredUnits,
+      workoutsThisWeek: thisWeekWorkouts.length,
+      weeklyTarget: user.weeklyAvailability ?? 4,
+      totalSetsThisWeek: thisWeekSets,
+      currentStreakWeeks: currentStreak,
+      longestStreakWeeks: longestStreak,
+      volumeChangePercent,
+      recentPRs,
+      trainingProfile,
+      trainingLoad,
+      cardioSummary,
+      muscleAnalytics,
+    };
+  },
+});
+
+type EntryData = MuscleAnalyticsEntry & {
+  cardio?: { durationSeconds: number; rpe?: number; intensity?: number; distance?: number; distanceUnit?: string };
+};
+
+type WorkoutData = {
+  _id: { toString(): string };
+  startedAt: number;
+  completedAt?: number;
+};
+
+async function calculateDashboardMuscleAnalytics({
+  ctx,
+  userId,
+  isPro,
+  now,
+  weekStart,
+  workouts,
+  entries,
+}: {
+  ctx: QueryCtx;
+  userId: Id<"users">;
+  isPro: boolean;
+  now: number;
+  weekStart: number;
+  workouts: Array<WorkoutData & { status: MuscleAnalyticsWorkout["status"] }>;
+  entries: MuscleAnalyticsEntry[];
+}): Promise<MuscleAnalyticsResult | null> {
+  if (!isPro) return null;
+
+  const analyticsWorkouts: MuscleAnalyticsWorkout[] = workouts.map((workout) => ({
+    id: workout._id.toString(),
+    status: workout.status,
+    startedAt: workout.startedAt,
+    completedAt: workout.completedAt,
+  }));
+
+  if (workouts.length === 0 || entries.length === 0) {
+    return calculateMuscleAnalytics({
+      now,
+      weekStart,
+      workouts: analyticsWorkouts,
+      entries,
+      exercises: [],
+    });
+  }
+
+  const [systemExercises, userExercises] = await Promise.all([
+    ctx.db
+      .query("exercises")
+      .withIndex("by_system", (q) => q.eq("isSystemExercise", true))
+      .collect(),
+    ctx.db
+      .query("exercises")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  ]);
+
+  const exercises: MuscleAnalyticsExercise[] = [...systemExercises, ...userExercises].map(
+    (exercise) => ({
+      id: exercise._id.toString(),
+      name: exercise.name,
+      muscleGroups: exercise.muscleGroups,
+    })
+  );
+
+  return calculateMuscleAnalytics({
+    now,
+    weekStart,
+    workouts: analyticsWorkouts,
+    entries,
+    exercises,
+  });
+}
+
+function calculateTrainingLoadStats(
+  fourWeekEntries: EntryData[],
+  thisWeekEntries: EntryData[],
+  lastWeekEntries: EntryData[],
+  fourWeekWorkouts: WorkoutData[],
+  thisWeekWorkouts: WorkoutData[]
+): {
+  trainingLoad: TrainingLabDashboardStats["trainingLoad"];
+  trainingProfile: TrainingLabDashboardStats["trainingProfile"];
+} {
+  const calcLoad = (entries: EntryData[], workouts: WorkoutData[]) => {
+    let liftingLoad = 0;
+    let cardioLoad = 0;
+
+    const workoutDurations = new Map<string, number>();
+    for (const w of workouts) {
+      const duration = (w.completedAt ?? w.startedAt + 3600000) - w.startedAt;
+      workoutDurations.set(w._id.toString(), duration / 60000);
+    }
+
+    const workoutLiftingRpe = new Map<string, { total: number; count: number }>();
+    for (const e of entries) {
+      if (e.kind === "lifting" && e.lifting?.rpe) {
+        const existing = workoutLiftingRpe.get(e.workoutId) ?? { total: 0, count: 0 };
+        existing.total += e.lifting.rpe;
+        existing.count++;
+        workoutLiftingRpe.set(e.workoutId, existing);
+      }
+    }
+
+    for (const [workoutId, stats] of workoutLiftingRpe) {
+      const duration = workoutDurations.get(workoutId) ?? 60;
+      const avgRpe = stats.count > 0 ? stats.total / stats.count : 6;
+      liftingLoad += Math.round(duration * avgRpe * 0.8);
+    }
+
+    for (const e of entries) {
+      if (e.kind === "cardio" && e.cardio) {
+        const durationMin = e.cardio.durationSeconds / 60;
+        const rpe = e.cardio.rpe ?? e.cardio.intensity ?? 5;
+        cardioLoad += Math.round(durationMin * rpe);
+      }
+    }
+
+    return { liftingLoad, cardioLoad, total: liftingLoad + cardioLoad };
+  };
+
+  const fourWeekLoad = calcLoad(fourWeekEntries, fourWeekWorkouts);
+  const thisWeekLoad = calcLoad(thisWeekEntries, thisWeekWorkouts);
+  const lastWeekLoad = calcLoad(lastWeekEntries, []);
+
+  const total = fourWeekLoad.total;
+  const liftingPercent = total > 0 ? Math.round((fourWeekLoad.liftingLoad / total) * 100) : 0;
+  const cardioPercent = total > 0 ? Math.round((fourWeekLoad.cardioLoad / total) * 100) : 0;
+
+  let trainingProfile: TrainingLabDashboardStats["trainingProfile"];
+  if (total < 100) {
+    trainingProfile = "general_fitness";
+  } else if (liftingPercent >= 70) {
+    trainingProfile = "strength_focused";
+  } else if (cardioPercent >= 70) {
+    trainingProfile = "cardio_focused";
+  } else {
+    trainingProfile = "hybrid";
+  }
+
+  const changePercent = lastWeekLoad.total > 0
+    ? Math.round(((thisWeekLoad.total - lastWeekLoad.total) / lastWeekLoad.total) * 100)
+    : null;
+
+  return {
+    trainingLoad: {
+      total: thisWeekLoad.total,
+      liftingLoad: thisWeekLoad.liftingLoad,
+      cardioLoad: thisWeekLoad.cardioLoad,
+      liftingPercent,
+      cardioPercent,
+      changePercent,
+    },
+    trainingProfile,
+  };
+}
+
+function calculateCardioSummaryStats(
+  entries: EntryData[]
+): TrainingLabDashboardStats["cardioSummary"] {
+  const cardioEntries = entries.filter((e) => e.kind === "cardio" && e.cardio);
+  if (cardioEntries.length === 0) return null;
+
+  let totalMinutes = 0;
+  let totalDistance = 0;
+  let totalRpe = 0;
+  let rpeCount = 0;
+  const modalityMinutes = new Map<string, number>();
+
+  for (const e of cardioEntries) {
+    const c = e.cardio!;
+    const minutes = c.durationSeconds / 60;
+    totalMinutes += minutes;
+
+    if (c.distance && c.distanceUnit) {
+      let distKm = c.distance;
+      if (c.distanceUnit === "m") distKm = c.distance / 1000;
+      if (c.distanceUnit === "mi") distKm = c.distance * 1.60934;
+      totalDistance += distKm;
+    }
+
+    const rpe = c.rpe ?? c.intensity;
+    if (rpe) {
+      totalRpe += rpe;
+      rpeCount++;
+    }
+
+    const modality = e.exerciseName.toLowerCase();
+    modalityMinutes.set(modality, (modalityMinutes.get(modality) ?? 0) + minutes);
+  }
+
+  let topModality: string | null = null;
+  let topMinutes = 0;
+  for (const [mod, mins] of modalityMinutes) {
+    if (mins > topMinutes) {
+      topMinutes = mins;
+      topModality = mod;
+    }
+  }
+
+  return {
+    totalMinutes: Math.round(totalMinutes),
+    totalDistance: Math.round(totalDistance * 10) / 10,
+    distanceUnit: "km",
+    avgRpe: rpeCount > 0 ? Math.round((totalRpe / rpeCount) * 10) / 10 : 0,
+    topModality,
+  };
+}
