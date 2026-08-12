@@ -15,6 +15,7 @@
     "convex": "^1.31.2",
     "expo": "~57.0.12",
     "expo-application": "~57.0.2",
+    "expo-auth-session": "~57.0.6",
     "expo-clipboard": "~57.0.1",
     "expo-constants": "~57.0.10",
     "expo-dev-client": "~57.0.11",

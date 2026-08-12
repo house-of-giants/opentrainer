@@ -11,6 +11,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, useRouter } from "expo-router";
 import { useSignUp } from "@clerk/clerk-expo";
 
+import { SsoButtons, SsoDivider } from "@/components/auth/sso-buttons";
+
 export default function SignUpScreen() {
   const { signUp, setActive, isLoaded } = useSignUp();
   const router = useRouter();
@@ -56,36 +58,44 @@ export default function SignUpScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 justify-center px-6"
       >
-        <Text className="mb-2 text-3xl font-bold">Create your account</Text>
-        <Text className="mb-8 text-base text-neutral-500">
+        <Text className="mb-2 text-3xl font-bold text-foreground">
+          Create your account
+        </Text>
+        <Text className="mb-8 text-base text-muted-foreground">
           Free while OpenTrainer is in alpha
         </Text>
+        {!pendingVerification && (
+          <>
+            <SsoButtons onError={setError} />
+            <SsoDivider />
+          </>
+        )}
         {pendingVerification ? (
           <>
-            <Text className="mb-3 text-neutral-600">
+            <Text className="mb-3 text-muted-foreground">
               We emailed a verification code to {email}.
             </Text>
             <TextInput
-              className="mb-3 h-12 rounded-lg border border-neutral-300 px-4"
+              className="mb-3 h-12 rounded-lg border border-input px-4 text-foreground"
               placeholder="Verification code"
               keyboardType="number-pad"
               value={code}
               onChangeText={setCode}
             />
             {error && (
-              <Text className="mb-3 text-sm text-red-600">{error}</Text>
+              <Text className="mb-3 text-sm text-destructive">{error}</Text>
             )}
             <Pressable
-              className="h-12 items-center justify-center rounded-lg bg-violet-600 active:opacity-80"
+              className="h-12 items-center justify-center rounded-lg bg-primary active:opacity-80"
               onPress={onVerify}
               disabled={submitting}
             >
-              <Text className="text-base font-semibold text-white">
+              <Text className="text-base font-semibold text-primary-foreground">
                 {submitting ? "Verifying…" : "Verify email"}
               </Text>
             </Pressable>
@@ -93,7 +103,7 @@ export default function SignUpScreen() {
         ) : (
           <>
             <TextInput
-              className="mb-3 h-12 rounded-lg border border-neutral-300 px-4"
+              className="mb-3 h-12 rounded-lg border border-input px-4 text-foreground"
               placeholder="Email"
               autoCapitalize="none"
               autoComplete="email"
@@ -102,7 +112,7 @@ export default function SignUpScreen() {
               onChangeText={setEmail}
             />
             <TextInput
-              className="mb-3 h-12 rounded-lg border border-neutral-300 px-4"
+              className="mb-3 h-12 rounded-lg border border-input px-4 text-foreground"
               placeholder="Password"
               secureTextEntry
               autoComplete="new-password"
@@ -110,22 +120,22 @@ export default function SignUpScreen() {
               onChangeText={setPassword}
             />
             {error && (
-              <Text className="mb-3 text-sm text-red-600">{error}</Text>
+              <Text className="mb-3 text-sm text-destructive">{error}</Text>
             )}
             <Pressable
-              className="h-12 items-center justify-center rounded-lg bg-violet-600 active:opacity-80"
+              className="h-12 items-center justify-center rounded-lg bg-primary active:opacity-80"
               onPress={onSignUp}
               disabled={submitting}
             >
-              <Text className="text-base font-semibold text-white">
+              <Text className="text-base font-semibold text-primary-foreground">
                 {submitting ? "Creating account…" : "Sign up"}
               </Text>
             </Pressable>
           </>
         )}
         <View className="mt-6 flex-row justify-center">
-          <Text className="text-neutral-500">Already have an account? </Text>
-          <Link href="/(auth)/sign-in" className="font-semibold text-violet-600">
+          <Text className="text-muted-foreground">Already have an account? </Text>
+          <Link href="/(auth)/sign-in" className="font-semibold text-primary">
             Sign in
           </Link>
         </View>

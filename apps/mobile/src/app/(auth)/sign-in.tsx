@@ -1,15 +1,12 @@
 import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, useRouter } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
+
+import { SsoButtons, SsoDivider } from "@/components/auth/sso-buttons";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -41,17 +38,21 @@ export default function SignInScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 justify-center px-6"
       >
-        <Text className="mb-2 text-3xl font-bold">OpenTrainer</Text>
-        <Text className="mb-8 text-base text-neutral-500">
+        <Text className="mb-2 text-3xl font-bold text-foreground">
+          OpenTrainer
+        </Text>
+        <Text className="mb-8 text-base text-muted-foreground">
           Sign in to keep training
         </Text>
-        <TextInput
-          className="mb-3 h-12 rounded-lg border border-neutral-300 px-4"
+        <SsoButtons onError={setError} />
+        <SsoDivider />
+        <Input
+          className="mb-3 h-12"
           placeholder="Email"
           autoCapitalize="none"
           autoComplete="email"
@@ -59,27 +60,23 @@ export default function SignInScreen() {
           value={email}
           onChangeText={setEmail}
         />
-        <TextInput
-          className="mb-3 h-12 rounded-lg border border-neutral-300 px-4"
+        <Input
+          className="mb-3 h-12"
           placeholder="Password"
           secureTextEntry
           autoComplete="current-password"
           value={password}
           onChangeText={setPassword}
         />
-        {error && <Text className="mb-3 text-sm text-red-600">{error}</Text>}
-        <Pressable
-          className="h-12 items-center justify-center rounded-lg bg-violet-600 active:opacity-80"
-          onPress={onSignIn}
-          disabled={submitting}
-        >
-          <Text className="text-base font-semibold text-white">
-            {submitting ? "Signing in…" : "Sign in"}
-          </Text>
-        </Pressable>
+        {error && (
+          <Text className="mb-3 text-sm text-destructive">{error}</Text>
+        )}
+        <Button size="lg" onPress={onSignIn} loading={submitting}>
+          {submitting ? "Signing in…" : "Sign in"}
+        </Button>
         <View className="mt-6 flex-row justify-center">
-          <Text className="text-neutral-500">New here? </Text>
-          <Link href="/(auth)/sign-up" className="font-semibold text-violet-600">
+          <Text className="text-muted-foreground">New here? </Text>
+          <Link href="/(auth)/sign-up" className="font-semibold text-primary">
             Create an account
           </Link>
         </View>
