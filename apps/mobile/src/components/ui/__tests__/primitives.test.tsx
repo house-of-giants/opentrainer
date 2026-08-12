@@ -13,6 +13,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldTitle,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -159,5 +166,53 @@ describe("useHaptic", () => {
     expect(Haptics.impactAsync).toHaveBeenCalledWith("heavy");
     expect(Haptics.notificationAsync).toHaveBeenCalledWith("success");
     expect(Haptics.notificationAsync).toHaveBeenCalledWith("error");
+  });
+});
+
+describe("Field", () => {
+  it("renders a selectable field card with title and description", async () => {
+    function Harness() {
+      const [value, setValue] = useState<string | null>("ppl");
+      return (
+        <RadioGroup value={value} onValueChange={setValue}>
+          <FieldLabel
+            testID="field-ppl"
+            selected={value === "ppl"}
+            onPress={() => setValue("ppl")}
+          >
+            <Field orientation="horizontal">
+              <RadioGroupItem value="ppl" testID="radio-ppl" />
+              <FieldContent>
+                <FieldTitle>Push/Pull/Legs</FieldTitle>
+                <FieldDescription>6 days, high frequency</FieldDescription>
+              </FieldContent>
+            </Field>
+          </FieldLabel>
+          <FieldLabel
+            testID="field-full-body"
+            selected={value === "full_body"}
+            onPress={() => setValue("full_body")}
+          >
+            <Field orientation="horizontal">
+              <RadioGroupItem value="full_body" testID="radio-full-body" />
+              <FieldContent>
+                <FieldTitle>Full Body</FieldTitle>
+                <FieldDescription>2-3 days, efficient</FieldDescription>
+              </FieldContent>
+            </Field>
+          </FieldLabel>
+        </RadioGroup>
+      );
+    }
+    await renderWithTheme(<Harness />);
+
+    expect(screen.getByText("Push/Pull/Legs")).toBeOnTheScreen();
+    expect(screen.getByText("6 days, high frequency")).toBeOnTheScreen();
+    expect(screen.getByTestId("radio-ppl")).toBeSelected();
+
+    // Pressing anywhere in the label card selects it, like the web <label>.
+    await fireEvent.press(screen.getByText("Full Body"));
+    expect(screen.getByTestId("radio-full-body")).toBeSelected();
+    expect(screen.getByTestId("radio-ppl")).not.toBeSelected();
   });
 });
