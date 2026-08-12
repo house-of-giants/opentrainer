@@ -43,3 +43,6 @@ next-env.d.ts
 
 # eas
 eas-build-local-nodejs/
+
+# agent operator files (never commit)
+.claude/
