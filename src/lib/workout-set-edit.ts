@@ -74,7 +74,7 @@ export function buildRepLiftingUpdate(
 		unit: editingSet.storedUnit ?? editingSet.unit,
 		isBodyweight: editingSet.isBodyweight,
 		rpe: data.rpe ?? undefined,
-		isWarmup: data.isWarmup,
+		isWarmup: data.isWarmup ?? editingSet.isWarmup,
 	};
 }
 
@@ -87,6 +87,6 @@ export function buildTimedLiftingUpdate(
 		durationSeconds: data.durationSeconds,
 		unit: editingSet.storedUnit ?? editingSet.unit,
 		rpe: data.rpe ?? undefined,
-		isWarmup: data.isWarmup,
+		isWarmup: data.isWarmup ?? editingSet.isWarmup,
 	};
 }
