@@ -2,16 +2,24 @@ import { Tabs } from "expo-router";
 import { Pressable, View } from "react-native";
 import { Dumbbell, History, Home, Plus, User } from "lucide-react-native";
 
+import { useTheme } from "@/theme/theme-provider";
+
 // Mirrors apps/web/src/components/navigation/bottom-nav.tsx: 4 tabs with a
 // center Start-workout FAB (not a route). The FAB opens StartWorkoutSheet once
 // that ships (Phase 4); until then it is rendered but inert.
 export default function TabsLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: "#7c3aed",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarStyle: {
+          backgroundColor: colors.background,
+          borderTopColor: colors.border,
+        },
       }}
     >
       <Tabs.Screen
@@ -42,8 +50,8 @@ export default function TabsLayout() {
               className="flex-1 items-center justify-center"
               onPress={() => {}}
             >
-              <View className="-translate-y-2 h-14 w-14 items-center justify-center rounded-full bg-violet-600 shadow-lg">
-                <Plus color="#fff" size={28} />
+              <View className="-translate-y-2 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg">
+                <Plus color={colors.primaryForeground} size={28} />
               </View>
             </Pressable>
           ),
