@@ -1,0 +1,5 @@
+# React Native / Metro / Babel resolve plugins relative to the project root and
+# assume npm-style hoisting; bun's isolated linker (workspace default) breaks
+# expo export with "Cannot find module 'babel-preset-expo'"-class errors.
+[install]
+linker = "hoisted"
