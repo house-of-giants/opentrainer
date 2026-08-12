@@ -495,6 +495,7 @@ export default function WorkoutDetailsPage() {
                   variant="ghost"
                   className="h-8 w-8 shrink-0"
                   onClick={commitTitle}
+                  aria-label="Save workout title"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -570,7 +571,7 @@ export default function WorkoutDetailsPage() {
                   {workout.completedAt && ` - ${formatTime(workout.completedAt)}`}
                 </p>
               </div>
-              {workout.summary?.totalDurationMinutes && (
+              {!!workout.summary?.totalDurationMinutes && (
                 <div>
                   <p className="text-muted-foreground">Duration</p>
                   <p className="font-medium font-mono tabular-nums flex items-center gap-1">

@@ -54,7 +54,11 @@ function NoteSheetContent({
         <textarea
           value={localNote}
           onChange={(e) => setLocalNote(e.target.value)}
-          placeholder="Add a note about this exercise..."
+          placeholder={
+            exerciseName
+              ? "Add a note about this exercise..."
+              : "Add a note about this workout..."
+          }
           className="w-full h-32 rounded-lg border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
           autoFocus
         />

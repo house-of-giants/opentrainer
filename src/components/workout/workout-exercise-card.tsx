@@ -81,7 +81,7 @@ function LiftingSetRow({
             </span>
           </>
         )}
-        {lifting.rpe && (
+        {lifting.rpe !== undefined && lifting.rpe > 0 && (
           <Badge variant="secondary" className="text-xs">
             RPE {lifting.rpe}
           </Badge>
@@ -113,7 +113,7 @@ function CardioEntryRow({
         <span className="font-medium font-mono tabular-nums">
           {formatHoldDuration(cardio.durationSeconds)}
         </span>
-        {cardio.intensity && (
+        {cardio.intensity !== undefined && cardio.intensity > 0 && (
           <Badge variant="secondary" className="text-xs">
             Level {cardio.intensity}
           </Badge>
@@ -132,6 +132,38 @@ function CardioEntryRow({
         {editable && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
       </div>
     </RowWrapper>
+  );
+}
+
+function MobilityEntryRow({ entry }: { entry: Doc<"entries"> }) {
+  const mobility = entry.mobility;
+  if (!mobility) return null;
+
+  const parts: string[] = [];
+  if (mobility.sets !== undefined && mobility.sets > 1) {
+    parts.push(`${mobility.sets} sets`);
+  }
+  if (mobility.reps !== undefined && mobility.reps > 0) {
+    parts.push(`${mobility.reps} reps`);
+  }
+  if (mobility.holdSeconds !== undefined && mobility.holdSeconds > 0) {
+    parts.push(`${formatHoldDuration(mobility.holdSeconds)} hold`);
+  }
+
+  return (
+    <div className="flex w-full items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+      <span className="text-muted-foreground">
+        Mobility
+        {mobility.perSide && (
+          <Badge variant="outline" className="ml-2 text-xs">
+            Per side
+          </Badge>
+        )}
+      </span>
+      <span className="font-medium font-mono tabular-nums">
+        {parts.length > 0 ? parts.join(" · ") : "Done"}
+      </span>
+    </div>
   );
 }
 
@@ -192,6 +224,10 @@ export function WorkoutExerciseCard({
                 onEdit={() => onEditCardio(entry)}
               />
             );
+          }
+
+          if (entry.kind === "mobility" && entry.mobility) {
+            return <MobilityEntryRow key={entry._id} entry={entry} />;
           }
 
           return null;
