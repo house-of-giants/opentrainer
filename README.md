@@ -4,81 +4,80 @@ A workout tracker that respects your time. Log sets in 2 taps, not 5 screens.
 
 **[Try it free](https://opentrainer.app)** | **[Report a bug](https://github.com/house-of-giants/opentrainer/issues)**
 
-## Why OpenTrainer?
+OpenTrainer keeps the next action, sets remaining, elapsed time, and training progress close at hand. It supports focused workout logging, equipment-aware routine generation, and full JSON data export.
 
-Most workout apps are bloated. You're between sets, sweaty, 45 seconds on the clock, and the app wants you to tap through menus.
+## Workspaces
 
-OpenTrainer is different:
-- **2 taps per set.** Log and get back to lifting.
-- **Session brief on the dashboard.** Surfaces your next workout action and weekly progress at a glance — no speculative readiness scores.
-- **Focused workout mode.** Active sessions show what to log next, sets remaining, elapsed time, and total volume without burying the set controls.
-- **AI that knows your gym.** Tell it what equipment you have. Get a program that actually uses it.
-- **Your data, your rules.** Full JSON export. No lock-in. Leave anytime.
-- **No tracking pixels.** We don't sell your data.
+OpenTrainer is a Bun-workspaces monorepo with a hoisted dependency linker.
 
-## Tech Stack
+| Workspace | Description |
+| --- | --- |
+| `apps/web` | Next.js 16 web app with the App Router and Tailwind CSS |
+| `apps/mobile` | Expo SDK 57 iOS app using Expo Router, NativeWind, Clerk, and Convex |
+| `packages/backend` | Convex schema and functions; exports the generated `api` and data-model types |
+| `packages/lib` | Pure shared logic, including units and progression utilities |
 
-- **Framework:** Next.js 16 (App Router)
-- **Database:** Convex
-- **Auth:** Clerk
-- **AI:** Google Gemini
-- **Styling:** Tailwind CSS
-- **Deployment:** Vercel
-
-## Getting Started
+## Quickstart
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) (recommended) or Node.js 18+
-- Convex account (free tier works)
-- Clerk account (free tier works)
+- [Bun](https://bun.sh)
+- Convex and Clerk projects
+- For local iOS builds, macOS with Xcode
 
-### Setup
+Clone the repository and install all workspace dependencies from its root:
 
-1. Clone the repo
-   ```bash
-   git clone https://github.com/house-of-giants/opentrainer.git
-   cd opentrainer
-   ```
-
-2. Install dependencies
-   ```bash
-   bun install
-   ```
-
-3. Set up environment variables
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   Fill in your Convex and Clerk credentials. See `.env.example` for required variables.
-
-4. Start Convex (in a separate terminal)
-   ```bash
-   bunx convex dev
-   ```
-
-5. Start the dev server
-   ```bash
-   bun run dev
-   ```
-
-6. Open [http://localhost:3000](http://localhost:3000)
-
-## Project Structure
-
+```bash
+git clone https://github.com/house-of-giants/opentrainer.git
+cd opentrainer
+bun install
 ```
-src/
-├── app/           # Next.js App Router pages
-├── components/    # React components
-│   ├── ui/        # Base UI components (buttons, dialogs, etc.)
-│   ├── workout/   # Workout-specific components
-│   └── ...
-├── lib/           # Utilities and helpers
-convex/
-├── schema.ts      # Database schema
-├── *.ts           # Backend functions (queries, mutations)
+
+### Web
+
+Copy `apps/web/.env.example` to `apps/web/.env.local` and add your Convex and Clerk credentials. Then run the backend and web app in separate terminals:
+
+```bash
+cd packages/backend
+bun run dev
 ```
+
+```bash
+cd apps/web
+bun run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Mobile
+
+Create the mobile environment file and fill in the two required values shown in the example:
+
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+```
+
+The required variables are `EXPO_PUBLIC_CONVEX_URL` and `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. Then start Expo:
+
+```bash
+cd apps/mobile
+bun run start
+```
+
+See the [mobile README](apps/mobile/README.md) for development builds, tests, and EAS builds.
+
+## Checks
+
+Run repository-wide commands from the root:
+
+```bash
+bun run build
+bun run lint
+bun run typecheck
+bun run test
+```
+
+`build` and `lint` target the web app, `typecheck` covers every `@opentrainer/*` workspace, and `test` runs the Bun web/package tests followed by the mobile Jest suite.
 
 ## Contributing
 
@@ -86,4 +85,4 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-[Apache 2.0](LICENSE)
+See [LICENSE](LICENSE).

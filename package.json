@@ -18,6 +18,7 @@
     "unrs-resolver"
   ],
   "trustedDependencies": [
+    "@shopify/react-native-skia",
     "sharp",
     "unrs-resolver"
   ]
