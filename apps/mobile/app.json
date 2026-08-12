@@ -43,7 +43,7 @@
       ],
       "expo-secure-store",
       "expo-localization",
-      "expo-notifications"
+      "./plugins/remove-aps-entitlement.js"
     ],
     "experiments": {
       "typedRoutes": true,
