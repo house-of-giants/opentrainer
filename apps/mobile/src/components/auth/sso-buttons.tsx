@@ -69,11 +69,12 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
         return;
       }
 
+      // Non-ephemeral: shares the system browser session so Google remembers
+      // the user across sign-ins (the "signed out" bug this once guarded
+      // against was actually the corrupted rotating_token_nonce, fixed below).
       const result = await WebBrowser.openAuthSessionAsync(
         externalUrl.toString(),
         redirectUrl,
-        // Ephemeral: never share Safari's cookie jar with the auth session.
-        { preferEphemeralSession: true } as WebBrowser.AuthSessionOpenOptions,
       );
       if (result.type !== "success" || !result.url) {
         return; // user dismissed the browser
