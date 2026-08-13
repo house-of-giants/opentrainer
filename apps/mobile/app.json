@@ -13,7 +13,8 @@
       "icon": "./assets/images/icon.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -43,6 +44,7 @@
       ],
       "expo-secure-store",
       "expo-localization",
+      "expo-apple-authentication",
       "./plugins/remove-aps-entitlement.js"
     ],
     "experiments": {

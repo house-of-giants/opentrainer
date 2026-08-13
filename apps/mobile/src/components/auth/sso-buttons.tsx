@@ -1,12 +1,14 @@
 import { useCallback, useState } from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
-import { useSignIn, useSignUp } from "@clerk/clerk-expo";
+import { useSignIn, useSignUp, useSignInWithApple } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/theme/theme-provider";
 
 // Completes any pending auth session when the browser redirects back into
 // the app; must run at module scope on the screens that start SSO flows.
@@ -48,6 +50,8 @@ interface SsoButtonsProps {
 export function SsoButtons({ onError }: SsoButtonsProps) {
   const { signIn, setActive, isLoaded: signInLoaded } = useSignIn();
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
+  const { startAppleAuthenticationFlow } = useSignInWithApple();
+  const { resolved } = useTheme();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
@@ -122,8 +126,46 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
     }
   }, [busy, signInLoaded, signUpLoaded, signIn, signUp, setActive, router, onError]);
 
+  const signInWithApple = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { createdSessionId, setActive } =
+        await startAppleAuthenticationFlow();
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+        router.replace("/(app)/(tabs)");
+      }
+    } catch (err) {
+      // User cancelling the native sheet raises ERR_REQUEST_CANCELED — silent.
+      const code = (err as { code?: string }).code;
+      if (code !== "ERR_REQUEST_CANCELED") {
+        onError?.(
+          err instanceof Error ? err.message : "Apple sign-in failed. Try again.",
+        );
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, startAppleAuthenticationFlow, setActive, router, onError]);
+
   return (
     <View className="gap-3">
+      {Platform.OS === "ios" && (
+        <AppleAuthentication.AppleAuthenticationButton
+          buttonType={
+            AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
+          }
+          buttonStyle={
+            resolved === "dark"
+              ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+              : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+          }
+          cornerRadius={8}
+          style={{ height: 44, width: "100%" }}
+          onPress={signInWithApple}
+        />
+      )}
       <Button
         variant="outline"
         onPress={signInWithGoogle}

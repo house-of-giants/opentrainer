@@ -64,3 +64,14 @@ jest.mock("react-native-reanimated", () => {
     ReduceMotion: { System: "system", Always: "always", Never: "never" },
   };
 });
+
+jest.mock("expo-apple-authentication", () => {
+  const { View } = require("react-native");
+  return {
+    AppleAuthenticationButton: View,
+    AppleAuthenticationButtonType: { CONTINUE: 1, SIGN_IN: 0 },
+    AppleAuthenticationButtonStyle: { BLACK: 2, WHITE: 0 },
+    isAvailableAsync: jest.fn(() => Promise.resolve(true)),
+    signInAsync: jest.fn(),
+  };
+});
