@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Text, View } from "react-native";
+import { Alert, Text, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { useSignIn, useSignUp } from "@clerk/clerk-expo";
@@ -80,21 +81,29 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
       // any RN URL polyfill quirks).
       const match = /[?&#]rotating_token_nonce=([^&#]+)/.exec(result.url);
       const rotatingTokenNonce = match ? decodeURIComponent(match[1]) : "";
-      // TEMP DIAGNOSTIC (remove once SSO is stable)
-      toast.info(
-        "diag: callback",
-        `nonce ${rotatingTokenNonce ? "present" : "MISSING"} · ${result.url.slice(0, 80)}`,
-      );
 
       try {
         await signIn.reload(
           rotatingTokenNonce ? { rotatingTokenNonce } : undefined,
         );
       } catch (reloadErr) {
-        toast.error(
-          "diag: reload failed",
-          reloadErr instanceof Error ? reloadErr.message.slice(0, 90) : "?",
-        );
+        // TEMP DIAGNOSTIC (remove once SSO is stable): modal evidence dump —
+        // toasts overwrite each other, alerts do not.
+        const errAny = reloadErr as {
+          errors?: { code?: string; long_message?: string }[];
+          clerkTraceId?: string;
+          message?: string;
+        };
+        const dump = [
+          `nonce: ${rotatingTokenNonce ? "PRESENT" : "MISSING"}`,
+          `callbackParams: ${result.url.split("?")[1]?.slice(0, 200) ?? "(none)"}`,
+          `signInId: ${signIn.id ?? "?"}`,
+          `errCode: ${errAny.errors?.[0]?.code ?? "?"}`,
+          `errMsg: ${errAny.errors?.[0]?.long_message ?? errAny.message ?? "?"}`,
+          `traceId: ${errAny.clerkTraceId ?? "?"}`,
+        ].join("\n");
+        await Clipboard.setStringAsync(dump).catch(() => {});
+        Alert.alert("SSO diagnostic (copied to clipboard)", dump);
         throw reloadErr;
       }
 
