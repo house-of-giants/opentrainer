@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
@@ -68,9 +69,11 @@ function SourceBadge({ source }: { source: Routine["source"] }) {
 function RoutineCard({
   routine,
   onPress,
+  onOptions,
 }: {
   routine: Routine;
   onPress: () => void;
+  onOptions: () => void;
 }) {
   const { colors } = useTheme();
 
@@ -109,7 +112,7 @@ function RoutineCard({
             variant="ghost"
             size="icon"
             className="-mr-2 shrink-0"
-            onPress={onPress}
+            onPress={onOptions}
             accessibilityLabel={`Routine options for ${routine.name}`}
           >
             <MoreVertical size={16} color={colors.foreground} />
@@ -203,7 +206,11 @@ export default function RoutinesScreen() {
           renderItem={({ item }) => (
             <RoutineCard
               routine={item}
-              onPress={() => setSelectedRoutine(item)}
+              // Card tap opens the editor; the ⋯ button keeps the options
+              // sheet. (Web parity gap — web card click is inert; flagged for
+              // a matching web fix.)
+              onPress={() => router.push(`/(app)/routines/${item._id}/edit`)}
+              onOptions={() => setSelectedRoutine(item)}
             />
           )}
         />

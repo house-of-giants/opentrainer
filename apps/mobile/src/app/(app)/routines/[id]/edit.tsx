@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
@@ -191,6 +192,11 @@ export default function EditRoutineScreen() {
       setIsInitialized(true);
     }
   }, [routine, exercises, isInitialized]);
+
+  const reorderDays = (data: RoutineDay[]) => {
+    vibrate("light");
+    setDays(data);
+  };
 
   const reorderExercises = (dayId: string, data: RoutineExercise[]) => {
     vibrate("light");
@@ -460,11 +466,18 @@ export default function EditRoutineScreen() {
               </Card>
             ) : (
               <View className="gap-3">
-                {days.map((day, dayIndex) => {
+                <NestableDraggableFlatList
+                  data={days}
+                  keyExtractor={(d) => d.id}
+                  onDragEnd={({ data }) => reorderDays(data)}
+                  ItemSeparatorComponent={() => <View className="h-3" />}
+                  renderItem={({ item: day, drag: dragDay, isActive: isDayActive, getIndex }) => {
+                  const dayIndex = getIndex() ?? 0;
                   const isExpanded = expandedDayId === day.id;
 
                   return (
-                    <Card key={day.id} className="overflow-hidden">
+                    <ScaleDecorator>
+                    <Card className="overflow-hidden" style={isDayActive ? { opacity: 0.7 } : undefined}>
                       <Pressable
                         className="flex-row items-center gap-2 p-4"
                         onPress={() =>
@@ -472,6 +485,16 @@ export default function EditRoutineScreen() {
                         }
                         accessibilityRole="button"
                       >
+                        <Pressable
+                          onLongPress={dragDay}
+                          delayLongPress={150}
+                          disabled={isDayActive}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Reorder ${day.name}`}
+                          hitSlop={8}
+                        >
+                          <GripVertical size={16} color={colors.mutedForeground} />
+                        </Pressable>
                         {editingDayNameId === day.id ? (
                           <View className="min-w-0 flex-1 flex-row items-center gap-2">
                             <TextInput
@@ -595,8 +618,10 @@ export default function EditRoutineScreen() {
                         </View>
                       )}
                     </Card>
+                    </ScaleDecorator>
                   );
-                })}
+                  }}
+                />
               </View>
             )}
           </View>

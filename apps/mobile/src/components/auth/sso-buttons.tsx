@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Platform, Text, View } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as AuthSession from "expo-auth-session";
@@ -54,6 +54,15 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
   const { resolved } = useTheme();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  // Also guards dev clients whose binary predates the native module.
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    AppleAuthentication.isAvailableAsync()
+      .then(setAppleAvailable)
+      .catch(() => setAppleAvailable(false));
+  }, []);
 
   const signInWithGoogle = useCallback(async () => {
     if (busy || !signInLoaded || !signUpLoaded || !signIn || !signUp) return;
@@ -152,7 +161,7 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
 
   return (
     <View className="gap-3">
-      {Platform.OS === "ios" && (
+      {Platform.OS === "ios" && appleAvailable && (
         <AppleAuthentication.AppleAuthenticationButton
           buttonType={
             AppleAuthentication.AppleAuthenticationButtonType.CONTINUE

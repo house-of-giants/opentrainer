@@ -75,6 +75,7 @@
   "jest": {
     "preset": "jest-expo",
     "setupFiles": [
+      "react-native-gesture-handler/jestSetup",
       "./jest.setup.js"
     ],
     "transformIgnorePatterns": [

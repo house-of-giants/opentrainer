@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation } from "convex/react";
@@ -219,6 +220,11 @@ export default function NewRoutineScreen() {
     setDays((prevDays) =>
       prevDays.map((d) => (d.id === dayId ? { ...d, exercises: data } : d)),
     );
+  };
+
+  const reorderDays = (data: RoutineDay[]) => {
+    vibrate("light");
+    setDays(data);
   };
 
   const addDay = () => {
@@ -452,14 +458,31 @@ export default function NewRoutineScreen() {
               </Button>
             </View>
 
-            {days.map((day, dayIndex) => (
-              <Card key={day.id} className="overflow-hidden">
+            <NestableDraggableFlatList
+              data={days}
+              keyExtractor={(d) => d.id}
+              onDragEnd={({ data }) => reorderDays(data)}
+              ItemSeparatorComponent={() => <View className="h-3" />}
+              renderItem={({ item: day, drag: dragDay, isActive: isDayActive, getIndex }) => {
+                const dayIndex = getIndex() ?? 0;
+                return (
+              <ScaleDecorator>
+              <Card className="overflow-hidden" style={isDayActive ? { opacity: 0.7 } : undefined}>
                 <Pressable
                   className="flex-row items-center gap-2 p-3"
                   onPress={() => toggleDayExpanded(day.id)}
                   accessibilityRole="button"
                 >
-                  <GripVertical size={16} color={colors.mutedForeground} />
+                  <Pressable
+                    onLongPress={dragDay}
+                    delayLongPress={150}
+                    disabled={isDayActive}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Reorder ${day.name}`}
+                    hitSlop={8}
+                  >
+                    <GripVertical size={16} color={colors.mutedForeground} />
+                  </Pressable>
                   <Input
                     value={day.name}
                     onChangeText={(text) => updateDayName(day.id, text)}
@@ -528,7 +551,10 @@ export default function NewRoutineScreen() {
                   </View>
                 )}
               </Card>
-            ))}
+              </ScaleDecorator>
+                );
+              }}
+            />
           </View>
         </View>
       </NestableScrollContainer>

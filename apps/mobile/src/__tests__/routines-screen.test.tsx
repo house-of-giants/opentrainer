@@ -78,7 +78,9 @@ describe("Routines screen", () => {
     // Detail sheet is closed until a routine is selected.
     expect(screen.queryByText("Select a day to start")).toBeNull();
 
-    await fireEvent.press(screen.getByText("Push Pull Legs"));
+    await fireEvent.press(
+      screen.getByLabelText("Routine options for Push Pull Legs"),
+    );
     expect(screen.getByText("Select a day to start")).toBeOnTheScreen();
     expect(screen.getByText("Push")).toBeOnTheScreen();
     expect(screen.getByText("Pull")).toBeOnTheScreen();
@@ -98,7 +100,9 @@ describe("Routines screen", () => {
   it("routes to the editor from the detail sheet", async () => {
     await renderRoutines();
 
-    await fireEvent.press(screen.getByText("Push Pull Legs"));
+    await fireEvent.press(
+      screen.getByLabelText("Routine options for Push Pull Legs"),
+    );
     await fireEvent.press(screen.getByText("Edit"));
 
     expect(mockPush).toHaveBeenCalledWith("/(app)/routines/routine_1/edit");

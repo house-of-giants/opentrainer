@@ -1,8 +1,15 @@
 import { ReactNode } from "react";
-import { ActivityIndicator, Pressable, PressableProps, Text } from "react-native";
+import { ActivityIndicator, Text } from "react-native";
+import { Pressable, PressableProps } from "react-native-gesture-handler";
 import { cva, type VariantProps } from "class-variance-authority";
+import { cssInterop } from "nativewind";
 
 import { cn } from "@/lib/cn";
+
+// RNGH's Pressable is third-party, so NativeWind must be told to process its
+// className (core RN components are pre-registered; this one isn't). Applies
+// globally — the routines screens' direct imports share this component.
+cssInterop(Pressable, { className: "style" });
 
 // Port of apps/web/src/components/ui/button.tsx. Container and text styles are
 // split because RN does not cascade text color/size through views.

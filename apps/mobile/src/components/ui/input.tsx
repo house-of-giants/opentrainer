@@ -17,9 +17,11 @@ const Input = forwardRef<TextInput, InputProps>(function Input(
     <TextInput
       ref={ref}
       placeholderTextColor={colors.mutedForeground}
-      style={{ paddingVertical: 0 }}
+      // fontSize lives here, NOT in className: NativeWind text-* classes
+      // also emit lineHeight, which vertically misaligns iOS TextInputs.
+      style={{ paddingVertical: 0, fontSize: 16 }}
       className={cn(
-        "h-11 w-full rounded-md border border-input bg-transparent px-3 text-base text-foreground",
+        "h-11 w-full rounded-md border border-input bg-transparent px-3 text-foreground",
         className,
       )}
       {...props}

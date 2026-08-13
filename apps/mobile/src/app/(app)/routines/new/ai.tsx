@@ -229,7 +229,7 @@ export default function AIRoutineGeneratorScreen() {
     try {
       await createRoutine({
         name: generatedRoutine.name,
-        description: generatedRoutine.description,
+        description: generatedRoutine.description ?? undefined,
         source: "ai_generated",
         days: generatedRoutine.days.map((day) => ({
           name: day.name,
@@ -237,9 +237,14 @@ export default function AIRoutineGeneratorScreen() {
             exerciseName: ex.exerciseName,
             kind: ex.kind,
             targetSets: ex.targetSets,
-            targetReps: ex.measurementType === "duration" ? undefined : ex.targetReps,
-            measurementType: ex.measurementType,
-            targetHoldSeconds: ex.targetHoldSeconds,
+            // The model can emit explicit nulls for fields it skips; Convex
+            // optional validators accept absent/undefined but not null.
+            targetReps:
+              ex.measurementType === "duration"
+                ? undefined
+                : (ex.targetReps ?? undefined),
+            measurementType: ex.measurementType ?? undefined,
+            targetHoldSeconds: ex.targetHoldSeconds ?? undefined,
           })),
         })),
       });
@@ -340,7 +345,7 @@ export default function AIRoutineGeneratorScreen() {
               ...ex,
               exerciseName: alternative.exercise,
               measurementType: alternative.measurementType,
-              targetHoldSeconds: alternative.targetHoldSeconds,
+              targetHoldSeconds: alternative.targetHoldSeconds ?? undefined,
               targetReps:
                 alternative.measurementType === "duration"
                   ? ""
