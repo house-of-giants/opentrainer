@@ -80,7 +80,14 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
       // Parse the nonce without relying on the URL API (regex is immune to
       // any RN URL polyfill quirks).
       const match = /[?&#]rotating_token_nonce=([^&#]+)/.exec(result.url);
-      const rotatingTokenNonce = match ? decodeURIComponent(match[1]) : "";
+      // ROOT CAUSE (found via build #19 evidence dump): with a bare-scheme
+      // redirect URL (opentrainer://), Clerk's callback appends a stray
+      // encoded "#" (%23) to the nonce value. Sending it back corrupted makes
+      // FAPI reject the reload with `signed_out` (the rotated client token
+      // never re-syncs). Nonces are alphanumeric — strip everything else.
+      const rotatingTokenNonce = match
+        ? decodeURIComponent(match[1]).replace(/[^A-Za-z0-9]/g, "")
+        : "";
 
       try {
         await signIn.reload(
