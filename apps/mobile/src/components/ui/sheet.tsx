@@ -14,6 +14,8 @@ import {
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 
+import { ReduceMotion } from "react-native-reanimated";
+
 import { cn } from "@/lib/cn";
 import { toast } from "@/components/ui/toast";
 import { useTheme } from "@/theme/theme-provider";
@@ -87,6 +89,10 @@ function Sheet({
       backdropComponent={renderBackdrop}
       backgroundStyle={backgroundStyle}
       handleIndicatorStyle={handleStyle}
+      // Known v5 failure mode: with iOS "Reduce Motion" enabled, the default
+      // ReduceMotion.System suppresses the mount animation and the sheet
+      // never presents at all. Always animate.
+      overrideReduceMotion={ReduceMotion.Never}
       onDismiss={() => onOpenChange(false)}
       // TEMP DIAGNOSTIC (remove once sheets confirmed): index changes prove
       // the presentation animation actually ran.
