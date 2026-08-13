@@ -15,6 +15,7 @@ import {
 } from "@gorhom/bottom-sheet";
 
 import { cn } from "@/lib/cn";
+import { toast } from "@/components/ui/toast";
 import { useTheme } from "@/theme/theme-provider";
 
 // Replaces both web drawer.tsx (vaul) and sheet.tsx (Radix): a bottom sheet is
@@ -42,8 +43,14 @@ function Sheet({
   const { colors } = useTheme();
 
   useEffect(() => {
-    if (open) ref.current?.present();
-    else ref.current?.dismiss();
+    if (open) {
+      // TEMP DIAGNOSTIC (remove after #15): visible trace for TestFlight.
+      console.log("[sheet] present requested; ref mounted:", !!ref.current);
+      toast.info("diag: sheet.present", `ref mounted: ${!!ref.current}`);
+      ref.current?.present();
+    } else {
+      ref.current?.dismiss();
+    }
   }, [open]);
 
   const renderBackdrop = useCallback(

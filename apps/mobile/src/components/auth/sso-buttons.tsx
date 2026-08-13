@@ -49,14 +49,45 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
     if (busy) return;
     setBusy(true);
     try {
-      const { createdSessionId, setActive, signIn, signUp } =
+      const { createdSessionId, setActive, signIn, signUp, authSessionResult } =
         await startSSOFlow({
           strategy: "oauth_google",
           redirectUrl: AuthSession.makeRedirectUri(),
         });
+      // Diagnostic for the SSO handshake (visible in metro; harmless in prod).
+      console.log(
+        "[sso] result",
+        JSON.stringify({
+          createdSessionId,
+          authSession: authSessionResult?.type,
+          url: authSessionResult && "url" in authSessionResult ? authSessionResult.url : null,
+          signIn: signIn && {
+            status: signIn.status,
+            firstFactor: signIn.firstFactorVerification?.status,
+            error: signIn.firstFactorVerification?.error?.longMessage,
+          },
+          signUp: signUp && {
+            status: signUp.status,
+            missing: signUp.missingFields,
+            extAccount: signUp.verifications?.externalAccount?.status,
+            extError: signUp.verifications?.externalAccount?.error?.longMessage,
+          },
+        }),
+      );
 
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
+      // BUG WORKAROUND (clerk-expo 2.20.0): startSSOFlow returns
+      // `signUp.createdSessionId ?? signIn.createdSessionId`, but the signUp
+      // resource is sticky on the Clerk client — after a sign-out, a previous
+      // registration's stale (revoked) session id shadows the fresh sign-in's
+      // one, and activating it throws "You are signed out". Only trust a
+      // session id from a resource whose status is complete *now*.
+      const freshSessionId =
+        (signIn?.status === "complete" ? signIn.createdSessionId : null) ??
+        (signUp?.status === "complete" ? signUp.createdSessionId : null) ??
+        null;
+
+      if (freshSessionId && setActive) {
+        await setActive({ session: freshSessionId });
         router.replace("/(app)/(tabs)");
         return;
       }
