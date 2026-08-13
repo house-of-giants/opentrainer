@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 
 // Completes any pending auth session when the browser redirects back into
 // the app; must run at module scope on the screens that start SSO flows.
@@ -53,7 +54,25 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
         await startSSOFlow({
           strategy: "oauth_google",
           redirectUrl: AuthSession.makeRedirectUri(),
+          // Ephemeral session: never share Safari's cookie jar. With shared
+          // cookies, an existing web session at clerk.opentrainer.app makes the
+          // OAuth callback bind the new session to the BROWSER's client, and
+          // activating it from the app's client 401s ("You are signed out").
+          // clerk-expo's type only exposes showInRecents, but the object is
+          // passed straight through to WebBrowser.openAuthSessionAsync.
+          authSessionOptions: {
+            preferEphemeralSession: true,
+          } as { showInRecents?: boolean },
         });
+      // TEMP DIAGNOSTIC (visible in TestFlight; remove after SSO stabilizes)
+      const cbParams =
+        authSessionResult && "url" in authSessionResult && authSessionResult.url
+          ? [...new URL(authSessionResult.url).searchParams.keys()].join(",")
+          : "none";
+      toast.info(
+        "diag: sso callback",
+        `params: ${cbParams} · signIn: ${signIn?.status ?? "-"} · signUp: ${signUp?.status ?? "-"}`,
+      );
       // Diagnostic for the SSO handshake (visible in metro; harmless in prod).
       console.log(
         "[sso] result",
