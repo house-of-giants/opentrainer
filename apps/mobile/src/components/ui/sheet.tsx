@@ -1,36 +1,52 @@
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
-import { Text, TextProps, View, ViewProps } from "react-native";
-import {
-  BottomSheetBackdrop,
-  BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
-
-import { ReduceMotion } from "react-native-reanimated";
+  Animated,
+  Easing,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TextProps,
+  useWindowDimensions,
+  View,
+  ViewProps,
+} from "react-native";
 
 import { cn } from "@/lib/cn";
-import { toast } from "@/components/ui/toast";
 import { useTheme } from "@/theme/theme-provider";
+import { themes } from "@/theme/tokens";
 
 // Replaces both web drawer.tsx (vaul) and sheet.tsx (Radix): a bottom sheet is
 // the app's primary interaction surface on mobile. Controlled API mirrors the
 // web components' open/onOpenChange contract.
+//
+// Implementation note: originally built on @gorhom/bottom-sheet, but its
+// modal presents invisibly on-device in release builds (worklet-driven
+// container layout never resolves; presents at a degenerate position). RN's
+// core Modal demonstrably renders (Dialog uses it), so the sheet is built on
+// Modal + core Animated instead. Trade-off vs gorhom: no drag-to-dismiss
+// gesture yet — backdrop tap and actions close the sheet.
 interface SheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: ReactNode;
-  /** e.g. ["50%", "90%"]; defaults to content-height sizing. */
+  /** e.g. ["50%", "90%"]; the LAST entry is used as max height. */
   snapPoints?: (string | number)[];
   scrollable?: boolean;
   contentClassName?: string;
+}
+
+const OPEN_MS = 260;
+const CLOSE_MS = 200;
+
+function heightFraction(snapPoints?: (string | number)[]): number {
+  const last = snapPoints?.[snapPoints.length - 1];
+  if (typeof last === "number" && last > 0 && last <= 1) return last;
+  if (typeof last === "string") {
+    const parsed = Number.parseFloat(last);
+    if (!Number.isNaN(parsed)) return Math.min(Math.max(parsed / 100, 0.2), 0.95);
+  }
+  return 0.6;
 }
 
 function Sheet({
@@ -41,69 +57,90 @@ function Sheet({
   scrollable = false,
   contentClassName,
 }: SheetProps) {
-  const ref = useRef<BottomSheetModal>(null);
-  const { colors } = useTheme();
+  const { resolved } = useTheme();
+  const { height: windowHeight } = useWindowDimensions();
+  const maxHeight = Math.round(windowHeight * heightFraction(snapPoints));
+
+  // Modal stays mounted while the close animation plays out.
+  const [visible, setVisible] = useState(open);
+  const translateY = useRef(new Animated.Value(windowHeight)).current;
+  const backdrop = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (open) {
-      // TEMP DIAGNOSTIC (remove after #15): visible trace for TestFlight.
-      console.log("[sheet] present requested; ref mounted:", !!ref.current);
-      toast.info("diag: sheet.present", `ref mounted: ${!!ref.current}`);
-      ref.current?.present();
-    } else {
-      ref.current?.dismiss();
+      setVisible(true);
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: OPEN_MS,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdrop, {
+          toValue: 1,
+          duration: OPEN_MS,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (visible) {
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: windowHeight,
+          duration: CLOSE_MS,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdrop, {
+          toValue: 0,
+          duration: CLOSE_MS,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        // Interrupted close (fast re-open) must not hide the fresh sheet.
+        if (finished) setVisible(false);
+      });
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, windowHeight]);
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        pressBehavior="close"
-      />
-    ),
-    [],
-  );
+  const close = useCallback(() => onOpenChange(false), [onOpenChange]);
 
-  const backgroundStyle = useMemo(
-    () => ({ backgroundColor: colors.card }),
-    [colors.card],
-  );
-  const handleStyle = useMemo(
-    () => ({ backgroundColor: colors.mutedForeground }),
-    [colors.mutedForeground],
-  );
+  if (!visible) return null;
 
-  const Container = scrollable ? BottomSheetScrollView : BottomSheetView;
+  const Body = scrollable ? ScrollView : View;
 
   return (
-    <BottomSheetModal
-      ref={ref}
-      // Dynamic sizing (the default when no snapPoints were given) measures to
-      // zero height under RN new-arch and the sheet "presents" invisibly —
-      // always give explicit snap points instead.
-      snapPoints={snapPoints ?? ["60%"]}
-      enableDynamicSizing={false}
-      backdropComponent={renderBackdrop}
-      backgroundStyle={backgroundStyle}
-      handleIndicatorStyle={handleStyle}
-      // Known v5 failure mode: with iOS "Reduce Motion" enabled, the default
-      // ReduceMotion.System suppresses the mount animation and the sheet
-      // never presents at all. Always animate.
-      overrideReduceMotion={ReduceMotion.Never}
-      onDismiss={() => onOpenChange(false)}
-      // TEMP DIAGNOSTIC (remove once sheets confirmed): index changes prove
-      // the presentation animation actually ran.
-      onChange={(index) => toast.info("diag: sheet index", String(index))}
-    >
-      {/* NativeWind doesn't process third-party components' className —
-          padding lives on an inner core View instead. */}
-      <Container style={{ flex: scrollable ? 1 : undefined }}>
-        <View className={cn("px-4 pb-8", contentClassName)}>{children}</View>
-      </Container>
-    </BottomSheetModal>
+    <Modal visible transparent animationType="none" onRequestClose={close}>
+      {/* Modal renders outside the ThemeProvider tree; re-apply theme vars. */}
+      <View style={themes[resolved]} className="flex-1 justify-end">
+        <Animated.View
+          style={{ opacity: backdrop }}
+          className="absolute inset-0 bg-black/50"
+        >
+          <Pressable
+            className="flex-1"
+            onPress={close}
+            accessibilityLabel="Close sheet"
+          />
+        </Animated.View>
+        <Animated.View
+          style={{ transform: [{ translateY }], maxHeight }}
+          className="rounded-t-2xl bg-card"
+        >
+          <View className="items-center py-2">
+            <View className="h-1 w-10 rounded-full bg-muted-foreground/40" />
+          </View>
+          <Body
+            className={scrollable ? undefined : cn("px-4 pb-8", contentClassName)}
+            contentContainerClassName={
+              scrollable ? cn("px-4 pb-8", contentClassName) : undefined
+            }
+          >
+            {children}
+          </Body>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
