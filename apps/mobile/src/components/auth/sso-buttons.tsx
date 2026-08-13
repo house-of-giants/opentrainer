@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Text, View } from "react-native";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
-import { useSSO } from "@clerk/clerk-expo";
+import { useSignIn, useSignUp } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 
@@ -41,101 +41,85 @@ interface SsoButtonsProps {
   onError?: (message: string) => void;
 }
 
+// Custom OAuth flow using Clerk primitives directly instead of
+// useSSO().startSSOFlow. The hook's reload step was failing with a
+// server-side `signed_out` (rotating client token not re-synced after the
+// browser hop); owning the flow lets us parse the callback nonce robustly,
+// instrument each step, and recover deliberately.
 export function SsoButtons({ onError }: SsoButtonsProps) {
-  const { startSSOFlow } = useSSO();
+  const { signIn, setActive, isLoaded: signInLoaded } = useSignIn();
+  const { signUp, isLoaded: signUpLoaded } = useSignUp();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   const signInWithGoogle = useCallback(async () => {
-    if (busy) return;
+    if (busy || !signInLoaded || !signUpLoaded || !signIn || !signUp) return;
     setBusy(true);
     try {
-      const { createdSessionId, setActive, signIn, signUp, authSessionResult } =
-        await startSSOFlow({
-          strategy: "oauth_google",
-          redirectUrl: AuthSession.makeRedirectUri(),
-          // Ephemeral session: never share Safari's cookie jar. With shared
-          // cookies, an existing web session at clerk.opentrainer.app makes the
-          // OAuth callback bind the new session to the BROWSER's client, and
-          // activating it from the app's client 401s ("You are signed out").
-          // clerk-expo's type only exposes showInRecents, but the object is
-          // passed straight through to WebBrowser.openAuthSessionAsync.
-          authSessionOptions: {
-            preferEphemeralSession: true,
-          } as { showInRecents?: boolean },
-        });
-      // TEMP DIAGNOSTIC (visible in TestFlight; remove after SSO stabilizes)
-      const cbParams =
-        authSessionResult && "url" in authSessionResult && authSessionResult.url
-          ? [...new URL(authSessionResult.url).searchParams.keys()].join(",")
-          : "none";
+      const redirectUrl = AuthSession.makeRedirectUri();
+
+      await signIn.create({ strategy: "oauth_google", redirectUrl });
+      const externalUrl =
+        signIn.firstFactorVerification.externalVerificationRedirectURL;
+      if (!externalUrl) {
+        onError?.("Could not start Google sign-in. Try again.");
+        return;
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        externalUrl.toString(),
+        redirectUrl,
+        // Ephemeral: never share Safari's cookie jar with the auth session.
+        { preferEphemeralSession: true } as WebBrowser.AuthSessionOpenOptions,
+      );
+      if (result.type !== "success" || !result.url) {
+        return; // user dismissed the browser
+      }
+
+      // Parse the nonce without relying on the URL API (regex is immune to
+      // any RN URL polyfill quirks).
+      const match = /[?&#]rotating_token_nonce=([^&#]+)/.exec(result.url);
+      const rotatingTokenNonce = match ? decodeURIComponent(match[1]) : "";
+      // TEMP DIAGNOSTIC (remove once SSO is stable)
       toast.info(
-        "diag: sso callback",
-        `params: ${cbParams} · signIn: ${signIn?.status ?? "-"} · signUp: ${signUp?.status ?? "-"}`,
-      );
-      // Diagnostic for the SSO handshake (visible in metro; harmless in prod).
-      console.log(
-        "[sso] result",
-        JSON.stringify({
-          createdSessionId,
-          authSession: authSessionResult?.type,
-          url: authSessionResult && "url" in authSessionResult ? authSessionResult.url : null,
-          signIn: signIn && {
-            status: signIn.status,
-            firstFactor: signIn.firstFactorVerification?.status,
-            error: signIn.firstFactorVerification?.error?.longMessage,
-          },
-          signUp: signUp && {
-            status: signUp.status,
-            missing: signUp.missingFields,
-            extAccount: signUp.verifications?.externalAccount?.status,
-            extError: signUp.verifications?.externalAccount?.error?.longMessage,
-          },
-        }),
+        "diag: callback",
+        `nonce ${rotatingTokenNonce ? "present" : "MISSING"} · ${result.url.slice(0, 80)}`,
       );
 
-      // BUG WORKAROUND (clerk-expo 2.20.0): startSSOFlow returns
-      // `signUp.createdSessionId ?? signIn.createdSessionId`, but the signUp
-      // resource is sticky on the Clerk client — after a sign-out, a previous
-      // registration's stale (revoked) session id shadows the fresh sign-in's
-      // one, and activating it throws "You are signed out". Only trust a
-      // session id from a resource whose status is complete *now*.
-      const freshSessionId =
-        (signIn?.status === "complete" ? signIn.createdSessionId : null) ??
-        (signUp?.status === "complete" ? signUp.createdSessionId : null) ??
-        null;
+      try {
+        await signIn.reload(
+          rotatingTokenNonce ? { rotatingTokenNonce } : undefined,
+        );
+      } catch (reloadErr) {
+        toast.error(
+          "diag: reload failed",
+          reloadErr instanceof Error ? reloadErr.message.slice(0, 90) : "?",
+        );
+        throw reloadErr;
+      }
 
-      if (freshSessionId && setActive) {
-        await setActive({ session: freshSessionId });
+      if (signIn.status === "complete" && signIn.createdSessionId) {
+        await setActive({ session: signIn.createdSessionId });
         router.replace("/(app)/(tabs)");
         return;
       }
 
-      // First-time Google users come back as an incomplete sign-up whose
-      // external account is already verified — completing it mints the session
-      // (Clerk "transfer" flow).
-      if (
-        setActive &&
-        signUp?.verifications?.externalAccount?.status === "verified" &&
-        signUp.status === "missing_requirements" &&
-        signUp.missingFields.length === 0
-      ) {
-        const completed = await signUp.update({});
-        if (completed.status === "complete" && completed.createdSessionId) {
-          await setActive({ session: completed.createdSessionId });
+      // New-user path: the external account verified but no user exists yet —
+      // transfer the verification onto a sign-up, which mints the session on
+      // this client.
+      if (signIn.firstFactorVerification.status === "transferable") {
+        await signUp.create({ transfer: true });
+        if (signUp.status === "complete" && signUp.createdSessionId) {
+          await setActive({ session: signUp.createdSessionId });
           router.replace("/(app)/(tabs)");
           return;
         }
       }
 
-      // Anything else that isn't a plain browser dismissal: surface the state
-      // so failures are debuggable instead of silent.
-      if (signIn?.status || signUp?.status) {
-        onError?.(
-          `Sign-in needs another step (${signIn?.status ?? signUp?.status}). ` +
-            "Try again, or sign in on opentrainer.app first.",
-        );
-      }
+      onError?.(
+        `Sign-in needs another step (${signIn.status ?? "unknown"}). ` +
+          "Try again, or sign in on opentrainer.app first.",
+      );
     } catch (err) {
       onError?.(
         err instanceof Error ? err.message : "Google sign-in failed. Try again.",
@@ -143,7 +127,7 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
     } finally {
       setBusy(false);
     }
-  }, [busy, startSSOFlow, router, onError]);
+  }, [busy, signInLoaded, signUpLoaded, signIn, signUp, setActive, router, onError]);
 
   return (
     <View className="gap-3">
