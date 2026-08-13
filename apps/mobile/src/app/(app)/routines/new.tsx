@@ -391,11 +391,7 @@ export default function NewRoutineScreen() {
         <View className="gap-6 p-4">
           <Pressable
             accessibilityRole="button"
-            onPress={() => {
-              console.log("[builder] AI card pressed");
-              toast.info("diag: ai-card press"); // TEMP DIAGNOSTIC
-              router.push("/(app)/routines/new/ai");
-            }}
+            onPress={() => router.push("/(app)/routines/new/ai")}
           >
             <Card className="border-violet-500/20 bg-violet-500/10 p-4 active:border-violet-500/40">
               <View className="flex-row items-center gap-3">

@@ -7,42 +7,42 @@ module.exports = {
       // Semantic tokens resolve through CSS variables set per-theme by
       // ThemeProvider (src/theme/tokens.ts). Mirrors apps/web globals.css.
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "rgb(var(--background) / <alpha-value>)",
+        foreground: "rgb(var(--foreground) / <alpha-value>)",
         card: {
-          DEFAULT: "var(--card)",
-          foreground: "var(--card-foreground)",
+          DEFAULT: "rgb(var(--card) / <alpha-value>)",
+          foreground: "rgb(var(--card-foreground) / <alpha-value>)",
         },
         popover: {
-          DEFAULT: "var(--popover)",
-          foreground: "var(--popover-foreground)",
+          DEFAULT: "rgb(var(--popover) / <alpha-value>)",
+          foreground: "rgb(var(--popover-foreground) / <alpha-value>)",
         },
         primary: {
-          DEFAULT: "var(--primary)",
-          foreground: "var(--primary-foreground)",
+          DEFAULT: "rgb(var(--primary) / <alpha-value>)",
+          foreground: "rgb(var(--primary-foreground) / <alpha-value>)",
         },
         secondary: {
-          DEFAULT: "var(--secondary)",
-          foreground: "var(--secondary-foreground)",
+          DEFAULT: "rgb(var(--secondary) / <alpha-value>)",
+          foreground: "rgb(var(--secondary-foreground) / <alpha-value>)",
         },
         muted: {
-          DEFAULT: "var(--muted)",
-          foreground: "var(--muted-foreground)",
+          DEFAULT: "rgb(var(--muted) / <alpha-value>)",
+          foreground: "rgb(var(--muted-foreground) / <alpha-value>)",
         },
         accent: {
-          DEFAULT: "var(--accent)",
-          foreground: "var(--accent-foreground)",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          foreground: "rgb(var(--accent-foreground) / <alpha-value>)",
         },
-        destructive: "var(--destructive)",
+        destructive: "rgb(var(--destructive) / <alpha-value>)",
         border: "var(--border)",
         input: "var(--input)",
-        ring: "var(--ring)",
+        ring: "rgb(var(--ring) / <alpha-value>)",
         chart: {
-          1: "var(--chart-1)",
-          2: "var(--chart-2)",
-          3: "var(--chart-3)",
-          4: "var(--chart-4)",
-          5: "var(--chart-5)",
+          1: "rgb(var(--chart-1) / <alpha-value>)",
+          2: "rgb(var(--chart-2) / <alpha-value>)",
+          3: "rgb(var(--chart-3) / <alpha-value>)",
+          4: "rgb(var(--chart-4) / <alpha-value>)",
+          5: "rgb(var(--chart-5) / <alpha-value>)",
         },
       },
       // Web --radius: 0.625rem (10px); shadcn derives sm..4xl from it.

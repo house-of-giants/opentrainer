@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
-import { Alert, Text, View } from "react-native";
-import * as Clipboard from "expo-clipboard";
+import { Text, View } from "react-native";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { useSignIn, useSignUp } from "@clerk/clerk-expo";
@@ -8,7 +7,6 @@ import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
 
 // Completes any pending auth session when the browser redirects back into
 // the app; must run at module scope on the screens that start SSO flows.
@@ -89,30 +87,9 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
         ? decodeURIComponent(match[1]).replace(/[^A-Za-z0-9]/g, "")
         : "";
 
-      try {
-        await signIn.reload(
-          rotatingTokenNonce ? { rotatingTokenNonce } : undefined,
-        );
-      } catch (reloadErr) {
-        // TEMP DIAGNOSTIC (remove once SSO is stable): modal evidence dump —
-        // toasts overwrite each other, alerts do not.
-        const errAny = reloadErr as {
-          errors?: { code?: string; long_message?: string }[];
-          clerkTraceId?: string;
-          message?: string;
-        };
-        const dump = [
-          `nonce: ${rotatingTokenNonce ? "PRESENT" : "MISSING"}`,
-          `callbackParams: ${result.url.split("?")[1]?.slice(0, 200) ?? "(none)"}`,
-          `signInId: ${signIn.id ?? "?"}`,
-          `errCode: ${errAny.errors?.[0]?.code ?? "?"}`,
-          `errMsg: ${errAny.errors?.[0]?.long_message ?? errAny.message ?? "?"}`,
-          `traceId: ${errAny.clerkTraceId ?? "?"}`,
-        ].join("\n");
-        await Clipboard.setStringAsync(dump).catch(() => {});
-        Alert.alert("SSO diagnostic (copied to clipboard)", dump);
-        throw reloadErr;
-      }
+      await signIn.reload(
+        rotatingTokenNonce ? { rotatingTokenNonce } : undefined,
+      );
 
       if (signIn.status === "complete" && signIn.createdSessionId) {
         await setActive({ session: signIn.createdSessionId });

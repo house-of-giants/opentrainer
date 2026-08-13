@@ -3,7 +3,6 @@ import { useQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
 
 import { StartWorkoutSheet } from "@/components/workout/start-workout-sheet";
-import { toast } from "@/components/ui/toast";
 
 // On web every page that needs the start-workout flow renders its own
 // <BottomNav onStartWorkout /> + <StartWorkoutSheet> pair. On mobile the tab
@@ -24,11 +23,7 @@ export function StartWorkoutProvider({ children }: { children: ReactNode }) {
   // (including the tab FAB) that same branch.
   const activeWorkout = useQuery(api.workouts.getActiveWorkout);
 
-  const open = useCallback(() => {
-    console.log("[start-workout] open() pressed");
-    toast.info("diag: start-workout press"); // TEMP DIAGNOSTIC
-    setIsOpen(true);
-  }, []);
+  const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
 
   const value = useMemo(() => ({ open, close, isOpen }), [open, close, isOpen]);

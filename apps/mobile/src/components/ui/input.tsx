@@ -17,8 +17,9 @@ const Input = forwardRef<TextInput, InputProps>(function Input(
     <TextInput
       ref={ref}
       placeholderTextColor={colors.mutedForeground}
+      style={{ paddingVertical: 0 }}
       className={cn(
-        "h-11 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base text-foreground",
+        "h-11 w-full rounded-md border border-input bg-transparent px-3 text-base text-foreground",
         className,
       )}
       {...props}

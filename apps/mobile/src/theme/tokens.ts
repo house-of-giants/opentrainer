@@ -79,31 +79,43 @@ export const darkColors: typeof lightColors = {
   chart5: "#e75c3a",
 };
 
+function hexToTriplet(hex: string): string {
+  const h = hex.replace("#", "");
+  const r = Number.parseInt(h.slice(0, 2), 16);
+  const g = Number.parseInt(h.slice(2, 4), 16);
+  const b = Number.parseInt(h.slice(4, 6), 16);
+  return `${r} ${g} ${b}`;
+}
+
+// Alpha-capable tokens are exposed as space-separated RGB triplets so Tailwind
+// opacity modifiers (bg-primary/10 etc.) can compose them via
+// `rgb(var(--x) / <alpha-value>)`. border/input keep full values because the
+// dark palette bakes translucency into them (#fffcff2e).
 function toVars(c: typeof lightColors) {
   return vars({
-    "--background": c.background,
-    "--foreground": c.foreground,
-    "--card": c.card,
-    "--card-foreground": c.cardForeground,
-    "--popover": c.popover,
-    "--popover-foreground": c.popoverForeground,
-    "--primary": c.primary,
-    "--primary-foreground": c.primaryForeground,
-    "--secondary": c.secondary,
-    "--secondary-foreground": c.secondaryForeground,
-    "--muted": c.muted,
-    "--muted-foreground": c.mutedForeground,
-    "--accent": c.accent,
-    "--accent-foreground": c.accentForeground,
-    "--destructive": c.destructive,
+    "--background": hexToTriplet(c.background),
+    "--foreground": hexToTriplet(c.foreground),
+    "--card": hexToTriplet(c.card),
+    "--card-foreground": hexToTriplet(c.cardForeground),
+    "--popover": hexToTriplet(c.popover),
+    "--popover-foreground": hexToTriplet(c.popoverForeground),
+    "--primary": hexToTriplet(c.primary),
+    "--primary-foreground": hexToTriplet(c.primaryForeground),
+    "--secondary": hexToTriplet(c.secondary),
+    "--secondary-foreground": hexToTriplet(c.secondaryForeground),
+    "--muted": hexToTriplet(c.muted),
+    "--muted-foreground": hexToTriplet(c.mutedForeground),
+    "--accent": hexToTriplet(c.accent),
+    "--accent-foreground": hexToTriplet(c.accentForeground),
+    "--destructive": hexToTriplet(c.destructive),
     "--border": c.border,
     "--input": c.input,
-    "--ring": c.ring,
-    "--chart-1": c.chart1,
-    "--chart-2": c.chart2,
-    "--chart-3": c.chart3,
-    "--chart-4": c.chart4,
-    "--chart-5": c.chart5,
+    "--ring": hexToTriplet(c.ring),
+    "--chart-1": hexToTriplet(c.chart1),
+    "--chart-2": hexToTriplet(c.chart2),
+    "--chart-3": hexToTriplet(c.chart3),
+    "--chart-4": hexToTriplet(c.chart4),
+    "--chart-5": hexToTriplet(c.chart5),
   });
 }
 

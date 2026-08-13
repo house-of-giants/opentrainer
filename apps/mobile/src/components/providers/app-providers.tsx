@@ -5,11 +5,6 @@ import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 
-import { installClerkFetchDiagnostics } from "@/lib/clerk-fetch-diagnostics";
-
-// TEMP DIAGNOSTIC: must install before ClerkProvider makes any request.
-installClerkFetchDiagnostics();
-
 const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL;
 const CLERK_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
