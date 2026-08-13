@@ -79,15 +79,23 @@ function Sheet({
   return (
     <BottomSheetModal
       ref={ref}
-      snapPoints={snapPoints}
-      enableDynamicSizing={!snapPoints}
+      // Dynamic sizing (the default when no snapPoints were given) measures to
+      // zero height under RN new-arch and the sheet "presents" invisibly —
+      // always give explicit snap points instead.
+      snapPoints={snapPoints ?? ["60%"]}
+      enableDynamicSizing={false}
       backdropComponent={renderBackdrop}
       backgroundStyle={backgroundStyle}
       handleIndicatorStyle={handleStyle}
       onDismiss={() => onOpenChange(false)}
+      // TEMP DIAGNOSTIC (remove once sheets confirmed): index changes prove
+      // the presentation animation actually ran.
+      onChange={(index) => toast.info("diag: sheet index", String(index))}
     >
-      <Container className={cn("px-4 pb-8", contentClassName)}>
-        {children}
+      {/* NativeWind doesn't process third-party components' className —
+          padding lives on an inner core View instead. */}
+      <Container style={{ flex: scrollable ? 1 : undefined }}>
+        <View className={cn("px-4 pb-8", contentClassName)}>{children}</View>
       </Container>
     </BottomSheetModal>
   );
