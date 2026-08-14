@@ -79,7 +79,7 @@
       "./jest.setup.js"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|nativewind|react-native-css-interop|lucide-react-native|@gorhom/bottom-sheet|react-native-toast-message|react-native-reanimated|react-native-worklets|@react-native-async-storage/.*))"
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|standard-navigation|@sentry/react-native|native-base|react-native-svg|nativewind|react-native-css-interop|lucide-react-native|@gorhom/bottom-sheet|react-native-toast-message|react-native-reanimated|react-native-worklets|@react-native-async-storage/.*))"
     ],
     "moduleNameMapper": {
       "^lucide-react-native$": "<rootDir>/../../node_modules/lucide-react-native/dist/cjs/lucide-react-native.js"

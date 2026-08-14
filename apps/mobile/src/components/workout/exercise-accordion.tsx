@@ -221,7 +221,9 @@ function GhostSetBox({
           <Text className="font-mono text-[11px] tabular-nums text-muted-foreground">
             {lastSession.weight}
             {lastSession.unit} × {lastSession.reps}
-            {rpeDisplay ? <Text className="opacity-70"> {rpeDisplay}</Text> : null}
+            {rpeDisplay ? (
+              <Text className="opacity-70"> {rpeDisplay}</Text>
+            ) : null}
           </Text>
           <Text className="text-[11px] text-muted-foreground opacity-50">
             ({formatDate(lastSession.date)})
@@ -411,7 +413,8 @@ export function ExerciseAccordion({
     vibrate("success");
     setWeight(currentWeight);
     setReps(currentReps);
-    const effectiveWeight = isBodyweight && !showAddedWeight ? 0 : currentWeight;
+    const effectiveWeight =
+      isBodyweight && !showAddedWeight ? 0 : currentWeight;
     onAddSet({
       reps: currentReps,
       weight: effectiveWeight,
@@ -444,7 +447,11 @@ export function ExerciseAccordion({
       onPress={isClickable ? handleCardPress : undefined}
       disabled={!isClickable}
       className={cn(
-        "rounded-lg border",
+        // shadow-none establishes the --tw-shadow variables on first render;
+        // gaining shadow-lg later is then a value change, not a css-interop
+        // "variables" upgrade (which remounts, and whose dev warning crashes
+        // on these props).
+        "rounded-lg border shadow-none",
         status === "current" && "border-primary/30 bg-card shadow-lg",
         status === "completed" && "border-transparent bg-muted/20",
         status === "upcoming" && "border-muted/50 bg-card/50 opacity-70",
@@ -652,7 +659,7 @@ export function ExerciseAccordion({
                   if (isBodyweight) handleBodyweightToggle();
                 }}
                 className={cn(
-                  "flex-1 flex-row items-center justify-center gap-1.5 rounded-sm px-2 py-1.5",
+                  "flex-1 flex-row items-center justify-center gap-1.5 rounded-sm shadow-none px-2 py-1.5",
                   !isBodyweight && "bg-background shadow-sm",
                 )}
                 accessibilityRole="button"
@@ -678,7 +685,7 @@ export function ExerciseAccordion({
                   if (!isBodyweight) handleBodyweightToggle();
                 }}
                 className={cn(
-                  "flex-1 flex-row items-center justify-center gap-1.5 rounded-sm px-2 py-1.5",
+                  "flex-1 flex-row items-center justify-center gap-1.5 rounded-sm shadow-none px-2 py-1.5",
                   isBodyweight && "bg-background shadow-sm",
                 )}
                 accessibilityRole="button"
@@ -719,7 +726,9 @@ export function ExerciseAccordion({
             >
               <Dumbbell
                 size={12}
-                color={showAddedWeight ? colors.primary : colors.mutedForeground}
+                color={
+                  showAddedWeight ? colors.primary : colors.mutedForeground
+                }
               />
               <Text
                 className={cn(

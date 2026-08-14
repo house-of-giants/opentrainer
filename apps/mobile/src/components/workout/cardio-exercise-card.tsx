@@ -284,7 +284,8 @@ export function CardioExerciseCard({
       onPress={isClickable ? handleCardPress : undefined}
       disabled={!isClickable}
       className={cn(
-        "rounded-lg border",
+        // shadow-none: see exercise-accordion.tsx (css-interop variable upgrade).
+        "rounded-lg border shadow-none",
         displayStatus === "current" && "border-primary/30 bg-card shadow-lg",
         displayStatus === "completed" && "border-transparent bg-muted/20",
         displayStatus === "upcoming" && "border-muted/50 bg-card/50 opacity-70",

@@ -108,7 +108,8 @@ export function TimedExerciseAccordion({
   return (
     <View
       className={cn(
-        "rounded-lg border",
+        // shadow-none: see exercise-accordion.tsx (css-interop variable upgrade).
+        "rounded-lg border shadow-none",
         status === "current" && "border-primary/30 bg-card shadow-lg",
         status === "completed" && "border-transparent bg-muted/20",
         status === "upcoming" && "border-muted/50 bg-card/50 opacity-70",
@@ -145,10 +146,7 @@ export function TimedExerciseAccordion({
             )}
           </View>
           <View className="min-w-0 flex-1">
-            <Text
-              numberOfLines={1}
-              className="font-semibold text-foreground"
-            >
+            <Text numberOfLines={1} className="font-semibold text-foreground">
               {exerciseName}
             </Text>
             <Text className="text-xs text-muted-foreground">
@@ -240,7 +238,10 @@ export function TimedExerciseAccordion({
           <RpeSelector value={rpe} onChange={setRpe} />
 
           {error && (
-            <Text className="text-sm text-destructive" accessibilityRole="alert">
+            <Text
+              className="text-sm text-destructive"
+              accessibilityRole="alert"
+            >
               {error}
             </Text>
           )}
