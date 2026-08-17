@@ -11,6 +11,7 @@ import { BottomNav } from "@/components/navigation/bottom-nav";
 import { StartWorkoutSheet } from "@/components/workout/start-workout-sheet";
 import { WeeklyStatsGrid, GoalSettingDialog } from "@/components/dashboard";
 import { DashboardBriefCard } from "@/components/dashboard/dashboard-brief-card";
+import { IosAppNotice } from "@/components/ios-app-notice";
 import { TrainingLabCard } from "@/components/training-lab/training-lab-card";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
 import { formatDuration } from "@/lib/utils";
@@ -129,6 +130,8 @@ export default function DashboardPage() {
 
 			<main className="flex-1 space-y-4 p-4 pb-24">
 				<h1 className="sr-only">Dashboard</h1>
+
+				<IosAppNotice />
 
 				{dashboardStats && activeWorkout !== undefined && workoutHistory !== undefined ? (
 					<DashboardBriefCard
