@@ -157,7 +157,7 @@ export function SsoButtons({ onError }: SsoButtonsProps) {
     } finally {
       setBusy(false);
     }
-  }, [busy, startAppleAuthenticationFlow, setActive, router, onError]);
+  }, [busy, startAppleAuthenticationFlow, router, onError]);
 
   return (
     <View className="gap-3">

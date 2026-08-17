@@ -45,6 +45,7 @@
       "expo-secure-store",
       "expo-localization",
       "expo-apple-authentication",
+      "expo-image",
       "./plugins/remove-aps-entitlement.js"
     ],
     "experiments": {
@@ -57,6 +58,12 @@
         "projectId": "884331d9-1c70-41a1-8fd3-492bed023921"
       }
     },
-    "owner": "house-of-giants"
+    "owner": "house-of-giants",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/884331d9-1c70-41a1-8fd3-492bed023921"
+    }
   }
 }
