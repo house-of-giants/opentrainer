@@ -35,17 +35,23 @@ export function EditBodyweightDialog({
   const [isSaving, setIsSaving] = useState(false);
   const updatePreferences = useMutation(api.users.updatePreferences);
 
+  // The current weight is shown as a placeholder, not prefilled text:
+  // typing a new weight needs no clearing, and saving with the field left
+  // empty simply closes the dialog unchanged.
   useEffect(() => {
-    if (open && currentWeight !== undefined) {
-      const fromUnit = storedUnit ?? "lb";
-      const converted = displayWeight(currentWeight, fromUnit, preferredUnit);
-      setWeight(converted.toString());
-    } else if (open) {
-      setWeight("");
-    }
-  }, [open, currentWeight, storedUnit, preferredUnit]);
+    if (open) setWeight("");
+  }, [open]);
+
+  const placeholderWeight =
+    currentWeight !== undefined
+      ? displayWeight(currentWeight, storedUnit ?? "lb", preferredUnit).toString()
+      : undefined;
 
   const handleSave = async () => {
+    if (weight.trim() === "") {
+      onOpenChange(false);
+      return;
+    }
     const weightValue = parseFloat(weight);
     if (isNaN(weightValue) || weightValue <= 0) {
       toast.error("Please enter a valid weight");
@@ -80,7 +86,7 @@ export function EditBodyweightDialog({
         <View className="flex-row items-center justify-center gap-3">
           <Input
             keyboardType="decimal-pad"
-            placeholder="Enter weight"
+            placeholder={placeholderWeight ?? "Enter weight"}
             value={weight}
             onChangeText={setWeight}
             className="h-14 w-32 text-center text-2xl"

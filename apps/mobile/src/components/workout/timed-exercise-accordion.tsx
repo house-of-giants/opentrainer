@@ -226,6 +226,7 @@ export function TimedExerciseAccordion({
             <Input
               keyboardType="number-pad"
               returnKeyType="done"
+              selectTextOnFocus
               value={String(durationSeconds)}
               onChangeText={(text) => {
                 setError(null);

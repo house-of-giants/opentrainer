@@ -91,11 +91,33 @@ describe("SetStepper", () => {
     await renderWithTheme(<Harness onChange={onChange} />);
 
     await fireEvent.press(screen.getByLabelText("Edit WEIGHT"));
-    const input = screen.getByDisplayValue("135");
+    // Edit mode starts empty (no clearing needed to type a new weight);
+    // the current value is the placeholder.
+    const input = screen.getByPlaceholderText("135");
     await fireEvent.changeText(input, "225");
     await fireEvent(input, "blur");
 
     expect(onChange).toHaveBeenCalledWith(225);
     expect(screen.getByText("225")).toBeOnTheScreen();
+  });
+
+  it("keeps the current value when edit mode is left empty", async () => {
+    const onChange = jest.fn();
+    await renderWithTheme(
+      <SetStepper
+        label="WEIGHT"
+        value={135}
+        onChange={onChange}
+        step={5}
+        unit="lb"
+      />
+    );
+
+    await fireEvent.press(screen.getByLabelText("Edit WEIGHT"));
+    const input = screen.getByPlaceholderText("135");
+    await fireEvent(input, "blur");
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByText("135")).toBeOnTheScreen();
   });
 });
