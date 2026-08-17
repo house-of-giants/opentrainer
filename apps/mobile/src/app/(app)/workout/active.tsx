@@ -600,7 +600,17 @@ export default function ActiveWorkoutScreen() {
           console.error("Failed to create exercise:", error);
         }
       }
-      setPendingExercises((prev) => [...prev, exercise]);
+      setPendingExercises((prev) => {
+        // In workouts without a routine, already-logged exercises exist only
+        // as entry groups, which render AFTER pendings — so a bare append
+        // would put the new exercise above them. Freeze the current display
+        // order into the pending list first, then append.
+        const known = new Set(prev.map((p) => getExerciseGroupKey(p)));
+        const entryOnly = exerciseList
+          .filter(([key]) => !known.has(key))
+          .map(([, group]) => group.meta);
+        return [...prev, ...entryOnly, exercise];
+      });
     }
     setShowAddExercise(false);
   };
