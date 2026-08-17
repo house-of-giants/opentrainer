@@ -77,7 +77,11 @@ export function TimedExerciseAccordion({
   const [durationSeconds, setDurationSeconds] = useState(
     sets.at(-1)?.durationSeconds ?? targetDurationSeconds,
   );
-  const [rpe, setRpe] = useState<number | null>(null);
+  // Effort carries forward within an exercise: start at the last logged
+  // set's RPE and keep the chosen value after each set.
+  const [rpe, setRpe] = useState<number | null>(
+    sets.length > 0 ? (sets[sets.length - 1].rpe ?? null) : null,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNoteSheet, setShowNoteSheet] = useState(false);
@@ -96,7 +100,6 @@ export function TimedExerciseAccordion({
     setIsSubmitting(true);
     try {
       await onAddSet({ durationSeconds, rpe });
-      setRpe(null);
       vibrate("success");
     } catch {
       setError("This set could not be saved. Try again.");
