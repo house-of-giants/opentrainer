@@ -379,7 +379,12 @@ export function ExerciseAccordion({
 
   const [weight, setWeight] = useState(initialWeight);
   const [reps, setReps] = useState(initialReps);
-  const [rpe, setRpe] = useState<number | null>(null);
+  // Effort carries forward within an exercise, like weight and reps: the
+  // selector starts at the last logged set's RPE and keeps the chosen value
+  // after each set instead of resetting.
+  const [rpe, setRpe] = useState<number | null>(
+    sets.length > 0 ? (sets[sets.length - 1].rpe ?? null) : null,
+  );
   const [hasEditedWeight, setHasEditedWeight] = useState(false);
   const [hasEditedReps, setHasEditedReps] = useState(false);
   const [isBodyweight, setIsBodyweight] = useState(
@@ -422,7 +427,6 @@ export function ExerciseAccordion({
       isBodyweight,
       rpe,
     });
-    setRpe(null);
   };
 
   const handleBodyweightToggle = () => {
