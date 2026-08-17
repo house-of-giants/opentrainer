@@ -393,7 +393,11 @@ export default function NewRoutineScreen() {
         </Button>
       </View>
 
-      <NestableScrollContainer contentContainerStyle={{ paddingBottom: 96 }}>
+      <NestableScrollContainer
+        contentContainerStyle={{ paddingBottom: 96 }}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+      >
         <View className="gap-6 p-4">
           <Pressable
             accessibilityRole="button"

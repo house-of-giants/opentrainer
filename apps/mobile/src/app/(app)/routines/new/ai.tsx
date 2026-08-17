@@ -468,7 +468,12 @@ export default function AIRoutineGeneratorScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="p-4 pb-24">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="p-4 pb-24"
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+      >
         {step === "form" && (
           <View className="gap-6">
             <View className="mb-2 items-center">

@@ -568,7 +568,12 @@ export default function WorkoutDetailsScreen() {
         )}
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="p-4 pb-16">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="p-4 pb-16"
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+      >
         <Card className="mb-6 p-4">
           {editable && (
             <View className="mb-4 flex-row justify-end gap-2">
