@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAction, useMutation, useQuery } from "convex/react";
