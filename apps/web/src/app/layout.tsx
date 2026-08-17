@@ -22,6 +22,10 @@ export const metadata: Metadata = {
 	description:
 		"Minimalist, AI-first workout tracking. Log lifts and cardio with ease, get AI-powered routine suggestions and performance assessments.",
 	manifest: "/manifest.json",
+	// iOS Safari's native smart app banner ("GET — App Store") sitewide.
+	itunes: {
+		appId: "6800907584",
+	},
 	icons: {
 		icon: [
 			{ url: "/icon.svg", type: "image/svg+xml" },
