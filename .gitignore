@@ -10,10 +10,10 @@ coverage/
 .next/
 out/
 
-# expo / react native
+# expo / react native (prebuild output lives only under apps/mobile)
 .expo/
-ios/
-android/
+apps/mobile/ios/
+apps/mobile/android/
 *.orig.*
 web-build/
 

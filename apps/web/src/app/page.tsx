@@ -8,9 +8,12 @@ import {
   SignedOut,
   UserButton,
 } from "@clerk/nextjs";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
+
+const APP_STORE_URL = "https://apps.apple.com/app/id6800907584";
 
 
 export default function Home() {
@@ -97,6 +100,7 @@ export default function Home() {
                         </Button>
                       </Link>
                     </SignedIn>
+                    <AppStoreBadge className="h-12" />
                   </div>
                   <SignedOut>
                     <p className="text-xs text-muted-foreground">
@@ -115,7 +119,7 @@ export default function Home() {
                     <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    No app install
+                    On web + iPhone
                   </span>
                   <span className="flex items-center gap-1.5">
                     <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -166,6 +170,69 @@ export default function Home() {
               </svg>
               Full data export
             </p>
+          </div>
+        </section>
+
+        {/* iPhone app */}
+        <section className="overflow-hidden">
+          <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
+            <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center lg:gap-16">
+              <div className="flex max-w-xl flex-col items-center gap-5 text-center lg:items-start lg:text-left">
+                <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+                  Now on iPhone.
+                </h2>
+                <p className="text-lg text-muted-foreground">
+                  The same two-tap logging, built native. Your rest timer
+                  fires on the lock screen, every set lands with a haptic,
+                  and routines reorder with a drag — all synced to the same
+                  account as the web app.
+                </p>
+                <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-1.5 justify-center lg:justify-start">
+                    <svg className="h-4 w-4 shrink-0 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Rest-timer alerts on your lock screen
+                  </li>
+                  <li className="flex items-center gap-1.5 justify-center lg:justify-start">
+                    <svg className="h-4 w-4 shrink-0 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Log with one thumb, mid-set
+                  </li>
+                  <li className="flex items-center gap-1.5 justify-center lg:justify-start">
+                    <svg className="h-4 w-4 shrink-0 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Same account, same data, free
+                  </li>
+                </ul>
+                <AppStoreBadge className="mt-2 h-[52px]" />
+              </div>
+              <div className="grid w-full max-w-lg grid-cols-3 items-start gap-3 sm:gap-5 lg:max-w-none lg:flex-1">
+                <Image
+                  src="/images/ios/rest-timer.webp"
+                  alt="Rest timer counting down between sets in the OpenTrainer iPhone app"
+                  width={740}
+                  height={1608}
+                  className="mt-8 w-full rounded-2xl shadow-xl dark:ring-1 dark:ring-white/10 sm:rounded-3xl"
+                />
+                <Image
+                  src="/images/ios/active-workout.webp"
+                  alt="Active workout screen with logged sets in the OpenTrainer iPhone app"
+                  width={740}
+                  height={1608}
+                  className="w-full rounded-2xl shadow-xl dark:ring-1 dark:ring-white/10 sm:rounded-3xl"
+                />
+                <Image
+                  src="/images/ios/muscle-map.webp"
+                  alt="Muscle recovery map in the OpenTrainer iPhone app's Training Lab"
+                  width={740}
+                  height={1608}
+                  className="mt-8 w-full rounded-2xl shadow-xl dark:ring-1 dark:ring-white/10 sm:rounded-3xl"
+                />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -465,6 +532,10 @@ export default function Home() {
               answer="Yes! During our alpha period, all Pro features are completely free. This includes unlimited AI routines, Training Lab insights, and Smart Swap. No credit card required."
             />
             <FAQItem
+              question="Is there an iPhone app?"
+              answer="Yes — OpenTrainer is on the App Store, free. Same account and same data as the web app, plus native extras: rest-timer alerts on your lock screen, haptics when a set lands, and drag-to-reorder routine building."
+            />
+            <FAQItem
               question="Does it work offline?"
               answer="The app works best with an internet connection for syncing, but you can continue logging workouts if you lose signal mid-session. Your data syncs automatically when you're back online."
             />
@@ -507,6 +578,7 @@ export default function Home() {
                   </Button>
                 </Link>
               </SignedIn>
+              <AppStoreBadge className="mt-2 h-12" />
             </div>
           </div>
         </section>
@@ -532,6 +604,26 @@ export default function Home() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function AppStoreBadge({ className }: { className?: string }) {
+  return (
+    <a
+      href={APP_STORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Download OpenTrainer on the App Store"
+      className={`inline-flex transition-opacity hover:opacity-80 ${className ?? ""}`}
+    >
+      <Image
+        src="/images/app-store-badge.svg"
+        alt="Download on the App Store"
+        width={135}
+        height={40}
+        className="h-full w-auto"
+      />
+    </a>
   );
 }
 
