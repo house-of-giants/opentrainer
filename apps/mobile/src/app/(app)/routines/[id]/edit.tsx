@@ -401,7 +401,11 @@ export default function EditRoutineScreen() {
         </Button>
       </View>
 
-      <NestableScrollContainer contentContainerStyle={{ paddingBottom: 96 }}>
+      <NestableScrollContainer
+        contentContainerStyle={{ paddingBottom: 96 }}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+      >
         <View className="gap-6 p-4">
           <View className="gap-4">
             <View className="gap-2">

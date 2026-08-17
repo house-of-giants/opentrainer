@@ -2,7 +2,9 @@ import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -44,7 +46,8 @@ function heightFraction(snapPoints?: (string | number)[]): number {
   if (typeof last === "number" && last > 0 && last <= 1) return last;
   if (typeof last === "string") {
     const parsed = Number.parseFloat(last);
-    if (!Number.isNaN(parsed)) return Math.min(Math.max(parsed / 100, 0.2), 0.95);
+    if (!Number.isNaN(parsed))
+      return Math.min(Math.max(parsed / 100, 0.2), 0.95);
   }
   return 0.6;
 }
@@ -111,44 +114,68 @@ function Sheet({
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={close}>
-      {/* Modal renders outside the ThemeProvider tree; re-apply theme vars. */}
-      <View style={themes[resolved]} className="flex-1 justify-end">
-        <Animated.View
-          style={{ opacity: backdrop }}
-          className="absolute inset-0 bg-black/50"
-        >
-          <Pressable
-            className="flex-1"
-            onPress={close}
-            accessibilityLabel="Close sheet"
-          />
-        </Animated.View>
-        <Animated.View
-          style={{ transform: [{ translateY }], maxHeight }}
-          className="rounded-t-2xl bg-card"
-        >
-          <View className="items-center py-2">
-            <View className="h-1 w-10 rounded-full bg-muted-foreground/40" />
-          </View>
-          <Body
-            className={scrollable ? undefined : cn("px-4 pb-8", contentClassName)}
-            contentContainerClassName={
-              scrollable ? cn("px-4 pb-8", contentClassName) : undefined
-            }
+      {/* Lifts the sheet above the iOS keyboard; Android resizes the window
+          itself (adjustResize). Plain style, not className — KAV sits outside
+          the re-themed subtree below. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+      >
+        {/* Modal renders outside the ThemeProvider tree; re-apply theme vars. */}
+        <View style={themes[resolved]} className="flex-1 justify-end">
+          <Animated.View
+            style={{ opacity: backdrop }}
+            className="absolute inset-0 bg-black/50"
           >
-            {children}
-          </Body>
-        </Animated.View>
-      </View>
+            <Pressable
+              className="flex-1"
+              onPress={close}
+              accessibilityLabel="Close sheet"
+            />
+          </Animated.View>
+          <Animated.View
+            // flexShrink lets the sheet compress into the keyboard-reduced
+            // space instead of overflowing off the top of the screen; a
+            // scrollable Body then scrolls within the compressed height.
+            style={{ transform: [{ translateY }], maxHeight, flexShrink: 1 }}
+            className="rounded-t-2xl bg-card"
+          >
+            <View className="items-center py-2">
+              <View className="h-1 w-10 rounded-full bg-muted-foreground/40" />
+            </View>
+            <Body
+              className={
+                scrollable ? undefined : cn("px-4 pb-8", contentClassName)
+              }
+              contentContainerClassName={
+                scrollable ? cn("px-4 pb-8", contentClassName) : undefined
+              }
+              // First tap on a result/input lands while the keyboard is open
+              // instead of only dismissing it.
+              {...(scrollable
+                ? { keyboardShouldPersistTaps: "handled" as const }
+                : {})}
+            >
+              {children}
+            </Body>
+          </Animated.View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
-function SheetHeader({ className, ...props }: ViewProps & { className?: string }) {
+function SheetHeader({
+  className,
+  ...props
+}: ViewProps & { className?: string }) {
   return <View className={cn("gap-1.5 py-2", className)} {...props} />;
 }
 
-function SheetTitle({ className, ...props }: TextProps & { className?: string }) {
+function SheetTitle({
+  className,
+  ...props
+}: TextProps & { className?: string }) {
   return (
     <Text
       className={cn("text-lg font-semibold text-foreground", className)}
@@ -162,7 +189,10 @@ function SheetDescription({
   ...props
 }: TextProps & { className?: string }) {
   return (
-    <Text className={cn("text-sm text-muted-foreground", className)} {...props} />
+    <Text
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
   );
 }
 

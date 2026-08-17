@@ -104,7 +104,11 @@ export function EditEquipmentDialog({
         </DialogDescription>
       </DialogHeader>
 
-      <ScrollView className="flex-shrink" contentContainerClassName="gap-4 py-4">
+      <ScrollView
+				className="flex-shrink"
+				contentContainerClassName="gap-4 py-4"
+				keyboardShouldPersistTaps="handled"
+			>
         <View className="gap-2">
           <Label>Gym Description</Label>
           <Input

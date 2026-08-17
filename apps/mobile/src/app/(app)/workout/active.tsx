@@ -974,6 +974,8 @@ export default function ActiveWorkoutScreen() {
         ref={scrollRef}
         className="flex-1"
         contentContainerClassName="pb-8"
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
       >
         <View className="px-4 pt-4">
           <SessionCommandCenter
