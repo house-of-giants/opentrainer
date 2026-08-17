@@ -49,7 +49,11 @@ export function SetStepper({
 
   const handleValuePress = () => {
     vibrate("light");
-    setInputValue(value.toString());
+    // Start empty with the current value as placeholder: typing a new
+    // weight needs no clearing, and blurring without typing keeps the old
+    // value (commitValue treats empty as no-op). selectTextOnFocus can't do
+    // this job — it silently fails on iOS when paired with autoFocus.
+    setInputValue("");
     setIsEditing(true);
   };
 
@@ -85,9 +89,9 @@ export function SetStepper({
           {isEditing ? (
             <Input
               autoFocus
-              selectTextOnFocus
               keyboardType="decimal-pad"
               returnKeyType="done"
+              placeholder={value.toString()}
               value={inputValue}
               onChangeText={setInputValue}
               onBlur={commitValue}
