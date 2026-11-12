@@ -9,6 +9,7 @@ type ExerciseSession = {
     reps: number;
     rpe: number | null;
     unit: "kg" | "lb";
+    isWarmup?: boolean;
   }>;
   bestSet: {
     weight: number;
@@ -17,6 +18,22 @@ type ExerciseSession = {
     unit: "kg" | "lb";
   };
 };
+
+type SetCandidate = { weight: number; reps: number; isWarmup?: boolean };
+
+function isWorkSet(set: SetCandidate): boolean {
+  return set.reps > 0 && !set.isWarmup;
+}
+
+/** Heaviest work set. Falls back to the heaviest set when no work set exists. */
+export function pickBestSet<T extends SetCandidate>(sets: T[]): T | undefined {
+  const workSets = sets.filter(isWorkSet);
+  const pool = workSets.length > 0 ? workSets : sets;
+  return pool.reduce<T | undefined>(
+    (best, set) => (best === undefined || set.weight > best.weight ? set : best),
+    undefined
+  );
+}
 
 function convertSessionToUnit(
   session: ExerciseSession,
@@ -27,19 +44,11 @@ function convertSessionToUnit(
     weight: convertWeight(set.weight, set.unit, unit),
     unit,
   }));
-  const workingSets = sets.filter((set) => set.reps > 0);
-  const bestSet = (workingSets.length > 0 ? workingSets : sets).reduce(
-    (best, current) => (current.weight > best.weight ? current : best),
-    {
-      ...session.bestSet,
-      weight: convertWeight(
-        session.bestSet.weight,
-        session.bestSet.unit,
-        unit
-      ),
-      unit,
-    }
-  );
+  const bestSet = pickBestSet(sets) ?? {
+    ...session.bestSet,
+    weight: convertWeight(session.bestSet.weight, session.bestSet.unit, unit),
+    unit,
+  };
 
   return { ...session, sets, bestSet };
 }
@@ -83,7 +92,7 @@ function sessionHitTopOfRepRange(
   repRange: { min: number; max: number } | null
 ): boolean {
   if (!repRange) return false;
-  const workingSets = session.sets.filter((s) => s.reps > 0);
+  const workingSets = session.sets.filter(isWorkSet);
   if (workingSets.length === 0) return false;
   return workingSets.every((set) => set.reps >= repRange.max);
 }

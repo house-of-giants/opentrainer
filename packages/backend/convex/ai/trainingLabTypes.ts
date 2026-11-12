@@ -77,23 +77,6 @@ export interface TrainingLabCTAState {
   dataRangeDays: number;
 }
 
-export interface ProgressionSuggestion {
-  exerciseName: string;
-  lastSession: {
-    weight: number;
-    reps: number;
-    rpe: number | null;
-    date: string;
-    unit: "kg" | "lb";
-  };
-  suggestion: {
-    type: "increase_weight" | "increase_reps" | "hold" | "deload";
-    targetWeight: number | null;
-    targetReps: number | null;
-    reasoning: string | null;
-  };
-}
-
 export type TrainingProfile = 
   | "strength_focused"
   | "cardio_focused"
