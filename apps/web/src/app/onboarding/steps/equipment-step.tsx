@@ -22,6 +22,7 @@ export function EquipmentStep({ description, onDescriptionChange }: EquipmentSte
           placeholder="e.g., Planet Fitness, LA Fitness, home gym with power rack and dumbbells..."
           className="w-full min-h-[140px] rounded-xl border-2 border-border bg-background px-4 py-3 text-base placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none"
           autoFocus
+          aria-label="Gym description"
         />
 
         <div className="rounded-lg bg-muted/50 p-4 space-y-2">

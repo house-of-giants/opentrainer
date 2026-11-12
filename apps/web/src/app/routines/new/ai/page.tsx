@@ -38,6 +38,8 @@ import { useHaptic } from "@/hooks/use-haptic";
 import { cn } from "@/lib/utils";
 import type { GeneratedRoutine, RoutineSwapAlternative } from "@opentrainer/backend/convex/ai/routineGenerator";
 import posthog from "posthog-js";
+import { EquipmentStep } from "@/app/onboarding/steps/equipment-step";
+import { EquipmentConfirmStep } from "@/app/onboarding/steps/equipment-confirm-step";
 
 type SwapReason = "equipment" | "discomfort" | "preference";
 
@@ -73,14 +75,26 @@ export default function AIRoutineGeneratorPage() {
   const generateRoutine = useAction(api.ai.routineGenerator.generateRoutine);
   const getSwapAlternatives = useAction(api.ai.routineGenerator.getRoutineSwapAlternatives);
   const createRoutine = useMutation(api.routines.createRoutine);
+  const parseEquipment = useAction(api.ai.equipmentParser.parseEquipment);
+  const updateOnboarding = useMutation(api.users.updateOnboarding);
 
-  const [step, setStep] = useState<"form" | "generating" | "preview">("form");
+  const [step, setStep] = useState<
+    "form" | "equipment" | "equipment-confirm" | "generating" | "preview"
+  >("form");
   const [generatedRoutine, setGeneratedRoutine] = useState<GeneratedRoutine | null>(null);
 
   const [splitType, setSplitType] = useState<SplitType>("ai_decide");
   const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal>("both");
   const [daysPerWeek, setDaysPerWeek] = useState<number>(user?.weeklyAvailability ?? 4);
   const [additionalNotes, setAdditionalNotes] = useState("");
+
+  // Lifters who skipped the onboarding questions have no equipment saved, and
+  // the generator would guess. Ask once here and save it to the profile.
+  const [equipmentDescription, setEquipmentDescription] = useState("");
+  const [equipment, setEquipment] = useState<string[]>([]);
+  const [equipmentNote, setEquipmentNote] = useState<string | null>(null);
+  const [isParsingEquipment, setIsParsingEquipment] = useState(false);
+  const [isSavingEquipment, setIsSavingEquipment] = useState(false);
 
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
   const [isSaving, setIsSaving] = useState(false);
@@ -105,6 +119,7 @@ export default function AIRoutineGeneratorPage() {
   });
 
   const isPro = user?.tier === "pro";
+  const hasEquipment = (user?.equipment?.length ?? 0) > 0;
   
   useEffect(() => {
     if (step === "preview" && generatedRoutine) {
@@ -145,6 +160,52 @@ export default function AIRoutineGeneratorPage() {
       return;
     }
 
+    if (!hasEquipment) {
+      setEquipmentDescription(user?.equipmentDescription ?? "");
+      setStep("equipment");
+      return;
+    }
+
+    await runGeneration();
+  };
+
+  const handleAnalyzeEquipment = async () => {
+    if (!equipmentDescription.trim()) return;
+
+    setStep("equipment-confirm");
+    setEquipmentNote(null);
+    setIsParsingEquipment(true);
+    try {
+      const result = await parseEquipment({ description: equipmentDescription });
+      setEquipment(result.equipment);
+      setEquipmentNote(result.note ?? null);
+    } catch {
+      toast.error("Failed to analyze equipment. Please select manually.");
+      setEquipment([]);
+    } finally {
+      setIsParsingEquipment(false);
+    }
+  };
+
+  const handleSaveEquipment = async () => {
+    if (equipment.length === 0) return;
+
+    setIsSavingEquipment(true);
+    try {
+      await updateOnboarding({
+        equipmentDescription: equipmentDescription.trim() || undefined,
+        equipment,
+      });
+    } catch {
+      toast.error("Failed to save equipment");
+      setIsSavingEquipment(false);
+      return;
+    }
+    setIsSavingEquipment(false);
+    await runGeneration();
+  };
+
+  const runGeneration = async () => {
     vibrate("medium");
     setStep("generating");
 
@@ -366,14 +427,18 @@ export default function AIRoutineGeneratorPage() {
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
         <div className="flex h-14 items-center gap-4 px-4">
-          <Link href={step === "preview" ? "#" : "/routines/new"}>
+          <Link href={step === "form" || step === "generating" ? "/routines/new" : "#"}>
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Back"
               onClick={(e) => {
-                if (step === "preview") {
+                if (step === "preview" || step === "equipment") {
                   e.preventDefault();
                   setStep("form");
+                } else if (step === "equipment-confirm") {
+                  e.preventDefault();
+                  setStep("equipment");
                 }
               }}
             >
@@ -520,6 +585,49 @@ export default function AIRoutineGeneratorPage() {
               <Sparkles className="h-5 w-5" />
               Generate Routine
             </Button>
+          </div>
+        )}
+
+        {step === "equipment" && (
+          <div className="space-y-6 max-w-lg mx-auto">
+            <EquipmentStep
+              description={equipmentDescription}
+              onDescriptionChange={setEquipmentDescription}
+            />
+            <Button
+              size="lg"
+              className="w-full h-14 text-lg font-semibold"
+              onClick={handleAnalyzeEquipment}
+              disabled={!equipmentDescription.trim()}
+            >
+              Analyze Equipment
+            </Button>
+          </div>
+        )}
+
+        {step === "equipment-confirm" && (
+          <div className="space-y-6 max-w-lg mx-auto">
+            <EquipmentConfirmStep
+              equipment={equipment}
+              onEquipmentChange={setEquipment}
+              note={equipmentNote}
+              isLoading={isParsingEquipment}
+            />
+            {!isParsingEquipment && (
+              <Button
+                size="lg"
+                className="w-full h-14 text-lg font-semibold gap-2"
+                onClick={handleSaveEquipment}
+                disabled={equipment.length === 0 || isSavingEquipment}
+              >
+                {isSavingEquipment ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-5 w-5" />
+                )}
+                Save and Generate
+              </Button>
+            )}
           </div>
         )}
 

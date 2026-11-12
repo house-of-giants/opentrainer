@@ -23,6 +23,7 @@ import type {
   RoutineSwapAlternative,
 } from "@opentrainer/backend/convex/ai/routineGenerator";
 
+import { EquipmentConfirmStep, EquipmentStep } from "@/components/onboarding";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -111,8 +112,12 @@ export default function AIRoutineGeneratorScreen() {
     api.ai.routineGenerator.getRoutineSwapAlternatives,
   );
   const createRoutine = useMutation(api.routines.createRoutine);
+  const parseEquipment = useAction(api.ai.equipmentParser.parseEquipment);
+  const updateOnboarding = useMutation(api.users.updateOnboarding);
 
-  const [step, setStep] = useState<"form" | "generating" | "preview">("form");
+  const [step, setStep] = useState<
+    "form" | "equipment" | "equipment-confirm" | "generating" | "preview"
+  >("form");
   const [generatedRoutine, setGeneratedRoutine] = useState<GeneratedRoutine | null>(
     null,
   );
@@ -123,6 +128,14 @@ export default function AIRoutineGeneratorScreen() {
     user?.weeklyAvailability ?? 4,
   );
   const [additionalNotes, setAdditionalNotes] = useState("");
+
+  // Lifters who skipped the onboarding questions have no equipment saved, and
+  // the generator would guess. Ask once here and save it to the profile.
+  const [equipmentDescription, setEquipmentDescription] = useState("");
+  const [equipment, setEquipment] = useState<string[]>([]);
+  const [equipmentNote, setEquipmentNote] = useState<string | null>(null);
+  const [isParsingEquipment, setIsParsingEquipment] = useState(false);
+  const [isSavingEquipment, setIsSavingEquipment] = useState(false);
 
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
   const [isSaving, setIsSaving] = useState(false);
@@ -147,6 +160,7 @@ export default function AIRoutineGeneratorScreen() {
   });
 
   const isPro = user?.tier === "pro";
+  const hasEquipment = (user?.equipment?.length ?? 0) > 0;
 
   useEffect(() => {
     if (step === "preview" && generatedRoutine) {
@@ -191,6 +205,54 @@ export default function AIRoutineGeneratorScreen() {
       return;
     }
 
+    if (!hasEquipment) {
+      vibrate("light");
+      setEquipmentDescription(user?.equipmentDescription ?? "");
+      setStep("equipment");
+      return;
+    }
+
+    await runGeneration();
+  };
+
+  const handleAnalyzeEquipment = async () => {
+    if (!equipmentDescription.trim()) return;
+
+    vibrate("light");
+    setStep("equipment-confirm");
+    setEquipmentNote(null);
+    setIsParsingEquipment(true);
+    try {
+      const result = await parseEquipment({ description: equipmentDescription });
+      setEquipment(result.equipment);
+      setEquipmentNote(result.note ?? null);
+    } catch {
+      toast.error("Failed to analyze equipment. Please select manually.");
+      setEquipment([]);
+    } finally {
+      setIsParsingEquipment(false);
+    }
+  };
+
+  const handleSaveEquipment = async () => {
+    if (equipment.length === 0) return;
+
+    setIsSavingEquipment(true);
+    try {
+      await updateOnboarding({
+        equipmentDescription: equipmentDescription.trim() || undefined,
+        equipment,
+      });
+    } catch {
+      toast.error("Failed to save equipment");
+      setIsSavingEquipment(false);
+      return;
+    }
+    setIsSavingEquipment(false);
+    await runGeneration();
+  };
+
+  const runGeneration = async () => {
     vibrate("medium");
     setStep("generating");
 
@@ -445,8 +507,12 @@ export default function AIRoutineGeneratorScreen() {
             size="icon"
             accessibilityLabel="Back"
             onPress={() => {
-              if (step === "preview") {
+              if (step === "preview" || step === "equipment") {
                 setStep("form");
+                return;
+              }
+              if (step === "equipment-confirm") {
+                setStep("equipment");
                 return;
               }
               router.push("/(app)/routines/new");
@@ -614,6 +680,50 @@ export default function AIRoutineGeneratorScreen() {
                 Generate Routine
               </Text>
             </Button>
+          </View>
+        )}
+
+        {step === "equipment" && (
+          <View className="gap-6">
+            <EquipmentStep
+              description={equipmentDescription}
+              onDescriptionChange={setEquipmentDescription}
+            />
+            <Button
+              size="lg"
+              className="h-14 w-full"
+              onPress={handleAnalyzeEquipment}
+              disabled={!equipmentDescription.trim()}
+            >
+              <Text className="text-lg font-semibold text-primary-foreground">
+                Analyze Equipment
+              </Text>
+            </Button>
+          </View>
+        )}
+
+        {step === "equipment-confirm" && (
+          <View className="gap-6">
+            <EquipmentConfirmStep
+              equipment={equipment}
+              onEquipmentChange={setEquipment}
+              note={equipmentNote}
+              isLoading={isParsingEquipment}
+            />
+            {!isParsingEquipment && (
+              <Button
+                size="lg"
+                className="h-14 w-full"
+                onPress={handleSaveEquipment}
+                disabled={equipment.length === 0 || isSavingEquipment}
+                loading={isSavingEquipment}
+              >
+                <Sparkles size={20} color={colors.primaryForeground} />
+                <Text className="text-lg font-semibold text-primary-foreground">
+                  Save and Generate
+                </Text>
+              </Button>
+            )}
           </View>
         )}
 
