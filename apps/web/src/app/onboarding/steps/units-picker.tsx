@@ -1,7 +1,8 @@
 "use client";
 
 import type { WeightUnit } from "@opentrainer/lib/units";
-import { cn } from "@/lib/utils";
+import { Field, FieldLabel, FieldTitle } from "@/components/ui/field";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const UNITS: Array<{ id: WeightUnit; label: string }> = [
   { id: "kg", label: "Kilograms (kg)" },
@@ -19,25 +20,21 @@ export function UnitsPicker({ value, onChange }: UnitsPickerProps) {
       <p id="units-label" className="font-medium">
         Weight units
       </p>
-      <div role="radiogroup" aria-labelledby="units-label" className="grid grid-cols-2 gap-3">
+      <RadioGroup
+        value={value}
+        onValueChange={(next) => onChange(next as WeightUnit)}
+        aria-labelledby="units-label"
+        className="grid-cols-2"
+      >
         {UNITS.map((unit) => (
-          <button
-            key={unit.id}
-            type="button"
-            role="radio"
-            aria-checked={value === unit.id}
-            onClick={() => onChange(unit.id)}
-            className={cn(
-              "rounded-xl border-2 p-4 font-medium transition-all",
-              value === unit.id
-                ? "border-primary bg-primary/10"
-                : "border-border hover:bg-muted/50 hover:border-muted-foreground/30"
-            )}
-          >
-            {unit.label}
-          </button>
+          <FieldLabel key={unit.id}>
+            <Field orientation="horizontal">
+              <RadioGroupItem value={unit.id} />
+              <FieldTitle>{unit.label}</FieldTitle>
+            </Field>
+          </FieldLabel>
         ))}
-      </div>
+      </RadioGroup>
     </div>
   );
 }
