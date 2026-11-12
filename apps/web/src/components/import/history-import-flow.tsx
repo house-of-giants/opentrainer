@@ -36,7 +36,9 @@ type ImportResult = {
 
 export function HistoryImportFlow() {
   const user = useQuery(api.users.getCurrentUser);
-  const allExercises = useQuery(api.exercises.getExercises, {});
+  // getExercises returns only system exercises until auth is ready. Wait for
+  // the signed-in user so the user's custom exercises are matched too.
+  const allExercises = useQuery(api.exercises.getExercises, user ? {} : "skip");
   const createExercise = useMutation(api.exercises.createExercise);
   const importWorkouts = useMutation(api.historyImport.importWorkouts);
 
@@ -265,7 +267,7 @@ export function HistoryImportFlow() {
         {(result?.exercisesCreated ?? 0) > 0 && (
           <li className="text-muted-foreground">
             Made <span className="font-mono tabular-nums">{result?.exercisesCreated}</span>{" "}
-            custom exercises.
+            custom {result?.exercisesCreated === 1 ? "exercise" : "exercises"}.
           </li>
         )}
       </ul>

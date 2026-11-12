@@ -173,7 +173,7 @@ export function ImportReviewStep({
                     </p>
                   </div>
                   <Select
-                    value={choice}
+                    value={choice ?? ""}
                     onValueChange={(value) => onChoicesChange({ ...choices, [key]: value })}
                   >
                     <SelectTrigger aria-label={`Exercise for ${name}`} className="w-full sm:w-64">
