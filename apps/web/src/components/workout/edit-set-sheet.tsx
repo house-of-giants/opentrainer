@@ -29,6 +29,7 @@ export interface EditableSet {
   isBodyweight?: boolean;
   isWarmup?: boolean;
   rpe?: number | null;
+  rir?: number | null;
 }
 
 interface EditSetSheetProps {

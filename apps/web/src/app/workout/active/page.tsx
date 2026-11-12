@@ -64,6 +64,7 @@ type EntryData = {
 		unit: "kg" | "lb";
 		isBodyweight?: boolean;
 		rpe?: number;
+		rir?: number;
 		isWarmup?: boolean;
 	};
 	cardio?: {
@@ -794,6 +795,7 @@ export default function ActiveWorkoutPage() {
 			unit: "lb",
 			durationSeconds: set.durationSeconds,
 			rpe: set.rpe,
+			rir: set.rir,
 			isWarmup: set.isWarmup,
 		});
 	};
@@ -1010,6 +1012,7 @@ export default function ActiveWorkoutPage() {
 									setNumber: entry.lifting!.setNumber,
 									durationSeconds: entry.lifting!.durationSeconds!,
 									rpe: entry.lifting!.rpe ?? null,
+									rir: entry.lifting!.rir ?? null,
 									isWarmup: entry.lifting!.isWarmup,
 								}));
 

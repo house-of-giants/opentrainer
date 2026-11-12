@@ -325,6 +325,7 @@ export default function WorkoutDetailsPage() {
       isBodyweight: entry.lifting.isBodyweight,
       isWarmup: entry.lifting.isWarmup,
       rpe: entry.lifting.rpe ?? null,
+      rir: entry.lifting.rir ?? null,
       durationSeconds: entry.lifting.durationSeconds,
     });
   };
