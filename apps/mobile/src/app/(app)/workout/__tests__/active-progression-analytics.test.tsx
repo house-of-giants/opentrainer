@@ -65,6 +65,7 @@ const queryResults: Record<string, unknown> = {
   "entries:getTimedExerciseHistory": [],
   "exercises:getExercises": [],
   "exercises:getMuscleGroups": [],
+  "exercises:getWeightStep": null,
 };
 
 const addLiftingEntry = jest.fn().mockResolvedValue("entry-id");
