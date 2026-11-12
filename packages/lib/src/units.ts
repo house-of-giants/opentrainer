@@ -47,6 +47,14 @@ export function calculateVolumeInUnit(
   }, 0);
 }
 
+/**
+ * Stored workout volume (`summary.totalVolume`) is in pounds. Returns it in
+ * `unit`, rounded to a whole number for display.
+ */
+export function volumeFromPounds(volumeLb: number, unit: WeightUnit): number {
+  return Math.round(convertWeight(volumeLb, "lb", unit));
+}
+
 export function editedWeightForStorage({
   displayedWeight,
   displayUnit,

@@ -32,6 +32,7 @@ import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_routineMeasurements from "../lib/routineMeasurements.js";
 import type * as lib_week from "../lib/week.js";
 import type * as migrations_exerciseDeduplication from "../migrations/exerciseDeduplication.js";
+import type * as migrations_workoutSummaryVolume from "../migrations/workoutSummaryVolume.js";
 import type * as routines from "../routines.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   "lib/routineMeasurements": typeof lib_routineMeasurements;
   "lib/week": typeof lib_week;
   "migrations/exerciseDeduplication": typeof migrations_exerciseDeduplication;
+  "migrations/workoutSummaryVolume": typeof migrations_workoutSummaryVolume;
   routines: typeof routines;
   seed: typeof seed;
   users: typeof users;

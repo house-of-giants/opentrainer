@@ -5,6 +5,7 @@ import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getCurrentUser } from "./auth";
 import { createConvexLogger, truncateId } from "./lib/logger";
 import { getMondayWeekStartUtc, WEEK_IN_MS } from "./lib/week";
+import { volumeFromPounds } from "@opentrainer/lib/units";
 import { buildWorkoutSummary, getWorkoutEntries } from "./workoutSummary";
 
 function validateWorkoutTimeRange({
@@ -689,6 +690,9 @@ export const getDashboardStats = query({
       return null;
     }
 
+    // Summary volume is stored in pounds; the dashboard shows the user's unit.
+    const preferredUnits = user.preferredUnits ?? "lb";
+
     // Calculate start of current week (Monday)
     const now = Date.now();
     const mondayOfThisWeek = getMondayWeekStartUtc(now);
@@ -733,12 +737,12 @@ export const getDashboardStats = query({
 
     const weeklyWorkoutCount = thisWeekWorkouts.length;
     let weeklyTotalSets = 0;
-    let weeklyTotalVolume = 0;
+    let weeklyTotalVolumeLb = 0;
     let weeklyTotalDuration = 0;
 
     for (const workout of thisWeekWorkouts) {
       weeklyTotalSets += workout.summary?.totalSets ?? 0;
-      weeklyTotalVolume += workout.summary?.totalVolume ?? 0;
+      weeklyTotalVolumeLb += workout.summary?.totalVolume ?? 0;
       weeklyTotalDuration += workout.summary?.totalDurationMinutes ?? 0;
     }
 
@@ -766,10 +770,10 @@ export const getDashboardStats = query({
         (w) => w.startedAt >= weekStart && w.startedAt < weekEnd
       );
 
-      let volume = 0;
+      let volumeLb = 0;
       let duration = 0;
       for (const w of weekWorkouts) {
-        volume += w.summary?.totalVolume ?? 0;
+        volumeLb += w.summary?.totalVolume ?? 0;
         duration += w.summary?.totalDurationMinutes ?? 0;
       }
 
@@ -779,7 +783,7 @@ export const getDashboardStats = query({
           day: "numeric",
           timeZone: "UTC",
         }),
-        volume,
+        volume: volumeFromPounds(volumeLb, preferredUnits),
         workouts: weekWorkouts.length,
         duration,
       });
@@ -789,11 +793,11 @@ export const getDashboardStats = query({
       weeklyGoal: user.weeklyAvailability ?? 4,
       weeklyWorkoutCount,
       weeklyTotalSets,
-      weeklyTotalVolume,
+      weeklyTotalVolume: volumeFromPounds(weeklyTotalVolumeLb, preferredUnits),
       weeklyTotalDuration,
       currentWeek,
       weeklyTrend,
-      preferredUnits: user.preferredUnits ?? "lb",
+      preferredUnits,
     };
   },
 });

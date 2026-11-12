@@ -119,6 +119,16 @@ async function renderProfile() {
 }
 
 describe("Profile screen", () => {
+  it("shows stored pound volume in kg for a kg lifter", async () => {
+    mockQueries({ "users:getCurrentUser": { ...profileUser, preferredUnits: "kg" } });
+    await renderProfile();
+
+    // 12,450 + 8,000 lb stored = 9,276 kg.
+    expect(screen.getByText("9k")).toBeOnTheScreen();
+    expect(screen.queryByText("20k")).toBeNull();
+    expect(screen.getByText("Volume (kg)")).toBeOnTheScreen();
+  });
+
   it("renders the user card, stats and training profile values", async () => {
     await renderProfile();
 

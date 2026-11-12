@@ -167,7 +167,9 @@ describe("historyImport.importWorkouts", () => {
 			exerciseCount: 2,
 		});
 		assert.equal(push.workout.summary?.totalSets, 2);
-		assert.equal(push.workout.summary?.totalVolume, 800 + 700);
+		// Summary volume is pounds: 100 kg x 15 reps = 1500 kg = 3306.93 lb.
+		const pushVolume = push.workout.summary?.totalVolume ?? 0;
+		assert.ok(Math.abs(pushVolume - 3306.93) < 0.01, `expected about 3306.93 lb, got ${pushVolume}`);
 		assert.equal(push.workout.summary?.totalDurationMinutes, 0);
 	});
 

@@ -39,7 +39,7 @@ import { EditAvailabilityDialog } from "@/components/profile/edit-availability-d
 import { EditBodyweightDialog } from "@/components/profile/edit-bodyweight-dialog";
 import { EditUnitsDialog } from "@/components/profile/edit-units-dialog";
 import { DeleteAccountDialog } from "@/components/profile/delete-account-dialog";
-import { displayWeight } from "@opentrainer/lib/units";
+import { displayWeight, volumeFromPounds } from "@opentrainer/lib/units";
 import { buildDataExportFile, type DataExportFormat } from "@opentrainer/lib/data-export";
 import { downloadFile } from "@/lib/download-file";
 
@@ -100,7 +100,7 @@ export default function ProfilePage() {
 
   const completedWorkouts = workouts?.filter(w => w.status === "completed") ?? [];
   const totalSets = completedWorkouts.reduce((acc, w) => acc + (w.summary?.totalSets ?? 0), 0);
-  const totalVolume = completedWorkouts.reduce((acc, w) => acc + (w.summary?.totalVolume ?? 0), 0);
+  const totalVolumeLb = completedWorkouts.reduce((acc, w) => acc + (w.summary?.totalVolume ?? 0), 0);
 
   const goalsDisplay = user?.goals?.map(g => GOAL_LABELS[g] ?? g).join(", ") || "Not set";
   const experienceDisplay = user?.experienceLevel ? EXPERIENCE_LABELS[user.experienceLevel] : "Not set";
@@ -115,6 +115,7 @@ export default function ProfilePage() {
       ? `${user.weeklyAvailability} days/week · ${user.sessionDuration} min`
       : "Not set";
   const preferredUnit = (user?.preferredUnits ?? "lb") as "lb" | "kg";
+  const totalVolume = volumeFromPounds(totalVolumeLb, preferredUnit);
   const storedBodyweightUnit = (user?.bodyweightUnit ?? "lb") as "lb" | "kg";
   const bodyweightDisplay = user?.bodyweight
     ? `${displayWeight(user.bodyweight, storedBodyweightUnit, preferredUnit)} ${preferredUnit}`
