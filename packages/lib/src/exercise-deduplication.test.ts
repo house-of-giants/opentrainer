@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
 	deduplicateVisibleExercises,
+	findExerciseByName,
 	getExerciseCleanupPlan,
 } from "./exercise-deduplication";
 
@@ -171,5 +172,38 @@ describe("exercise deduplication", () => {
 				},
 			]
 		);
+	});
+});
+
+describe("findExerciseByName", () => {
+	const system: Exercise[] = [
+		{ id: "system-bench", name: "Bench Press", aliases: ["Flat Bench"], isSystemExercise: true, createdAt: 1 },
+		{ id: "system-row", name: "Barbell Row", aliases: ["Pendlay Row"], isSystemExercise: true, createdAt: 1 },
+	];
+	const find = (user: Exercise[], name: string) =>
+		findExerciseByName(user, system, name)?.id;
+
+	test("matches a name after trimming, collapsing spaces, and ignoring case", () => {
+		assert.equal(find([], "  bench   PRESS "), "system-bench");
+	});
+
+	test("prefers the user's exercise over a system exercise with the same name", () => {
+		const user: Exercise[] = [{ id: "mine", name: "bench press", userId: "u", createdAt: 2 }];
+		assert.equal(find(user, "Bench Press"), "mine");
+	});
+
+	test("prefers an exact name over an alias, then the user's alias over a system alias", () => {
+		const user: Exercise[] = [
+			{ id: "my-pendlay", name: "Pendlay Row", userId: "u", createdAt: 2 },
+			{ id: "my-flat", name: "DB Flat", aliases: ["Flat Bench"], userId: "u", createdAt: 2 },
+		];
+		assert.equal(find(user, "Pendlay Row"), "my-pendlay");
+		assert.equal(find(user, "Flat Bench"), "my-flat");
+		assert.equal(find([], "Flat Bench"), "system-bench");
+	});
+
+	test("finds nothing for an unknown or blank name", () => {
+		assert.equal(find([], "Tire Flip"), undefined);
+		assert.equal(find([], "   "), undefined);
 	});
 });

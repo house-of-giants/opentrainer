@@ -276,7 +276,11 @@ export default defineSchema({
     .index("by_workout", ["workoutId"])
     .index("by_workout_created", ["workoutId", "createdAt"])
     .index("by_user_created", ["userId", "createdAt"])
-    .index("by_client_id", ["workoutId", "clientId"]),
+    .index("by_client_id", ["workoutId", "clientId"])
+    // Exercise history: by exercise id, plus by exact name for entries that
+    // have no exercise id or were logged under a name that no longer resolves.
+    .index("by_user_exercise_created", ["userId", "exerciseId", "createdAt"])
+    .index("by_user_exercise_name_created", ["userId", "exerciseName", "createdAt"]),
 
   // --------------------------------------------------------------------------
   // Routines Table
