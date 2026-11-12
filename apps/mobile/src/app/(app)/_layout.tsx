@@ -18,11 +18,13 @@ export default function AppLayout() {
   if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
 
   // Web renders <FeedbackButton /> globally inside <SignedIn>; this layout is
-  // the mobile equivalent of that auth boundary.
+  // the mobile equivalent of that auth boundary. App Store screenshot builds
+  // hide it so it does not cover content; Expo inlines the flag at build time.
+  const screenshotMode = process.env.EXPO_PUBLIC_SCREENSHOT_MODE === "1";
   return (
     <View className="flex-1">
       <Stack screenOptions={{ headerShown: false }} />
-      <FeedbackButton />
+      {!screenshotMode && <FeedbackButton />}
     </View>
   );
 }

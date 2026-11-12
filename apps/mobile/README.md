@@ -41,6 +41,8 @@ bunx expo run:ios
 
 After the native development build is installed, use `bunx expo start` for normal development sessions.
 
+For App Store screenshots, run `EXPO_PUBLIC_SCREENSHOT_MODE=1 bunx expo run:ios --configuration Release`. This build hides the floating feedback button. Do not set this variable in an EAS environment.
+
 ## Testing and checks
 
 Run these commands from `apps/mobile`:
