@@ -9,14 +9,15 @@ const GREEN = "#22c55e"; // green-500
 
 interface PrBadgeProps {
   type?: "inline" | "card";
+  label?: string;
 }
 
-export function PrBadge({ type = "inline" }: PrBadgeProps) {
+export function PrBadge({ type = "inline", label = "PR" }: PrBadgeProps) {
   if (type === "card") {
     return (
       <View className="flex-row items-center gap-1.5 self-start rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1">
         <Trophy size={14} color={AMBER} />
-        <Text className="text-xs font-semibold text-amber-500">PR</Text>
+        <Text className="text-xs font-semibold text-amber-500">{label}</Text>
       </View>
     );
   }
@@ -24,7 +25,7 @@ export function PrBadge({ type = "inline" }: PrBadgeProps) {
   return (
     <View className="flex-row items-center gap-1 self-start rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5">
       <Trophy size={12} color={AMBER} />
-      <Text className="text-xs font-medium text-amber-500">PR</Text>
+      <Text className="text-xs font-medium text-amber-500">{label}</Text>
     </View>
   );
 }

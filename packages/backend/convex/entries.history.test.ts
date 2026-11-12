@@ -86,3 +86,45 @@ describe("getExerciseHistory warm-up sets", () => {
 		assert.equal(history[0].bestSet.reps, 8);
 	});
 });
+
+describe("getExerciseHistory session count", () => {
+	test("returns every completed session when asked for more than 100", async () => {
+		const t = convexTest(schema, modules).withIdentity({
+			issuer: "https://opentrainer.app/test",
+			subject: "long-history-user",
+		});
+
+		await t.run(async (ctx) => {
+			const userId = await ctx.db.insert("users", {
+				clerkId: "long-history-user",
+				createdAt: 1,
+				updatedAt: 1,
+			});
+			for (let i = 1; i <= 120; i++) {
+				const workoutId = await ctx.db.insert("workouts", {
+					userId,
+					status: "completed",
+					startedAt: i * 1000,
+					completedAt: i * 1000 + 500,
+				});
+				await ctx.db.insert("entries", {
+					workoutId,
+					userId,
+					exerciseName: "Squat",
+					kind: "lifting",
+					lifting: { setNumber: 1, weight: 100 + i, reps: 5, unit: "kg" },
+					createdAt: i * 1000 + 100,
+				});
+			}
+		});
+
+		const history = await t.query(getExerciseHistory, {
+			exerciseName: "Squat",
+			sessionCount: 100_000,
+		});
+
+		assert.equal(history.length, 120);
+		assert.equal(history[0].sets[0].weight, 220);
+		assert.equal(history[119].sets[0].weight, 101);
+	});
+});

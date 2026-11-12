@@ -24,10 +24,16 @@ type ExerciseSession = {
   };
 };
 
-type SetCandidate = { weight: number; reps: number; isWarmup?: boolean };
+type SetCandidate = {
+  weight: number;
+  reps: number;
+  isWarmup?: boolean;
+  durationSeconds?: number;
+};
 
-function isWorkSet(set: SetCandidate): boolean {
-  return set.reps > 0 && !set.isWarmup;
+/** A work set has reps, is not a warm-up, and is not a timed hold. */
+export function isWorkSet(set: SetCandidate): boolean {
+  return set.reps > 0 && !set.isWarmup && set.durationSeconds === undefined;
 }
 
 /** Heaviest work set. Falls back to the heaviest set when no work set exists. */

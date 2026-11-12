@@ -14,10 +14,11 @@ jest.mock("convex/react", () => ({
 
 const mockBack = jest.fn();
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "workout_1" }),
-  useRouter: () => ({ back: mockBack, replace: mockReplace, push: jest.fn() }),
+  useRouter: () => ({ back: mockBack, replace: mockReplace, push: mockPush }),
 }));
 
 jest.mock("@/components/ui/toast", () => ({
@@ -83,6 +84,24 @@ describe("workout detail screen", () => {
     expect(screen.getByText("1h 5m")).toBeOnTheScreen();
     expect(screen.getByText("25m")).toBeOnTheScreen();
     expect(screen.getByText("3.2 km")).toBeOnTheScreen();
+  });
+
+  it("opens the exercise history from a lifting card, but not from cardio or mobility", async () => {
+    setQueryResults(loadedQueries);
+    await render(
+      <ThemeProvider>
+        <WorkoutDetailsScreen />
+      </ThemeProvider>,
+    );
+
+    expect(screen.queryByLabelText("View history for Treadmill")).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText("View history for Couch Stretch")).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByLabelText("View history for Bench Press"));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/(app)/exercise/[name]",
+      params: { name: "Bench Press" },
+    });
   });
 
   it("renders the not-found state when the workout query returns null", async () => {

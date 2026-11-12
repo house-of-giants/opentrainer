@@ -161,6 +161,45 @@ describe("ActiveWorkoutScreen", () => {
     }
   });
 
+  it("opens the exercise history from the current card once the lift has a finished session", async () => {
+    await render(
+      <ThemeProvider>
+        <ActiveWorkoutScreen />
+      </ThemeProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText("LOG SET 2/3")).toBeOnTheScreen();
+    });
+    // No finished session yet: nothing to show, so no button.
+    expect(screen.queryByLabelText("View history for Bench Press")).not.toBeOnTheScreen();
+    await screen.unmount();
+
+    queryResults["entries:getExerciseHistory"] = [
+      {
+        workoutId: "w1",
+        date: "2026-11-01T00:00:00.000Z",
+        sets: [{ setNumber: 1, weight: 135, reps: 8, rpe: null, unit: "lb" }],
+        bestSet: { weight: 135, reps: 8, rpe: null, unit: "lb" },
+      },
+    ];
+    try {
+      await render(
+        <ThemeProvider>
+          <ActiveWorkoutScreen />
+        </ThemeProvider>,
+      );
+      await fireEvent.press(
+        await screen.findByLabelText("View history for Bench Press"),
+      );
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        pathname: "/(app)/exercise/[name]",
+        params: { name: "Bench Press" },
+      });
+    } finally {
+      queryResults["entries:getExerciseHistory"] = [];
+    }
+  });
+
   it("redirects to the dashboard when there is no active workout", async () => {
     queryResults["workouts:getActiveWorkout"] = null;
     try {
