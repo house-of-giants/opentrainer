@@ -317,7 +317,12 @@ describe("Post-workout reminder offer", () => {
     await renderWorkoutWithOffer();
 
     await fireEvent.press(screen.getByText("Finish"));
-    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/(app)/(tabs)"));
+    // A routine workout opens the next-session summary before the tabs.
+    await waitFor(() =>
+      expect(mockRouter.replace).toHaveBeenCalledWith(
+        expect.objectContaining({ pathname: "/(app)/workout/summary" }),
+      ),
+    );
     expect(screen.queryByText("Remind you on training days?")).toBeNull();
 
     mockIsFocused = true;
