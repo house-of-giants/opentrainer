@@ -471,6 +471,15 @@ export function AddExerciseSheet({
                       Time
                     </Text>
                   )}
+                {/* Imported custom exercises have no muscle groups, so the
+                    muscle map can't count them. Point the user to the pencil. */}
+                {!exercise.isSystemExercise &&
+                  exercise.category === "lifting" &&
+                  !exercise.muscleGroups?.length && (
+                    <Text className="ml-2 shrink-0 text-xs text-muted-foreground">
+                      No muscle groups
+                    </Text>
+                  )}
                 {!exercise.isSystemExercise && (
                   <Pressable
                     onPress={() => startEdit(exercise)}

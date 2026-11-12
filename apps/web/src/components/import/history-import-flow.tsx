@@ -40,6 +40,7 @@ export function HistoryImportFlow() {
   // Convex auth so the user's custom exercises are matched too.
   const { isAuthenticated } = useConvexAuth();
   const allExercises = useQuery(api.exercises.getExercises, isAuthenticated ? {} : "skip");
+  const muscleGroups = useQuery(api.exercises.getMuscleGroups, isAuthenticated ? {} : "skip");
   const createExercise = useMutation(api.exercises.createExercise);
   const importWorkouts = useMutation(api.historyImport.importWorkouts);
 
@@ -50,6 +51,7 @@ export function HistoryImportFlow() {
   const [source, setSource] = useState<ImportSource>("custom");
   const [settings, setSettings] = useState<ImportSettings | null>(null);
   const [choices, setChoices] = useState<Record<string, string>>({});
+  const [customMuscleGroups, setCustomMuscleGroups] = useState<Record<string, string[]>>({});
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [importError, setImportError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -84,6 +86,7 @@ export function HistoryImportFlow() {
       setSource(detected);
       setSettings(settingsForSource(detected, headers, fallbackUnit));
       setChoices({});
+      setCustomMuscleGroups({});
       setStep("map");
     } catch (error) {
       setFileError(error instanceof Error ? error.message : "This file can't be read.");
@@ -133,9 +136,11 @@ export function HistoryImportFlow() {
       setProgress({ done, total });
 
       for (const { name, timed } of toCreate) {
+        const chosenMuscles = customMuscleGroups[normalizeExerciseName(name)] ?? [];
         const id = await createExercise({
           name,
           category: "lifting",
+          muscleGroups: chosenMuscles.length > 0 ? chosenMuscles : undefined,
           measurementType: timed ? "duration" : undefined,
         });
         resolved.set(normalizeExerciseName(name), id);
@@ -177,6 +182,7 @@ export function HistoryImportFlow() {
     setFile(null);
     setSettings(null);
     setChoices({});
+    setCustomMuscleGroups({});
     setResult(null);
     setImportError(null);
   };
@@ -211,6 +217,9 @@ export function HistoryImportFlow() {
         exercises={exercises ?? []}
         choices={choices}
         onChoicesChange={setChoices}
+        muscleGroups={muscleGroups ?? []}
+        customMuscleGroups={customMuscleGroups}
+        onCustomMuscleGroupsChange={setCustomMuscleGroups}
         onBack={() => setStep("map")}
         onImport={runImport}
       />
