@@ -313,7 +313,7 @@ programStates: defineTable({
 Notes on the choices:
 
 - The TM is "on the user" as P2-01 asks: each row has a `userId`, and one TM serves all programs of that user. A separate table keeps the `users` document small and gives the history.
-- The TM key follows exercise history after P2-05 (PR #95). The server finds the exercise for the name and stores `exerciseId`. A read uses `exerciseId` first and the exact name second, as `entries.getExerciseHistory` does. A rename of a custom exercise keeps its TM history. `userExerciseSettings` still uses the name as its key; a move to IDs is a follow-up.
+- The TM key follows exercise history after P2-05 (PR #95). The server finds the exercise for the name and stores `exerciseId`. A read uses `exerciseId` first and the exact name second, as `entries.getExerciseHistory` does. A rename of a custom exercise keeps its TM history when the read uses the current name or a stored `exerciseId`. A routine that keeps the old name reads only the rows saved under that old name, so it does not see TMs saved after the rename. `userExerciseSettings` still uses the name as its key; a move to IDs is a follow-up.
 - The app does not round a TM to the weight step. A percent change, such as +1% of 300 lb, is 3 lb. A 5 lb step would remove it.
 - `routines.deleteRoutine` also deletes the `programStates` row of that routine. TM rows stay, because they belong to the user.
 - `users.exportAllData` adds `trainingMaxes` and `programStates`, and keeps the new workout and entry fields (section 10.3).
@@ -1020,7 +1020,7 @@ Slices 1 to 4 and 6 complete P2-01 and P2-02. Slice 4 can ship before slice 6, b
 | An automatic TM change surprises the lifter. | The reason line shows the numbers. Undo on the summary. The TM history. Open question 1. |
 | Program loads do not match the sheet of the lifter by one step. | One rounding rule (nearest, half up) with tests. The P2-03 check against a hand-built sheet. Open question 3. |
 | Large programs make large routine documents. `getRoutines` sends all routines to the home screen. | The limits in section 3.5 (about 360 KB at most). A smaller list query is a follow-up if needed. |
-| A rename of a custom exercise breaks the link to its TMs. | P2-05 (PR #95) reads history by `exerciseId` with a name fallback. TM rows use the same pattern (section 3.3). Routines that keep the old name still match by name. |
+| A rename of a custom exercise breaks the link to its TMs. | P2-05 (PR #95) reads history by `exerciseId` with a name fallback. TM rows use the same pattern (section 3.3). A routine that keeps the old name matches by that name only, so it does not see TMs saved under the new name. Slots store `exerciseId` to close this gap; updating routine names on rename is a follow-up. |
 | Double progression reads history by exercise name. Two slots of one lift on different days mix their history. | Today's behavior, with no change. Slot history through `planned.slotId` is a follow-up. |
 | Old app versions show wrong suggested weights on program days until the OTA. | The server fills the old fields from the week. The OTA follows the Convex deploy at once. |
 | The RPE math (Epley with RIR) differs from the RTS chart by up to 1.75 points. | Section 4.5 states the difference. Open question 7. |
