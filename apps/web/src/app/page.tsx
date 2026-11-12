@@ -538,7 +538,7 @@ export default function Home() {
             />
             <FAQItem
               question="Can I import my data from other apps?"
-              answer="Not yet, but it's on our roadmap. For now you start fresh. We'll announce import support when it's ready."
+              answer="Yes. On the web app, go to Profile, then Import History, and choose a CSV export from Strong, Hevy, or your own spreadsheet. You check every exercise match before anything is saved, and importing the same file again adds no duplicates."
             />
             <FAQItem
               question="What happens after early access ends?"

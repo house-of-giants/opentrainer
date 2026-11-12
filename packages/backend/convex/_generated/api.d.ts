@@ -23,6 +23,7 @@ import type * as auth from "../auth.js";
 import type * as entries from "../entries.js";
 import type * as exercises from "../exercises.js";
 import type * as feedback from "../feedback.js";
+import type * as historyImport from "../historyImport.js";
 import type * as http from "../http.js";
 import type * as lib_equipment from "../lib/equipment.js";
 import type * as lib_logger from "../lib/logger.js";
@@ -60,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   entries: typeof entries;
   exercises: typeof exercises;
   feedback: typeof feedback;
+  historyImport: typeof historyImport;
   http: typeof http;
   "lib/equipment": typeof lib_equipment;
   "lib/logger": typeof lib_logger;
