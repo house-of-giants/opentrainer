@@ -23,7 +23,13 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
+import { NextSessionPreview } from "@/components/workout/next-session-preview";
 import { useHaptic } from "@/hooks/use-haptic";
+import {
+  showStartWorkoutError,
+  useNextRoutineDay,
+  useStartRoutineDay,
+} from "@/hooks/use-next-session";
 import { analytics } from "@/lib/analytics";
 import { useTheme } from "@/theme/theme-provider";
 
@@ -54,29 +60,16 @@ export function StartWorkoutSheet({
   const { vibrate } = useHaptic();
   const { colors } = useTheme();
   const routines = useQuery(api.routines.getRoutines, { activeOnly: true });
+  const user = useQuery(api.users.getCurrentUser);
+  const nextSession = useNextRoutineDay();
   const createWorkout = useMutation(api.workouts.createWorkout);
   const cancelWorkout = useMutation(api.workouts.cancelWorkout);
+  const startRoutineDay = useStartRoutineDay();
 
   const [expandedRoutine, setExpandedRoutine] = useState<string | null>(null);
-  const [isStarting, setIsStarting] = useState(false);
+  const [isStartingEmpty, setIsStartingEmpty] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-
-  const handleActiveWorkoutError = (error: unknown) => {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    if (errorMessage.includes("already have an active workout")) {
-      // Web pairs this toast with a "Go to workout" action button; the RN toast
-      // wrapper has no action slot, so the sheet closes and re-renders in its
-      // active-workout branch (Continue / Cancel & Start New) instead.
-      toast.error(
-        "Active workout exists",
-        "Complete or cancel your current workout first.",
-      );
-    } else {
-      toast.error("Failed to start workout");
-    }
-    console.error(error);
-  };
+  const isStarting = isStartingEmpty || startRoutineDay.isStarting;
 
   const handleContinueWorkout = () => {
     vibrate("medium");
@@ -101,7 +94,7 @@ export function StartWorkoutSheet({
   };
 
   const handleStartEmpty = async () => {
-    setIsStarting(true);
+    setIsStartingEmpty(true);
     try {
       vibrate("medium");
       await createWorkout({});
@@ -109,36 +102,22 @@ export function StartWorkoutSheet({
       onOpenChange(false);
       router.push("/(app)/workout/active");
     } catch (error) {
-      handleActiveWorkoutError(error);
+      showStartWorkoutError(error);
     } finally {
-      setIsStarting(false);
+      setIsStartingEmpty(false);
     }
   };
 
-  const handleStartFromRoutine = async (routine: Routine, dayIndex: number) => {
-    setIsStarting(true);
-    try {
-      vibrate("medium");
-      const day = routine.days[dayIndex];
-      await createWorkout({
-        title: day.name,
-        routineId: routine._id,
-        routineDayIndex: dayIndex,
-      });
-      analytics.capture("workout_started", {
-        source: "routine",
-        routine_name: routine.name,
-        day_name: day.name,
-        day_index: dayIndex,
-        exercise_count: day.exercises.length,
-      });
-      onOpenChange(false);
-      router.push("/(app)/workout/active");
-    } catch (error) {
-      handleActiveWorkoutError(error);
-    } finally {
-      setIsStarting(false);
-    }
+  const handleStartFromRoutine = async (
+    routine: Routine,
+    dayIndex: number,
+    isNextDay: boolean,
+  ) => {
+    const started = await startRoutineDay.start(routine, dayIndex, {
+      entryPoint: "start_sheet",
+      isNextDay,
+    });
+    if (started) onOpenChange(false);
   };
 
   const toggleRoutine = (routineId: string) => {
@@ -238,17 +217,55 @@ export function StartWorkoutSheet({
       </SheetHeader>
 
       <View className="gap-6 py-4">
-        <Button
-          size="lg"
-          className="h-16 w-full"
-          onPress={handleStartEmpty}
-          disabled={isStarting}
-        >
-          <Zap size={20} color={colors.primaryForeground} />
-          <Text className="text-lg font-medium text-primary-foreground">
-            Empty Workout
-          </Text>
-        </Button>
+        {nextSession ? (
+          <View className="gap-2">
+            <Card className="gap-3 border-primary/30 bg-primary/5 p-4">
+              <NextSessionPreview
+                next={nextSession}
+                unit={user?.preferredUnits ?? "lb"}
+              />
+              <Button
+                size="lg"
+                className="h-14 w-full"
+                onPress={() =>
+                  handleStartFromRoutine(
+                    nextSession.routine,
+                    nextSession.dayIndex,
+                    true,
+                  )
+                }
+                disabled={isStarting}
+              >
+                <Play size={20} color={colors.primaryForeground} />
+                <Text className="text-lg font-medium text-primary-foreground">
+                  Start Day {nextSession.dayIndex + 1}
+                </Text>
+              </Button>
+            </Card>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-12 w-full"
+              onPress={handleStartEmpty}
+              disabled={isStarting}
+            >
+              <Zap size={18} color={colors.foreground} />
+              <Text className="font-medium text-foreground">Empty Workout</Text>
+            </Button>
+          </View>
+        ) : (
+          <Button
+            size="lg"
+            className="h-16 w-full"
+            onPress={handleStartEmpty}
+            disabled={isStarting}
+          >
+            <Zap size={20} color={colors.primaryForeground} />
+            <Text className="text-lg font-medium text-primary-foreground">
+              Empty Workout
+            </Text>
+          </Button>
+        )}
 
         {routines === undefined ? (
           <View className="gap-3">
@@ -306,7 +323,14 @@ export function StartWorkoutSheet({
                           key={idx}
                           accessibilityRole="button"
                           className="w-full flex-row items-center justify-between border-b border-border p-4 active:bg-muted/50 disabled:opacity-50"
-                          onPress={() => handleStartFromRoutine(routine, idx)}
+                          onPress={() =>
+                            handleStartFromRoutine(
+                              routine,
+                              idx,
+                              routine._id === nextSession?.routine._id &&
+                                idx === nextSession.dayIndex,
+                            )
+                          }
                           disabled={isStarting}
                         >
                           <View className="min-w-0 flex-1">

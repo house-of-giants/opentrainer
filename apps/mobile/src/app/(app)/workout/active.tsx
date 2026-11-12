@@ -299,6 +299,10 @@ export default function ActiveWorkoutScreen() {
   // y offset inside the ScrollView and scroll imperatively.
   const scrollRef = useRef<ScrollView>(null);
   const exercisePositions = useRef<Map<string, number>>(new Map());
+  // Set while finishing a workout that will open its next-session summary.
+  // Completing clears the active workout, so the no-workout redirect must
+  // not race that navigation back to home.
+  const opensSummaryRef = useRef(false);
 
   const workout = useQuery(api.workouts.getActiveWorkout);
   const user = useQuery(api.users.getCurrentUser);
@@ -390,7 +394,7 @@ export default function ActiveWorkoutScreen() {
   }, [entries, pendingExercises]);
 
   useEffect(() => {
-    if (workout === null) {
+    if (workout === null && !opensSummaryRef.current) {
       // integration: web pushes /dashboard; the dashboard tab is (tabs) index.
       router.replace("/(app)/(tabs)");
     }
@@ -767,6 +771,11 @@ export default function ActiveWorkoutScreen() {
     setSwapExercise(null);
   };
 
+  // A routine workout goes straight to its summary. The swap follow-up still
+  // goes first when there are swaps, and it leads back into that flow.
+  const opensSummaryAfterCompletion = () =>
+    !!workout.routineId && !(pendingSwaps && pendingSwaps.length > 0);
+
   const handleCompletionSuccess = (usedTimeOverride: boolean) => {
     analytics.capture("workout_completed", {
       workout_id: workout._id,
@@ -802,10 +811,12 @@ export default function ActiveWorkoutScreen() {
 
     setIsCompleting(true);
     vibrate("success");
+    opensSummaryRef.current = opensSummaryAfterCompletion();
     try {
       await completeWorkout({ workoutId: workout._id });
       handleCompletionSuccess(false);
     } catch (error) {
+      opensSummaryRef.current = false;
       toast.error("Failed to complete workout");
       analytics.captureException(error);
       console.error(error);
@@ -839,6 +850,7 @@ export default function ActiveWorkoutScreen() {
 
     setIsCompletingWithEditedTime(true);
     vibrate("success");
+    opensSummaryRef.current = opensSummaryAfterCompletion();
     try {
       await completeWorkout({
         workoutId: workout._id,
@@ -847,6 +859,7 @@ export default function ActiveWorkoutScreen() {
       });
       handleCompletionSuccess(true);
     } catch (error) {
+      opensSummaryRef.current = false;
       analytics.captureException(error);
       console.error(error);
       throw error;
@@ -860,7 +873,12 @@ export default function ActiveWorkoutScreen() {
     const hasExercises = exerciseGroups.size > 0;
     const isFromRoutine = !!workout.routineId;
 
-    if (hasExercises && !isFromRoutine) {
+    if (isFromRoutine) {
+      router.replace({
+        pathname: "/(app)/workout/summary",
+        params: { id: workout._id },
+      });
+    } else if (hasExercises) {
       setShowSaveRoutine(true);
     } else {
       // integration: web pushes /dashboard.

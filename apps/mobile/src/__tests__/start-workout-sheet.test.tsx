@@ -43,7 +43,11 @@ function mockQueries(overrides: Record<string, unknown> = {}) {
     "routines:getRoutines": routines,
     ...overrides,
   };
-  mockUseQuery.mockImplementation((ref: unknown) => values[getFunctionName(ref as never)]);
+  mockUseQuery.mockImplementation((ref: unknown, args: unknown) => {
+    if (args === "skip") return undefined;
+    const value = values[getFunctionName(ref as never)];
+    return typeof value === "function" ? value(args) : value;
+  });
 }
 
 beforeEach(() => {
@@ -139,5 +143,85 @@ describe("StartWorkoutSheet", () => {
 
     await fireEvent.press(screen.getByText("Continue Workout"));
     expect(mockPush).toHaveBeenCalledWith("/(app)/workout/active");
+  });
+});
+
+describe("StartWorkoutSheet next routine day", () => {
+  const rowSession = {
+    workoutId: "w1",
+    date: "2026-11-01T00:00:00.000Z",
+    sets: [{ setNumber: 1, weight: 135, reps: 8, rpe: null, unit: "lb", isWarmup: false }],
+    bestSet: { weight: 135, reps: 8, rpe: null, unit: "lb" },
+  };
+
+  beforeEach(() => {
+    mockQueries({
+      "routines:getRoutines": [
+        {
+          ...routines[0],
+          days: [
+            routines[0].days[0],
+            {
+              name: "Pull",
+              exercises: [{ exerciseName: "Barbell Row", kind: "lifting", targetReps: "8-12" }],
+            },
+          ],
+        },
+      ],
+      // Push (day 1) was the last routine workout.
+      "workouts:getWorkoutHistory": [
+        { _id: "w1", startedAt: 10, routineId: "routine_1", routineDayIndex: 0 },
+      ],
+      "users:getCurrentUser": { preferredUnits: "lb" },
+      "entries:getExerciseHistory": (args: { exerciseName: string }) =>
+        args.exerciseName === "Barbell Row" ? [rowSession] : [],
+      "exercises:getWeightStep": null,
+    });
+  });
+
+  it("leads with the next day, its first lift, and its targets", async () => {
+    await renderSheet();
+
+    expect(screen.getByText("Next up · Push Pull Legs")).toBeOnTheScreen();
+    expect(screen.getByText("Day 2 · Pull")).toBeOnTheScreen();
+    expect(screen.getByText("Barbell Row")).toBeOnTheScreen();
+    // 8 reps in an 8-12 range: one more rep at the same weight.
+    expect(
+      screen.getByText("Last time 135 lb × 8. Next: 135 lb × 9."),
+    ).toBeOnTheScreen();
+    expect(screen.getByText("Start Day 2")).toBeOnTheScreen();
+    // Empty Workout stays available as the secondary choice.
+    expect(screen.getByText("Empty Workout")).toBeOnTheScreen();
+  });
+
+  it("starts the next day from the main button", async () => {
+    const { onOpenChange } = await renderSheet();
+
+    await fireEvent.press(screen.getByText("Start Day 2"));
+
+    await waitFor(() =>
+      expect(createWorkout).toHaveBeenCalledWith({
+        title: "Pull",
+        routineId: "routine_1",
+        routineDayIndex: 1,
+      }),
+    );
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(mockPush).toHaveBeenCalledWith("/(app)/workout/active");
+  });
+
+  it("still lets the lifter pick another day", async () => {
+    await renderSheet();
+
+    await fireEvent.press(screen.getByText("Push Pull Legs"));
+    await fireEvent.press(screen.getByText("Push"));
+
+    await waitFor(() =>
+      expect(createWorkout).toHaveBeenCalledWith({
+        title: "Push",
+        routineId: "routine_1",
+        routineDayIndex: 0,
+      }),
+    );
   });
 });

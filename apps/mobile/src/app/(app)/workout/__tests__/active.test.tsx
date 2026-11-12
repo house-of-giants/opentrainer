@@ -6,7 +6,7 @@ import {
   within,
 } from "@testing-library/react-native";
 import { getFunctionName } from "convex/server";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import * as Notifications from "expo-notifications";
 
 import ActiveWorkoutScreen from "@/app/(app)/workout/active";
@@ -213,6 +213,70 @@ describe("ActiveWorkoutScreen", () => {
       });
     } finally {
       queryResults["workouts:getActiveWorkout"] = workout;
+    }
+  });
+});
+
+describe("ActiveWorkoutScreen completion", () => {
+  afterEach(() => {
+    queryResults["workouts:getActiveWorkout"] = workout;
+    (useMutation as jest.Mock).mockImplementation(() => jest.fn());
+  });
+
+  it("opens the next-session summary after a routine workout instead of going home", async () => {
+    // Completing clears the active workout, as Convex does before the mutation resolves.
+    const completeWorkout = jest.fn(async () => {
+      queryResults["workouts:getActiveWorkout"] = null;
+    });
+    (useMutation as jest.Mock).mockImplementation((ref) =>
+      getFunctionName(ref) === "workouts:completeWorkout" ? completeWorkout : jest.fn(),
+    );
+
+    await render(
+      <ThemeProvider>
+        <ActiveWorkoutScreen />
+      </ThemeProvider>,
+    );
+    await fireEvent.press(screen.getByText("Finish"));
+
+    await waitFor(() =>
+      expect(mockRouter.replace).toHaveBeenCalledWith({
+        pathname: "/(app)/workout/summary",
+        params: { id: "workout1" },
+      }),
+    );
+    expect(completeWorkout).toHaveBeenCalledWith({ workoutId: "workout1" });
+    expect(mockRouter.replace).not.toHaveBeenCalledWith("/(app)/(tabs)");
+  });
+
+  it("returns home after a workout that is not from a routine and has no exercises", async () => {
+    queryResults["workouts:getActiveWorkout"] = { ...workout, routineId: undefined };
+    const savedEntries = queryResults["entries:getEntriesByWorkout"];
+    const savedRoutine = queryResults["workouts:getRoutineExercisesForWorkout"];
+    queryResults["entries:getEntriesByWorkout"] = [];
+    queryResults["workouts:getRoutineExercisesForWorkout"] = null;
+    const completeWorkout = jest.fn(async () => {
+      queryResults["workouts:getActiveWorkout"] = null;
+    });
+    (useMutation as jest.Mock).mockImplementation((ref) =>
+      getFunctionName(ref) === "workouts:completeWorkout" ? completeWorkout : jest.fn(),
+    );
+
+    try {
+      await render(
+        <ThemeProvider>
+          <ActiveWorkoutScreen />
+        </ThemeProvider>,
+      );
+      await fireEvent.press(screen.getByText("Finish"));
+
+      await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/(app)/(tabs)"));
+      expect(mockRouter.replace).not.toHaveBeenCalledWith(
+        expect.objectContaining({ pathname: "/(app)/workout/summary" }),
+      );
+    } finally {
+      queryResults["entries:getEntriesByWorkout"] = savedEntries;
+      queryResults["workouts:getRoutineExercisesForWorkout"] = savedRoutine;
     }
   });
 });
