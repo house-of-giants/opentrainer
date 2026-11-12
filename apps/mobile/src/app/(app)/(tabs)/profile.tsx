@@ -2,13 +2,15 @@ import { ReactNode, useState } from "react";
 import { Image, Pressable, ScrollView, Share, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth, useUser } from "@clerk/clerk-expo";
-import { useConvex, useQuery } from "convex/react";
+import { useConvex, useMutation, useQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
 import { displayWeight } from "@opentrainer/lib/units";
+import type { EffortScale } from "@opentrainer/lib/effort";
 import {
   Calendar,
   Download,
   Dumbbell,
+  Gauge,
   LogOut,
   Monitor,
   Moon,
@@ -64,6 +66,11 @@ const THEME_LABELS: Record<ThemePreference, string> = {
 
 const THEME_ORDER: ThemePreference[] = ["light", "dark", "system"];
 
+const EFFORT_SCALE_LABELS: Record<EffortScale, string> = {
+  rpe: "RPE 6–10, in half steps",
+  rir: "Reps in reserve, 0–4",
+};
+
 export default function ProfileScreen() {
   const { colors, preference, resolved, setPreference } = useTheme();
   const { user: clerkUser, isLoaded } = useUser();
@@ -84,6 +91,8 @@ export default function ProfileScreen() {
   const [showUnitsDialog, setShowUnitsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSavingEffortScale, setIsSavingEffortScale] = useState(false);
+  const updatePreferences = useMutation(api.users.updatePreferences);
 
   if (!isLoaded || user === undefined) {
     return (
@@ -129,6 +138,21 @@ export default function ProfileScreen() {
   const bodyweightDisplay = user?.bodyweight
     ? `${displayWeight(user.bodyweight, storedBodyweightUnit, preferredUnit)} ${preferredUnit}`
     : "Not set";
+
+  const effortScale: EffortScale = user?.effortScale ?? "rpe";
+
+  const toggleEffortScale = async () => {
+    setIsSavingEffortScale(true);
+    try {
+      await updatePreferences({
+        effortScale: effortScale === "rpe" ? "rir" : "rpe",
+      });
+    } catch {
+      toast.error("Failed to save");
+    } finally {
+      setIsSavingEffortScale(false);
+    }
+  };
 
   const cycleTheme = () => {
     const next: ThemePreference =
@@ -250,6 +274,14 @@ export default function ProfileScreen() {
             accessory={
               <Dots options={["lb", "kg"]} active={user?.preferredUnits ?? "lb"} />
             }
+          />
+          <SettingRow
+            icon={Gauge}
+            label="Effort Scale"
+            value={EFFORT_SCALE_LABELS[effortScale]}
+            onPress={toggleEffortScale}
+            disabled={isSavingEffortScale}
+            accessory={<Dots options={["rpe", "rir"]} active={effortScale} />}
           />
         </Section>
 

@@ -29,6 +29,7 @@ import {
   buildRepLiftingUpdate,
   buildTimedLiftingUpdate,
 } from "@opentrainer/lib/workout-set-edit";
+import type { EffortScale } from "@opentrainer/lib/effort";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,7 @@ export default function WorkoutDetailsScreen() {
   const deleteEntry = useMutation(api.entries.deleteEntry);
   const isPro = user?.tier === "pro";
   const preferredUnit: WeightUnit = user?.preferredUnits ?? "lb";
+  const effortScale: EffortScale = user?.effortScale ?? "rpe";
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -353,6 +355,7 @@ export default function WorkoutDetailsScreen() {
       isBodyweight: entry.lifting.isBodyweight,
       isWarmup: entry.lifting.isWarmup,
       rpe: entry.lifting.rpe ?? null,
+      rir: entry.lifting.rir ?? null,
       durationSeconds: entry.lifting.durationSeconds,
     });
   };
@@ -373,8 +376,8 @@ export default function WorkoutDetailsScreen() {
         entryId: entryId as Id<"entries">,
         lifting:
           data.durationSeconds !== undefined
-            ? buildTimedLiftingUpdate(editingSet, data)
-            : buildRepLiftingUpdate(editingSet, data),
+            ? buildTimedLiftingUpdate(editingSet, data, effortScale)
+            : buildRepLiftingUpdate(editingSet, data, effortScale),
       });
       analytics.capture("set_edited", {
         workout_id: workoutId,
@@ -720,6 +723,7 @@ export default function WorkoutDetailsScreen() {
 
       <EditSetSheet
         set={editingSet}
+        effortScale={effortScale}
         onOpenChange={(open) => {
           if (!open) setEditingSet(null);
         }}

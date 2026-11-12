@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { getFunctionName } from "convex/server";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 
 import ProfileScreen from "@/app/(app)/(tabs)/profile";
 import { profileUser, profileWorkouts } from "@/__fixtures__/profile-fixtures";
@@ -110,6 +110,40 @@ describe("Profile screen", () => {
 
     await fireEvent.press(screen.getByText("Appearance"));
     expect(screen.getByText("System")).toBeOnTheScreen();
+  });
+
+  it("switches the effort scale from the RPE default to RIR", async () => {
+    const updatePreferences = jest.fn(async () => "user_1");
+    (useMutation as jest.Mock).mockImplementation((ref: unknown) =>
+      getFunctionName(ref as never) === "users:updatePreferences"
+        ? updatePreferences
+        : jest.fn(),
+    );
+    await renderProfile();
+
+    expect(screen.getByText("RPE 6–10, in half steps")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByText("Effort Scale"));
+
+    expect(updatePreferences).toHaveBeenCalledTimes(1);
+    expect(updatePreferences).toHaveBeenCalledWith({ effortScale: "rir" });
+  });
+
+  it("shows the stored RIR scale and switches back to RPE", async () => {
+    const updatePreferences = jest.fn(async () => "user_1");
+    (useMutation as jest.Mock).mockImplementation((ref: unknown) =>
+      getFunctionName(ref as never) === "users:updatePreferences"
+        ? updatePreferences
+        : jest.fn(),
+    );
+    mockQueries({
+      "users:getCurrentUser": { ...profileUser, effortScale: "rir" },
+    });
+    await renderProfile();
+
+    expect(screen.getByText("Reps in reserve, 0–4")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByText("Effort Scale"));
+
+    expect(updatePreferences).toHaveBeenCalledWith({ effortScale: "rpe" });
   });
 
   it("signs out through Clerk from the account row", async () => {

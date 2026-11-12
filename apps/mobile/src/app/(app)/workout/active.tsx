@@ -17,6 +17,7 @@ import {
   createCardioPersistenceGate,
 } from "@opentrainer/lib/cardio-persistence";
 import { getExerciseGroupKey } from "@opentrainer/lib/workout-exercise-group";
+import { effortForStorage, type EffortScale } from "@opentrainer/lib/effort";
 import {
   buildRepLiftingUpdate,
   buildTimedLiftingUpdate,
@@ -69,6 +70,7 @@ type EntryData = {
     unit: "kg" | "lb";
     isBodyweight?: boolean;
     rpe?: number;
+    rir?: number;
     isWarmup?: boolean;
   };
   cardio?: {
@@ -221,6 +223,7 @@ export default function ActiveWorkoutScreen() {
   const workout = useQuery(api.workouts.getActiveWorkout);
   const user = useQuery(api.users.getCurrentUser);
   const preferredUnit: WeightUnit = user?.preferredUnits ?? "lb";
+  const effortScale: EffortScale = user?.effortScale ?? "rpe";
   const entries = useQuery(
     api.entries.getEntriesByWorkout,
     workout ? { workoutId: workout._id } : "skip",
@@ -460,7 +463,7 @@ export default function ActiveWorkoutScreen() {
           weight: set.weight,
           unit: preferredUnit,
           isBodyweight: set.isBodyweight,
-          rpe: set.rpe ?? undefined,
+          ...effortForStorage(set.rpe, effortScale),
         },
       });
       analytics.capture("set_logged", {
@@ -507,7 +510,7 @@ export default function ActiveWorkoutScreen() {
           setNumber,
           durationSeconds: set.durationSeconds,
           unit: "lb",
-          rpe: set.rpe ?? undefined,
+          ...effortForStorage(set.rpe, effortScale),
         },
       });
       analytics.capture("set_logged", {
@@ -843,6 +846,7 @@ export default function ActiveWorkoutScreen() {
       unit: "lb",
       durationSeconds: set.durationSeconds,
       rpe: set.rpe,
+      rir: set.rir,
       isWarmup: set.isWarmup,
     });
   };
@@ -863,8 +867,8 @@ export default function ActiveWorkoutScreen() {
         entryId: entryId as Id<"entries">,
         lifting:
           data.durationSeconds !== undefined
-            ? buildTimedLiftingUpdate(editingSet, data)
-            : buildRepLiftingUpdate(editingSet, data),
+            ? buildTimedLiftingUpdate(editingSet, data, effortScale)
+            : buildRepLiftingUpdate(editingSet, data, effortScale),
       });
       vibrate("success");
       toast.success("Set updated");
@@ -1063,6 +1067,7 @@ export default function ActiveWorkoutScreen() {
                     setNumber: entry.lifting!.setNumber,
                     durationSeconds: entry.lifting!.durationSeconds!,
                     rpe: entry.lifting!.rpe ?? null,
+                    rir: entry.lifting!.rir ?? null,
                     isWarmup: entry.lifting!.isWarmup,
                   }));
 
@@ -1083,6 +1088,7 @@ export default function ActiveWorkoutScreen() {
                       targetSets={meta.targetSets}
                       targetDurationSeconds={meta.targetHoldSeconds}
                       note={getExerciseNote(name)}
+                      effortScale={effortScale}
                       onAddSet={(set) => handleAddTimedSet(name, set)}
                       onEditSet={(set) => handleEditTimedSet(name, set)}
                       onSwap={() => setSwapExercise({ groupKey, name })}
@@ -1137,6 +1143,7 @@ export default function ActiveWorkoutScreen() {
                     targetSets={meta.targetSets}
                     targetReps={meta.targetReps}
                     note={getExerciseNote(name)}
+                    effortScale={effortScale}
                     onAddSet={(set: {
                       reps: number;
                       weight: number;
@@ -1212,6 +1219,7 @@ export default function ActiveWorkoutScreen() {
 
       <EditSetSheet
         set={editingSet}
+        effortScale={effortScale}
         onOpenChange={(open) => !open && setEditingSet(null)}
         onSave={handleUpdateSet}
         onDelete={handleDeleteSet}

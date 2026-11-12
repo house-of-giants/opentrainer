@@ -9,6 +9,7 @@ import {
   Dumbbell,
   User,
 } from "lucide-react-native";
+import type { EffortScale } from "@opentrainer/lib/effort";
 
 import { Button } from "@/components/ui/button";
 import { SetStepper } from "./set-stepper";
@@ -76,6 +77,7 @@ interface ExerciseAccordionProps {
   note?: string;
   lastSession?: GhostSetData;
   progressionSuggestion?: ProgressionSuggestionData;
+  effortScale: EffortScale;
   onAddSet: (
     set: Omit<SetData, "setNumber" | "entryId"> & { rpe?: number | null },
   ) => void;
@@ -358,6 +360,7 @@ export function ExerciseAccordion({
   onSwap,
   onNoteChange,
   onSelect,
+  effortScale,
 }: ExerciseAccordionProps) {
   const weightMode = getWeightMode(equipment);
   const resolvedUnit =
@@ -774,7 +777,7 @@ export function ExerciseAccordion({
           </View>
 
           <View className="pt-2">
-            <RpeSelector value={rpe} onChange={setRpe} />
+            <RpeSelector value={rpe} onChange={setRpe} scale={effortScale} />
           </View>
 
           <Button

@@ -345,8 +345,8 @@ export default function WorkoutDetailsPage() {
         entryId: entryId as Id<"entries">,
         lifting:
           data.durationSeconds !== undefined
-            ? buildTimedLiftingUpdate(editingSet, data)
-            : buildRepLiftingUpdate(editingSet, data),
+            ? buildTimedLiftingUpdate(editingSet, data, "rpe")
+            : buildRepLiftingUpdate(editingSet, data, "rpe"),
       });
       posthog.capture("set_edited", {
         workout_id: workoutId,

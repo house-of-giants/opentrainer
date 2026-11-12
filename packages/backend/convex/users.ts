@@ -146,6 +146,7 @@ export const updatePreferences = mutation({
     preferredUnits: v.optional(v.union(v.literal("kg"), v.literal("lb"))),
     bodyweight: v.optional(v.number()),
     bodyweightUnit: v.optional(v.union(v.literal("kg"), v.literal("lb"))),
+    effortScale: v.optional(v.union(v.literal("rpe"), v.literal("rir"))),
   },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);

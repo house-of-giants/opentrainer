@@ -809,8 +809,8 @@ export default function ActiveWorkoutPage() {
 					entryId as unknown as import("@opentrainer/backend/convex/_generated/dataModel").Id<"entries">,
 				lifting:
 					data.durationSeconds !== undefined
-						? buildTimedLiftingUpdate(editingSet, data)
-						: buildRepLiftingUpdate(editingSet, data),
+						? buildTimedLiftingUpdate(editingSet, data, "rpe")
+						: buildRepLiftingUpdate(editingSet, data, "rpe"),
 			});
 			vibrate("success");
 			toast.success("Set updated");
