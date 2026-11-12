@@ -19,7 +19,7 @@ export default function PrivacyPage() {
 			<main className="flex-1">
 				<article className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
 					<h1 className="text-3xl font-bold tracking-tight mb-2">Privacy Policy</h1>
-					<p className="text-muted-foreground mb-8">Last updated: January 19, 2026</p>
+					<p className="text-muted-foreground mb-8">Last updated: November 12, 2026</p>
 
 					<section className="mb-8">
 						<h2 className="text-xl font-semibold mb-3">Introduction</h2>
@@ -53,12 +53,22 @@ export default function PrivacyPage() {
 
 						<h3 className="text-lg font-medium mb-2 mt-4">Usage Data</h3>
 						<p className="text-muted-foreground mb-2">
-							We collect anonymous usage analytics through Plausible Analytics, which does not use cookies and does not track individuals. This includes:
+							We use two analytics tools:
 						</p>
 						<ul className="list-disc pl-6 text-muted-foreground space-y-1">
-							<li>Pages visited</li>
-							<li>General geographic region (country level)</li>
-							<li>Device type and browser</li>
+							<li>
+								<span className="font-medium text-foreground">Plausible Analytics</span> on the website. It does
+								not use cookies and does not identify you. It records pages visited, country, and device type
+								and browser.
+							</li>
+							<li>
+								<span className="font-medium text-foreground">PostHog</span> on the website, in the web app, and
+								in the iPhone app.
+								When you are signed in, PostHog links events to your account ID, name, and email address. Events
+								record what you do in the app, such as starting or finishing a workout and logging a set (the
+								exercise, reps, weight, and effort), plus error reports. PostHog stores an identifier in cookies
+								or local storage on your device.
+							</li>
 						</ul>
 					</section>
 
@@ -96,7 +106,7 @@ export default function PrivacyPage() {
 						<h2 className="text-xl font-semibold mb-3">Data Sharing</h2>
 						<p className="text-muted-foreground mb-2">We do not sell, trade, or rent your personal information. We may share data with:</p>
 						<ul className="list-disc pl-6 text-muted-foreground space-y-1">
-							<li><span className="font-medium text-foreground">Service Providers:</span> Convex (database), Clerk (authentication), Vercel (hosting), OpenRouter (AI processing)</li>
+							<li><span className="font-medium text-foreground">Service Providers:</span> Convex (database), Clerk (authentication), Vercel (hosting), OpenRouter (AI processing), PostHog and Plausible (analytics)</li>
 							<li><span className="font-medium text-foreground">Legal Requirements:</span> When required by law or to protect our rights</li>
 						</ul>
 					</section>

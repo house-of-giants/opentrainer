@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FlaskConical, Sparkles, TrendingUp, Shield } from "lucide-react";
+import { FlaskConical, Sparkles, TrendingUp, ChartColumn } from "lucide-react";
 import Link from "next/link";
 
 const features = [
@@ -18,9 +18,9 @@ const features = [
 			"Know if you're actually progressing — or just spinning wheels",
 	},
 	{
-		icon: Shield,
-		name: "Overtraining Alerts",
-		description: "Catch red flags before they become injuries",
+		icon: ChartColumn,
+		name: "Muscle Workload",
+		description: "Working sets per muscle each week, from what you logged",
 	},
 	{
 		icon: Sparkles,
