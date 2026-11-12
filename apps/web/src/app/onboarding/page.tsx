@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@opentrainer/backend";
+import { defaultUnitForLocale, type WeightUnit } from "@opentrainer/lib/units";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
@@ -15,6 +16,7 @@ import { ExperienceStep, type ExperienceLevel } from "./steps/experience-step";
 import { EquipmentStep } from "./steps/equipment-step";
 import { EquipmentConfirmStep } from "./steps/equipment-confirm-step";
 import { AvailabilityStep } from "./steps/availability-step";
+import { UnitsPicker } from "./steps/units-picker";
 import posthog from "posthog-js";
 
 const STEPS = ["goals", "experience", "equipment", "equipment-confirm", "availability"] as const;
@@ -25,12 +27,18 @@ export default function OnboardingPage() {
   const user = useQuery(api.users.getCurrentUser);
   
   const completeOnboarding = useMutation(api.users.completeOnboarding);
+  const updatePreferences = useMutation(api.users.updatePreferences);
   const parseEquipment = useAction(api.ai.equipmentParser.parseEquipment);
 
   const [currentStep, setCurrentStep] = useState<Step>("goals");
   const [initialized, setInitialized] = useState(false);
   
   const [goals, setGoals] = useState<Goal[]>([]);
+  // New accounts get "lb" from the backend, so default from the browser locale.
+  // The server render shows a skeleton, so its fallback is never displayed.
+  const [units, setUnits] = useState<WeightUnit>(() =>
+    defaultUnitForLocale(typeof navigator === "undefined" ? undefined : navigator.language)
+  );
   const [experience, setExperience] = useState<ExperienceLevel | null>(null);
   const [equipmentDescription, setEquipmentDescription] = useState("");
   const [equipment, setEquipment] = useState<string[]>([]);
@@ -120,6 +128,7 @@ export default function OnboardingPage() {
     if (currentStep === "availability") {
       setIsSubmitting(true);
       try {
+        await updatePreferences({ preferredUnits: units });
         await completeOnboarding({
           goals,
           experienceLevel: experience!,
@@ -141,6 +150,7 @@ export default function OnboardingPage() {
           equipment_count: equipment.length,
           weekly_availability: days,
           session_duration: duration,
+          preferred_units: units,
         });
         router.replace("/dashboard");
       } catch {
@@ -208,7 +218,10 @@ export default function OnboardingPage() {
       <main className="flex-1 px-6 pb-32">
         <div className="mx-auto max-w-md pt-4">
           {currentStep === "goals" && (
-            <GoalsStep selected={goals} onSelect={setGoals} />
+            <div className="space-y-8">
+              <GoalsStep selected={goals} onSelect={setGoals} />
+              <UnitsPicker value={units} onChange={setUnits} />
+            </div>
           )}
           {currentStep === "experience" && (
             <ExperienceStep selected={experience} onSelect={setExperience} />

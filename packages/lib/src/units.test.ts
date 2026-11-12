@@ -3,6 +3,8 @@ import { describe, test } from "node:test";
 import {
   calculateVolumeInUnit,
   convertWeight,
+  defaultUnitForLocale,
+  defaultUnitForRegion,
   displayWeight,
   editedWeightForStorage,
 } from "./units";
@@ -50,5 +52,42 @@ describe("weight units", () => {
       }),
       226
     );
+  });
+});
+
+describe("default unit from locale", () => {
+  test("uses lb only for regions on US customary units", () => {
+    for (const region of ["US", "LR", "MM", "us"]) {
+      assert.equal(defaultUnitForRegion(region), "lb", region);
+    }
+    for (const region of ["GB", "CA", "DE", "AU", "IN", "JP", "BR"]) {
+      assert.equal(defaultUnitForRegion(region), "kg", region);
+    }
+  });
+
+  test("falls back to kg when the region is unknown", () => {
+    assert.equal(defaultUnitForRegion(undefined), "kg");
+    assert.equal(defaultUnitForRegion(null), "kg");
+    assert.equal(defaultUnitForRegion(""), "kg");
+  });
+
+  test("reads the region from a locale tag", () => {
+    assert.equal(defaultUnitForLocale("en-US"), "lb");
+    assert.equal(defaultUnitForLocale("es-US"), "lb");
+    assert.equal(defaultUnitForLocale("en-GB"), "kg");
+    assert.equal(defaultUnitForLocale("fr-CA"), "kg");
+    assert.equal(defaultUnitForLocale("de-DE"), "kg");
+  });
+
+  test("infers the likely region when the tag has none", () => {
+    assert.equal(defaultUnitForLocale("en"), "lb");
+    assert.equal(defaultUnitForLocale("de"), "kg");
+    assert.equal(defaultUnitForLocale("ja"), "kg");
+  });
+
+  test("falls back to kg for a missing or invalid tag", () => {
+    assert.equal(defaultUnitForLocale(undefined), "kg");
+    assert.equal(defaultUnitForLocale(""), "kg");
+    assert.equal(defaultUnitForLocale("not a locale!"), "kg");
   });
 });

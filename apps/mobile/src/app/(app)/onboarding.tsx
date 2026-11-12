@@ -9,8 +9,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { getLocales } from "expo-localization";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
+import { defaultUnitForRegion, type WeightUnit } from "@opentrainer/lib/units";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
 import {
@@ -19,6 +21,7 @@ import {
   EquipmentStep,
   ExperienceStep,
   GoalsStep,
+  UnitsPicker,
   type ExperienceLevel,
   type Goal,
 } from "@/components/onboarding";
@@ -46,12 +49,17 @@ export default function OnboardingScreen() {
   const user = useQuery(api.users.getCurrentUser);
 
   const completeOnboarding = useMutation(api.users.completeOnboarding);
+  const updatePreferences = useMutation(api.users.updatePreferences);
   const parseEquipment = useAction(api.ai.equipmentParser.parseEquipment);
 
   const [currentStep, setCurrentStep] = useState<Step>("goals");
   const [initialized, setInitialized] = useState(false);
 
   const [goals, setGoals] = useState<Goal[]>([]);
+  // New accounts get "lb" from the backend, so default from the device region.
+  const [units, setUnits] = useState<WeightUnit>(() =>
+    defaultUnitForRegion(getLocales()[0]?.regionCode),
+  );
   const [experience, setExperience] = useState<ExperienceLevel | null>(null);
   const [equipmentDescription, setEquipmentDescription] = useState("");
   const [equipment, setEquipment] = useState<string[]>([]);
@@ -143,6 +151,7 @@ export default function OnboardingScreen() {
     if (currentStep === "availability") {
       setIsSubmitting(true);
       try {
+        await updatePreferences({ preferredUnits: units });
         await completeOnboarding({
           goals,
           experienceLevel: experience!,
@@ -163,6 +172,7 @@ export default function OnboardingScreen() {
           equipment_count: equipment.length,
           weekly_availability: days,
           session_duration: duration,
+          preferred_units: units,
         });
         router.replace("/(app)/(tabs)");
       } catch {
@@ -238,7 +248,10 @@ export default function OnboardingScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {currentStep === "goals" && (
-            <GoalsStep selected={goals} onSelect={setGoals} />
+            <View className="gap-8">
+              <GoalsStep selected={goals} onSelect={setGoals} />
+              <UnitsPicker value={units} onChange={setUnits} />
+            </View>
           )}
           {currentStep === "experience" && (
             <ExperienceStep selected={experience} onSelect={setExperience} />

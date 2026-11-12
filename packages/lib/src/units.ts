@@ -65,3 +65,24 @@ export function editedWeightForStorage({
   }
   return displayWeight(displayedWeight, displayUnit, storedUnit);
 }
+
+// Regions that weigh in pounds (US customary units). Everywhere else uses kg.
+const POUND_REGIONS = new Set(["US", "LR", "MM"]);
+
+/** Default weight unit for an ISO 3166 region code, such as "US" or "DE". */
+export function defaultUnitForRegion(region: string | null | undefined): WeightUnit {
+  return region && POUND_REGIONS.has(region.toUpperCase()) ? "lb" : "kg";
+}
+
+/**
+ * Default weight unit for a BCP 47 locale tag, such as "en-US" or "de".
+ * A tag without a region uses its likely region ("en" -> US, "de" -> DE).
+ */
+export function defaultUnitForLocale(tag: string | null | undefined): WeightUnit {
+  if (!tag) return "kg";
+  try {
+    return defaultUnitForRegion(new Intl.Locale(tag).maximize().region);
+  } catch {
+    return "kg";
+  }
+}
