@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { stepWeight } from "@opentrainer/lib/weight-step";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ export function SetStepper({
   const [inputValue, setInputValue] = useState(value.toString());
 
   const handleDecrement = () => {
-    const newValue = Math.max(min, value - step);
+    const newValue = Math.max(min, stepWeight(value, -step));
     if (newValue !== value) {
       vibrate("light");
       onChange(newValue);
@@ -40,7 +41,7 @@ export function SetStepper({
   };
 
   const handleIncrement = () => {
-    const newValue = Math.min(max, value + step);
+    const newValue = Math.min(max, stepWeight(value, step));
     if (newValue !== value) {
       vibrate("light");
       onChange(newValue);

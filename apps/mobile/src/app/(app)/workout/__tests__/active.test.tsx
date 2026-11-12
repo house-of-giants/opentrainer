@@ -1,4 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react-native";
 import { getFunctionName } from "convex/server";
 import { useQuery } from "convex/react";
 
@@ -63,6 +69,7 @@ const queryResults: Record<string, unknown> = {
   "workouts:getRoutineExercisesForWorkout": routineExercises,
   "ai/swapMutations:getSwapsForWorkout": [],
   "entries:getExerciseHistory": [],
+  "exercises:getWeightStep": null,
   "entries:getTimedExerciseHistory": [],
   "exercises:getExercises": [],
   "exercises:getMuscleGroups": [],
@@ -119,6 +126,38 @@ describe("ActiveWorkoutScreen", () => {
       // Next set CTA reflects target sets.
       expect(screen.getByText("LOG SET 2/3")).toBeOnTheScreen();
     });
+  });
+
+  it("uses the saved weight step for the goal and the weight stepper", async () => {
+    // Two sessions at the top of 8-12: the goal adds one step of weight.
+    queryResults["entries:getExerciseHistory"] = ["w2", "w1"].map((id) => ({
+      workoutId: id,
+      date: "2026-11-01T00:00:00.000Z",
+      sets: [{ setNumber: 1, weight: 100, reps: 12, rpe: 7, unit: "lb" }],
+      bestSet: { weight: 100, reps: 12, rpe: 7, unit: "lb" },
+    }));
+    queryResults["exercises:getWeightStep"] = { weightStep: 2.5, unit: "lb" };
+    try {
+      await render(
+        <ThemeProvider>
+          <ActiveWorkoutScreen />
+        </ThemeProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("102.5 lb × 8")).toBeOnTheScreen();
+      });
+      expect(screen.getByText("+2.5 lb")).toBeOnTheScreen();
+
+      // The stepper starts from the logged 135 lb set.
+      await fireEvent.press(screen.getByLabelText("Increase WEIGHT"));
+      expect(
+        within(screen.getByLabelText("Edit WEIGHT")).getByText("137.5"),
+      ).toBeOnTheScreen();
+    } finally {
+      queryResults["entries:getExerciseHistory"] = [];
+      queryResults["exercises:getWeightStep"] = null;
+    }
   });
 
   it("redirects to the dashboard when there is no active workout", async () => {

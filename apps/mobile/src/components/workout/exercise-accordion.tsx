@@ -11,8 +11,14 @@ import {
 } from "lucide-react-native";
 import type { EffortScale } from "@opentrainer/lib/effort";
 
+import {
+  resolveWeightStep,
+  type WeightStepSetting,
+} from "@opentrainer/lib/weight-step";
+
 import { Button } from "@/components/ui/button";
 import { SetStepper } from "./set-stepper";
+import { WeightStepSheet } from "./weight-step-sheet";
 import { RpeSelector } from "./rpe-selector";
 import { NoteSheet } from "./note-sheet";
 import { useHaptic } from "@/hooks/use-haptic";
@@ -78,6 +84,9 @@ interface ExerciseAccordionProps {
   lastSession?: GhostSetData;
   progressionSuggestion?: ProgressionSuggestionData;
   effortScale: EffortScale;
+  /** Saved step for this exercise; null or undefined means the default. */
+  weightStepSetting?: WeightStepSetting | null;
+  onWeightStepChange?: (setting: WeightStepSetting | null) => void;
   onAddSet: (
     set: Omit<SetData, "setNumber" | "entryId"> & { rpe?: number | null },
   ) => void;
@@ -355,6 +364,8 @@ export function ExerciseAccordion({
   note,
   lastSession,
   progressionSuggestion,
+  weightStepSetting,
+  onWeightStepChange,
   onAddSet,
   onEditSet,
   onSwap,
@@ -365,7 +376,8 @@ export function ExerciseAccordion({
   const weightMode = getWeightMode(equipment);
   const resolvedUnit =
     sets.length > 0 ? sets[sets.length - 1].unit : (lastSession?.unit ?? unit);
-  const resolvedWeightStep = resolvedUnit === "kg" ? 2.5 : 5;
+  const resolvedWeightStep = resolveWeightStep(resolvedUnit, weightStepSetting);
+  const hasCustomWeightStep = weightStepSetting?.unit === resolvedUnit;
   const resolvedDefaultWeight =
     defaultWeight ?? (resolvedUnit === "kg" ? 20 : 45);
 
@@ -396,6 +408,7 @@ export function ExerciseAccordion({
   );
   const [showAddedWeight, setShowAddedWeight] = useState(false);
   const [showNoteSheet, setShowNoteSheet] = useState(false);
+  const [showWeightStepSheet, setShowWeightStepSheet] = useState(false);
   const [ghostExpanded, setGhostExpanded] = useState(true);
   const { vibrate } = useHaptic();
   const { colors } = useTheme();
@@ -448,6 +461,10 @@ export function ExerciseAccordion({
   };
 
   const isClickable = status !== "current" && !!onSelect;
+  const showWeightStepper =
+    weightMode === "weighted-only" ||
+    (weightMode === "bodyweight-optional" && !isBodyweight) ||
+    (weightMode === "bodyweight-only" && showAddedWeight);
 
   return (
     <Pressable
@@ -754,9 +771,7 @@ export function ExerciseAccordion({
           )}
 
           <View className="flex-row items-end justify-center gap-6 pt-2">
-            {(weightMode === "weighted-only" ||
-              (weightMode === "bodyweight-optional" && !isBodyweight) ||
-              (weightMode === "bodyweight-only" && showAddedWeight)) && (
+            {showWeightStepper && (
               <SetStepper
                 label={weightMode === "bodyweight-only" ? "ADDED" : "WEIGHT"}
                 value={currentWeight}
@@ -776,6 +791,32 @@ export function ExerciseAccordion({
             />
           </View>
 
+          {showWeightStepper && onWeightStepChange && (
+            <Pressable
+              onPress={() => {
+                vibrate("light");
+                setShowWeightStepSheet(true);
+              }}
+              hitSlop={8}
+              className="self-center rounded px-2 py-1 active:bg-muted"
+              accessibilityRole="button"
+              accessibilityLabel={`Weight step, ${resolvedWeightStep} ${resolvedUnit}`}
+              accessibilityHint="Changes how much the weight buttons add"
+            >
+              <Text className="text-[11px] text-muted-foreground">
+                Weight step:{" "}
+                <Text
+                  className={cn(
+                    "font-mono tabular-nums",
+                    hasCustomWeightStep && "text-foreground",
+                  )}
+                >
+                  {resolvedWeightStep} {resolvedUnit}
+                </Text>
+              </Text>
+            </Pressable>
+          )}
+
           <View className="pt-2">
             <RpeSelector value={rpe} onChange={setRpe} scale={effortScale} />
           </View>
@@ -794,6 +835,18 @@ export function ExerciseAccordion({
                 : `LOG SET ${loggedCount + 1}`}
           </Button>
         </View>
+      )}
+
+      {onWeightStepChange && (
+        <WeightStepSheet
+          open={showWeightStepSheet}
+          onOpenChange={setShowWeightStepSheet}
+          exerciseName={exerciseName}
+          unit={resolvedUnit}
+          step={resolvedWeightStep}
+          isCustom={hasCustomWeightStep}
+          onSave={onWeightStepChange}
+        />
       )}
 
       {onNoteChange && (

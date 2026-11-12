@@ -70,6 +70,7 @@ const queryResults: Record<string, unknown> = {
   "workouts:getRoutineExercisesForWorkout": routineExercises,
   "ai/swapMutations:getSwapsForWorkout": [],
   "entries:getExerciseHistory": [],
+  "exercises:getWeightStep": null,
   "entries:getTimedExerciseHistory": [],
   "exercises:getExercises": [],
   "exercises:getMuscleGroups": [],

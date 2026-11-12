@@ -7,6 +7,11 @@ import {
   normalizeExerciseName,
 } from "@opentrainer/lib/exercise-names";
 import { deduplicateVisibleExercises } from "@opentrainer/lib/exercise-deduplication";
+import {
+  isValidWeightStep,
+  MAX_WEIGHT_STEP,
+  type WeightStepSetting,
+} from "@opentrainer/lib/weight-step";
 
 function hasExerciseName(exercise: Doc<"exercises">, normalizedName: string) {
   return (
@@ -493,5 +498,89 @@ export const updateExercise = mutation({
     await ctx.db.patch(args.id, updates);
 
     return args.id;
+  },
+});
+
+async function findUserExerciseSettings(
+  ctx: QueryCtx | MutationCtx,
+  userId: Doc<"users">["_id"],
+  exerciseName: string
+) {
+  return await ctx.db
+    .query("userExerciseSettings")
+    .withIndex("by_user_exercise", (q) =>
+      q.eq("userId", userId).eq("exerciseName", exerciseName)
+    )
+    .first();
+}
+
+/**
+ * The current user's weight step for an exercise, or null for the default.
+ */
+export const getWeightStep = query({
+  args: { exerciseName: v.string() },
+  handler: async (ctx, args): Promise<WeightStepSetting | null> => {
+    const user = await getCurrentUser(ctx, {
+      requireAuth: false,
+      requireUser: false,
+    });
+    if (!user) return null;
+
+    const settings = await findUserExerciseSettings(
+      ctx,
+      user._id,
+      args.exerciseName
+    );
+    if (!settings) return null;
+    return { weightStep: settings.weightStep, unit: settings.weightStepUnit };
+  },
+});
+
+/**
+ * Save the current user's weight step for an exercise. A null step clears it,
+ * so the exercise uses the default step again.
+ */
+export const setWeightStep = mutation({
+  args: {
+    exerciseName: v.string(),
+    weightStep: v.union(v.number(), v.null()),
+    unit: v.union(v.literal("kg"), v.literal("lb")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("User not found");
+
+    if (args.weightStep !== null && !isValidWeightStep(args.weightStep)) {
+      throw new Error(
+        `Weight step must be more than 0 and at most ${MAX_WEIGHT_STEP}`
+      );
+    }
+
+    const existing = await findUserExerciseSettings(
+      ctx,
+      user._id,
+      args.exerciseName
+    );
+
+    if (args.weightStep === null) {
+      if (existing) await ctx.db.delete(existing._id);
+      return null;
+    }
+
+    const values = {
+      weightStep: args.weightStep,
+      weightStepUnit: args.unit,
+      updatedAt: Date.now(),
+    };
+    if (existing) {
+      await ctx.db.patch(existing._id, values);
+    } else {
+      await ctx.db.insert("userExerciseSettings", {
+        userId: user._id,
+        exerciseName: args.exerciseName,
+        ...values,
+      });
+    }
+    return null;
   },
 });
