@@ -24,6 +24,7 @@ import {
   Download,
   Loader2,
   Ruler,
+  FileSpreadsheet,
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -38,6 +39,8 @@ import { EditBodyweightDialog } from "@/components/profile/edit-bodyweight-dialo
 import { EditUnitsDialog } from "@/components/profile/edit-units-dialog";
 import { DeleteAccountDialog } from "@/components/profile/delete-account-dialog";
 import { displayWeight } from "@opentrainer/lib/units";
+import { buildDataExportFile, type DataExportFormat } from "@opentrainer/lib/data-export";
+import { downloadFile } from "@/lib/download-file";
 
 const GOAL_LABELS: Record<string, string> = {
   strength: "Strength",
@@ -68,7 +71,7 @@ export default function ProfilePage() {
   const [showBodyweightDialog, setShowBodyweightDialog] = useState(false);
   const [showUnitsDialog, setShowUnitsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<DataExportFormat | null>(null);
   const convex = useConvex();
 
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -116,24 +119,16 @@ export default function ProfilePage() {
     ? `${displayWeight(user.bodyweight, storedBodyweightUnit, preferredUnit)} ${preferredUnit}`
     : "Not set";
 
-  const handleExportData = async () => {
-    setIsExporting(true);
+  const handleExportData = async (format: DataExportFormat) => {
+    setExportingFormat(format);
     try {
       const data = await convex.query(api.users.exportAllData, {});
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `opentrainer-export-${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      posthog.capture("data_exported", { scope: "all_data", method: "download" });
+      downloadFile(buildDataExportFile(data, format));
+      posthog.capture("data_exported", { scope: "all_data", method: "download", format });
     } catch (error) {
       console.error("Export failed:", error);
     } finally {
-      setIsExporting(false);
+      setExportingFormat(null);
     }
   };
 
@@ -401,18 +396,38 @@ export default function ProfilePage() {
               <button
                 type="button"
                 className="flex w-full items-center justify-between"
-                onClick={handleExportData}
-                disabled={isExporting}
+                onClick={() => handleExportData("csv")}
+                disabled={exportingFormat !== null}
               >
                 <div className="flex items-center gap-3">
-                  {isExporting ? (
+                  {exportingFormat === "csv" ? (
+                    <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <div className="text-left">
+                    <span className="font-medium">Export Workout History</span>
+                    <p className="text-sm text-muted-foreground">A CSV file with one row per set</p>
+                  </div>
+                </div>
+              </button>
+            </Card>
+            <Card className="p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between"
+                onClick={() => handleExportData("json")}
+                disabled={exportingFormat !== null}
+              >
+                <div className="flex items-center gap-3">
+                  {exportingFormat === "json" ? (
                     <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
                   ) : (
                     <Download className="h-5 w-5 text-muted-foreground" />
                   )}
                   <div className="text-left">
                     <span className="font-medium">Export All Data</span>
-                    <p className="text-sm text-muted-foreground">Download your workouts, routines & more</p>
+                    <p className="text-sm text-muted-foreground">A JSON file with your workouts, routines & more</p>
                   </div>
                 </div>
               </button>
