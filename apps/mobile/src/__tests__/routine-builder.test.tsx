@@ -136,6 +136,21 @@ describe("Routine builder", () => {
     expect(mockBack).toHaveBeenCalled();
   });
 
+  it("saves a rest time of 0 seconds that the user types", async () => {
+    await renderBuilder();
+
+    await fireEvent.changeText(
+      screen.getByPlaceholderText("e.g., Push Pull Legs"),
+      "My Split",
+    );
+    await addExercise("Bench Press");
+    await fireEvent.changeText(screen.getByDisplayValue("90"), "0");
+    await fireEvent.press(screen.getByText("Save"));
+
+    await waitFor(() => expect(createRoutine).toHaveBeenCalledTimes(1));
+    expect(createRoutine.mock.calls[0][0].days[0].exercises[0].restSeconds).toBe(0);
+  });
+
   it("does not save without a routine name", async () => {
     await renderBuilder();
 

@@ -442,7 +442,7 @@ export default function NewRoutinePage() {
             targetReps: e.measurementType === "duration" ? undefined : e.targetReps,
             measurementType: e.measurementType,
             targetHoldSeconds: e.measurementType === "duration" ? e.targetHoldSeconds : undefined,
-            restSeconds: e.restSeconds > 0 ? e.restSeconds : undefined,
+            restSeconds: e.restSeconds >= 0 ? e.restSeconds : undefined,
           })),
         })),
       });
