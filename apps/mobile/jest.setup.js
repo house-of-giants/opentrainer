@@ -29,7 +29,7 @@ jest.mock("expo-notifications", () => ({
   ),
   scheduleNotificationAsync: jest.fn(() => Promise.resolve("notification-id")),
   cancelScheduledNotificationAsync: jest.fn(() => Promise.resolve()),
-  SchedulableTriggerInputTypes: { TIME_INTERVAL: "timeInterval" },
+  SchedulableTriggerInputTypes: { TIME_INTERVAL: "timeInterval", WEEKLY: "weekly" },
 }));
 
 jest.mock("expo-keep-awake", () => ({

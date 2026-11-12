@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { Image, Pressable, ScrollView, Share, Text, View } from "react-native";
+import { Image, Linking, Pressable, ScrollView, Share, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useConvex, useMutation, useQuery } from "convex/react";
@@ -9,6 +9,7 @@ import { displayWeight } from "@opentrainer/lib/units";
 import type { EffortScale } from "@opentrainer/lib/effort";
 import { buildDataExportFile, type DataExportFormat } from "@opentrainer/lib/data-export";
 import {
+  Bell,
   Calendar,
   Download,
   Dumbbell,
@@ -20,6 +21,7 @@ import {
   Pencil,
   Ruler,
   Scale,
+  Star,
   Sun,
   Target,
   Trash2,
@@ -37,10 +39,16 @@ import {
   EditGoalsDialog,
   EditUnitsDialog,
 } from "@/components/profile";
+import { TrainingRemindersDialog } from "@/components/reminders/training-reminders-dialog";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
 import { analytics } from "@/lib/analytics";
+import {
+  defaultReminderSettings,
+  formatReminderSummary,
+  useReminderSettings,
+} from "@/lib/training-reminders";
 import { useTheme, type ThemePreference } from "@/theme/theme-provider";
 
 // Port of apps/web/src/app/profile/page.tsx.
@@ -70,6 +78,11 @@ const THEME_LABELS: Record<ThemePreference, string> = {
 
 const THEME_ORDER: ThemePreference[] = ["light", "dark", "system"];
 
+// Opens the App Store "write a review" sheet. Apple guideline 5.6.1 rules out
+// custom review prompts; the native prompt needs a new binary.
+const APP_STORE_REVIEW_URL =
+  "https://apps.apple.com/app/id6800907584?action=write-review";
+
 const EFFORT_SCALE_LABELS: Record<EffortScale, string> = {
   rpe: "RPE 6–10, in half steps",
   rir: "Reps in reserve, 0–4",
@@ -95,6 +108,8 @@ export default function ProfileScreen() {
   const [showUnitsDialog, setShowUnitsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<DataExportFormat | null>(null);
+  const [showRemindersDialog, setShowRemindersDialog] = useState(false);
+  const [reminderSettings, setReminderSettings] = useReminderSettings();
   const [isSavingEffortScale, setIsSavingEffortScale] = useState(false);
   const updatePreferences = useMutation(api.users.updatePreferences);
 
@@ -292,6 +307,13 @@ export default function ProfileScreen() {
             disabled={isSavingEffortScale}
             accessory={<Dots options={["rpe", "rir"]} active={effortScale} />}
           />
+          <SettingRow
+            icon={Bell}
+            label="Training Reminders"
+            value={formatReminderSummary(reminderSettings ?? null)}
+            onPress={() => setShowRemindersDialog(true)}
+            disabled={reminderSettings === undefined}
+          />
         </Section>
 
         <Section title="Account">
@@ -317,6 +339,17 @@ export default function ProfileScreen() {
             }
             onPress={() => handleExportData("json")}
             disabled={exportingFormat !== null}
+            accessory={null}
+          />
+          <SettingRow
+            icon={Star}
+            label="Rate OpenTrainer"
+            value="Leave a review on the App Store"
+            onPress={() => {
+              void Linking.openURL(APP_STORE_REVIEW_URL).catch(() =>
+                toast.error("Could not open the App Store"),
+              );
+            }}
             accessory={null}
           />
           {/* Mobile-only: web signs out through Clerk's <UserButton />, which
@@ -371,6 +404,18 @@ export default function ProfileScreen() {
         onOpenChange={setShowUnitsDialog}
         currentUnit={user?.preferredUnits as "lb" | "kg" | undefined}
       />
+      {showRemindersDialog && reminderSettings !== undefined && (
+        <TrainingRemindersDialog
+          onOpenChange={setShowRemindersDialog}
+          settings={
+            reminderSettings ?? defaultReminderSettings(user?.weeklyAvailability)
+          }
+          onSaved={setReminderSettings}
+          title="Training Reminders"
+          description="Get a notification on the days you train."
+          dismissLabel="Cancel"
+        />
+      )}
       <DeleteAccountDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
