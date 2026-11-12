@@ -318,6 +318,7 @@ export default function ActiveWorkoutScreen() {
     workout ? { workoutId: workout._id } : "skip",
   );
   const {
+    isLoaded: pendingSetsLoaded,
     pendingSets,
     logSet,
     retry: retryPendingSets,
@@ -536,7 +537,12 @@ export default function ActiveWorkoutScreen() {
     return () => clearTimeout(timeout);
   }, [currentExerciseIndex, exerciseList]);
 
-  if (workout === undefined || workout === null || user === undefined) {
+  if (
+    workout === undefined ||
+    workout === null ||
+    user === undefined ||
+    !pendingSetsLoaded
+  ) {
     return (
       <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
         <View className="flex-1 p-4">

@@ -172,6 +172,32 @@ describe("pending set queue", () => {
     expect(storedClientIds(storage)).toEqual(["old", "new"]);
   });
 
+  it("does not overwrite stored sets with a set added before they finish loading", async () => {
+    const storage = createMemoryStorage({
+      [PENDING_SETS_STORAGE_KEY]: JSON.stringify([
+        { args: setArgs("old", 1), status: "pending" },
+      ]),
+    });
+    const read = deferred();
+    storage.getItem.mockImplementationOnce(async (key: string) => {
+      await read.promise;
+      return storage.data.get(key) ?? null;
+    });
+    const queue = createPendingSetQueue(storage);
+
+    const loading = queue.load();
+    queue.add(setArgs("new", 2));
+    await queue.flushWrites();
+
+    // A kill now must still find the stored set on the device.
+    expect(storedClientIds(storage)).toEqual(["old"]);
+
+    read.resolve(undefined);
+    await loading;
+    await queue.flushWrites();
+    expect(storedClientIds(storage)).toEqual(["old", "new"]);
+  });
+
   it("starts empty when stored data is unreadable", async () => {
     const queue = createPendingSetQueue(
       createMemoryStorage({ [PENDING_SETS_STORAGE_KEY]: "{not json" }),

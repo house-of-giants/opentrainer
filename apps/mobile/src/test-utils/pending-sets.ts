@@ -48,6 +48,7 @@ export function pendingSetQueueModuleMock() {
       ...actual,
       replaceQueueForTests: () => {
         queue = actual.createPendingSetQueue();
+        return queue.load();
       },
     },
     "pendingSetQueue",
@@ -55,23 +56,24 @@ export function pendingSetQueueModuleMock() {
   );
 }
 
-function replaceQueue() {
-  (
+/** Replaces the queue and starts reading storage, as app start does. */
+function replaceQueue(): Promise<void> {
+  return (
     jest.requireMock("@/lib/pending-set-queue") as {
-      replaceQueueForTests: () => void;
+      replaceQueueForTests: () => Promise<void>;
     }
   ).replaceQueueForTests();
 }
 
 /** A closed app: memory is gone, device storage stays. */
 export function simulateAppRestart() {
-  replaceQueue();
+  void replaceQueue();
 }
 
 /** A fresh install: no queued sets in memory or storage, connection up. */
 export async function resetPendingSets() {
   await AsyncStorage.removeItem(PENDING_SETS_STORAGE_KEY);
-  replaceQueue();
+  await replaceQueue();
   connectionListeners.clear();
   connection.isWebSocketConnected = true;
 }

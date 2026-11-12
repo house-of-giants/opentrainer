@@ -254,6 +254,48 @@ describe("active workout set logging when the server rejects the save", () => {
 });
 
 describe("active workout set logging after the app is killed", () => {
+  it("does not offer logging until stored sets are restored, so set numbers do not collide", async () => {
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          args: {
+            workoutId: "workout_1",
+            clientId: "stored-1",
+            exerciseName: "Bench Press",
+            lifting: { setNumber: 1, reps: 5, weight: 45, unit: "lb" },
+          },
+          status: "pending",
+        },
+      ]),
+    );
+    addLiftingEntry.mockImplementation(neverSettles);
+    let finishRead!: () => void;
+    const readHeld = new Promise<void>((resolve) => {
+      finishRead = resolve;
+    });
+    const getItem = AsyncStorage.getItem as jest.Mock;
+    const realGetItem = getItem.getMockImplementation()!;
+    getItem.mockImplementationOnce(async (key: string) => {
+      await readHeld;
+      return realGetItem(key);
+    });
+    simulateAppRestart();
+
+    await render(
+      <ThemeProvider>
+        <ActiveWorkoutScreen />
+      </ThemeProvider>,
+    );
+    await act(async () => {});
+    expect(screen.queryByText(/^LOG SET/)).toBeNull();
+
+    await act(async () => finishRead());
+    await fireEvent.press(await screen.findByText("LOG SET 2/3"));
+
+    expect(addLiftingEntry.mock.calls.map(([args]) => args.lifting.setNumber)).toEqual([1, 2]);
+  });
+
   it("replays stored sets in order with their clientIds and loses or duplicates none", async () => {
     addLiftingEntry.mockImplementation(neverSettles);
     const firstRun = await renderScreen();

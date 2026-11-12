@@ -46,6 +46,7 @@ function parseStored(raw: string | null): PendingSet[] {
 export function createPendingSetQueue(storage: Storage = AsyncStorage) {
   let items: readonly PendingSet[] = [];
   let loading: Promise<void> | null = null;
+  let loaded = false;
   let writes: Promise<void> = Promise.resolve();
   const inFlight = new Set<string>();
   const listeners = new Set<() => void>();
@@ -53,6 +54,9 @@ export function createPendingSetQueue(storage: Storage = AsyncStorage) {
   const commit = (next: readonly PendingSet[]) => {
     items = next;
     for (const listener of listeners) listener();
+    // Until stored sets are read, a write would replace them; load writes the
+    // merged list.
+    if (!loaded) return;
     // Each write stores the full list as it is now; writes run in order, so
     // the last one always matches memory.
     const snapshot = JSON.stringify(next);
@@ -104,6 +108,7 @@ export function createPendingSetQueue(storage: Storage = AsyncStorage) {
         .then((raw) => {
           const stored = parseStored(raw);
           const storedIds = new Set(stored.map((item) => item.args.clientId));
+          loaded = true;
           commit([
             ...stored,
             ...items.filter((item) => !storedIds.has(item.args.clientId)),
@@ -126,6 +131,8 @@ export function createPendingSetQueue(storage: Storage = AsyncStorage) {
       return Promise.all(items.map((item) => sync(item.args.clientId, send)));
     },
     getSnapshot: () => items,
+    /** True once stored sets are in memory. */
+    isLoaded: () => loaded,
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {
@@ -141,3 +148,5 @@ export type PendingSetQueue = ReturnType<typeof createPendingSetQueue>;
 
 /** One queue per app process, shared by every mount of the workout screen. */
 export const pendingSetQueue = createPendingSetQueue();
+// Read stored sets at app start, so the workout screen rarely waits for them.
+void pendingSetQueue.load();

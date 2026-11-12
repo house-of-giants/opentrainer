@@ -22,6 +22,11 @@ export function usePendingSets(workoutId: Id<"workouts"> | undefined) {
   const addLiftingEntry = useMutation(api.entries.addLiftingEntry);
   const convex = useConvex();
   const items = useSyncExternalStore(queue.subscribe, queue.getSnapshot);
+  const isLoaded = useSyncExternalStore(queue.subscribe, queue.isLoaded);
+
+  useEffect(() => {
+    void queue.load();
+  }, [queue]);
 
   const workoutIdRef = useRef(workoutId);
   useEffect(() => {
@@ -89,5 +94,6 @@ export function usePendingSets(workoutId: Id<"workouts"> | undefined) {
     [items, workoutId],
   );
 
-  return { pendingSets, logSet, retry: replay };
+  // Log only after stored sets are restored, so a new set's number counts them.
+  return { isLoaded, pendingSets, logSet, retry: replay };
 }
