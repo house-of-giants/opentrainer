@@ -169,10 +169,15 @@ export default defineSchema({
     }))),
     
     notes: v.optional(v.string()),
+
+    // Set on workouts made by a CSV history import. A second import of the
+    // same file finds the workout by this key and skips it.
+    importKey: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
     .index("by_user_started", ["userId", "startedAt"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_user_import_key", ["userId", "importKey"]),
 
   // --------------------------------------------------------------------------
   // Workout Entries Table

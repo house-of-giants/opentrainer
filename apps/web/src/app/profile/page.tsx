@@ -22,6 +22,7 @@ import {
   Sparkles,
   Trash2,
   Download,
+  Upload,
   Loader2,
   Ruler,
   FileSpreadsheet,
@@ -392,6 +393,17 @@ export default function ProfilePage() {
             Account
           </h3>
           <div className="space-y-2">
+            <Card className="p-4">
+              <Link href="/profile/import" className="flex w-full items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium">Import History</span>
+                    <p className="text-sm text-muted-foreground">From Strong, Hevy, or a CSV spreadsheet</p>
+                  </div>
+                </div>
+              </Link>
+            </Card>
             <Card className="p-4">
               <button
                 type="button"
