@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
 import type { Id } from "@opentrainer/backend";
+import type { RoutineEditorExerciseFields } from "@opentrainer/lib/routine-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,17 +22,8 @@ import { Slider } from "@/components/ui/slider";
 import { Dumbbell, Heart, Activity, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
-export type RoutineExercise = {
+export type RoutineExercise = RoutineEditorExerciseFields<Id<"exercises">> & {
 	id: string;
-	exerciseId?: Id<"exercises">;
-	exerciseName: string;
-	kind: "lifting" | "cardio" | "mobility";
-	targetSets: number;
-	targetReps: string;
-	measurementType?: "reps" | "duration";
-	targetDuration?: number;
-	targetHoldSeconds?: number;
-	perSide?: boolean;
 	restSeconds: number;
 };
 

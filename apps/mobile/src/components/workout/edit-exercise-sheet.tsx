@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
 import type { Id } from "@opentrainer/backend";
+import type { RoutineEditorExerciseFields } from "@opentrainer/lib/routine-editor";
 import { Activity, Dumbbell, Heart, Trash2, X } from "lucide-react-native";
 
 import { Badge } from "@/components/ui/badge";
@@ -23,17 +24,8 @@ import { useTheme } from "@/theme/theme-provider";
 // Drawer on web). Used by the routine editor to configure a routine exercise;
 // mutates the exercise catalog (create/update) for custom lifting exercises
 // exactly like web before handing the row back through onSave.
-export type RoutineExercise = {
+export type RoutineExercise = RoutineEditorExerciseFields<Id<"exercises">> & {
   id: string;
-  exerciseId?: Id<"exercises">;
-  exerciseName: string;
-  kind: "lifting" | "cardio" | "mobility";
-  targetSets: number;
-  targetReps: string;
-  measurementType?: "reps" | "duration";
-  targetDuration?: number;
-  targetHoldSeconds?: number;
-  perSide?: boolean;
   restSeconds: number;
 };
 

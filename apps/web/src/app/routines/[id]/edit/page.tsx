@@ -65,6 +65,10 @@ import {
 } from "@/components/workout/edit-exercise-sheet";
 import { ImportDayDialog } from "@/components/workout/import-day-dialog";
 import { normalizeExerciseName } from "@opentrainer/lib/exercise-names";
+import {
+	editorExerciseToRoutineExercise,
+	routineExerciseToEditorFields,
+} from "@opentrainer/lib/routine-editor";
 
 type RoutineDay = {
 	id: string;
@@ -198,24 +202,9 @@ export default function EditRoutinePage() {
 						(catalogEntry) =>
 							catalogEntry._id === ex.exerciseId || catalogEntry.name === ex.exerciseName
 					);
-					let targetDuration = ex.targetDuration;
-					if (ex.kind === "cardio" && !targetDuration && ex.targetReps) {
-						const match = ex.targetReps.match(/(\d+)/);
-						if (match) {
-							targetDuration = parseInt(match[1], 10);
-						}
-					}
 					return {
 						id: crypto.randomUUID(),
-						exerciseId: ex.exerciseId,
-						exerciseName: ex.exerciseName,
-						kind: ex.kind,
-						targetSets: ex.targetSets || 3,
-						targetReps: ex.targetReps || "8-12",
-						measurementType: ex.measurementType ?? catalogExercise?.measurementType,
-						targetDuration: targetDuration || 20,
-						targetHoldSeconds: ex.targetHoldSeconds || 30,
-						perSide: ex.perSide || false,
+						...routineExerciseToEditorFields(ex, catalogExercise?.measurementType),
 						restSeconds: 90,
 					};
 				}),
@@ -394,24 +383,7 @@ export default function EditRoutinePage() {
 				description: description.trim() || undefined,
 				days: days.map((d) => ({
 					name: d.name,
-					exercises: d.exercises.map((e) => ({
-						exerciseId: e.exerciseId,
-						exerciseName: e.exerciseName,
-						kind: e.kind,
-						targetSets:
-							e.kind === "lifting" || e.kind === "mobility" ? e.targetSets : 1,
-						targetReps:
-							(e.kind === "lifting" && e.measurementType !== "duration") || e.kind === "mobility"
-								? e.targetReps
-								: undefined,
-						measurementType: e.kind === "lifting" ? e.measurementType : undefined,
-						targetDuration: e.kind === "cardio" ? e.targetDuration : undefined,
-						targetHoldSeconds:
-							e.kind === "mobility" || e.measurementType === "duration"
-								? e.targetHoldSeconds
-								: undefined,
-						perSide: e.kind === "mobility" ? e.perSide : undefined,
-					})),
+					exercises: d.exercises.map(editorExerciseToRoutineExercise),
 				})),
 			});
 			vibrate("success");

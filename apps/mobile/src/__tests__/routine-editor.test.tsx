@@ -169,6 +169,81 @@ describe("Routine editor", () => {
     expect(mockBack).toHaveBeenCalled();
   });
 
+  it("keeps targetRpe, notes, and targetIntensity when it saves the routine", async () => {
+    // Imported and AI-generated routines carry fields the editor has no control for.
+    mockQueries({
+      "routines:getRoutine": {
+        ...editorRoutineFixture,
+        days: [
+          {
+            name: "Push",
+            exercises: [
+              {
+                exerciseId: "ex_bench",
+                exerciseName: "Bench Press",
+                kind: "lifting",
+                targetSets: 4,
+                targetReps: "6-8",
+                targetRpe: 8,
+                notes: "Pause the first rep",
+              },
+              {
+                exerciseName: "Bike",
+                kind: "cardio",
+                targetDuration: 15,
+                targetIntensity: 7,
+                notes: "Easy spin",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    await renderEditor();
+
+    await fireEvent.press(screen.getByLabelText("Rename Push"));
+    await fireEvent.changeText(screen.getByLabelText("Day name"), "Push A");
+    await fireEvent.press(screen.getByLabelText("Done renaming day"));
+    await fireEvent.press(screen.getByText("Save"));
+
+    await waitFor(() => expect(updateRoutine).toHaveBeenCalledTimes(1));
+    expect(updateRoutine.mock.calls[0][0].days).toStrictEqual([
+      {
+        name: "Push A",
+        exercises: [
+          {
+            exerciseId: "ex_bench",
+            exerciseName: "Bench Press",
+            kind: "lifting",
+            targetSets: 4,
+            targetReps: "6-8",
+            measurementType: undefined,
+            targetDuration: undefined,
+            targetHoldSeconds: undefined,
+            perSide: undefined,
+            targetRpe: 8,
+            notes: "Pause the first rep",
+            targetIntensity: undefined,
+          },
+          {
+            exerciseId: undefined,
+            exerciseName: "Bike",
+            kind: "cardio",
+            targetSets: 1,
+            targetReps: undefined,
+            measurementType: undefined,
+            targetDuration: 15,
+            targetHoldSeconds: undefined,
+            perSide: undefined,
+            targetRpe: undefined,
+            notes: "Easy spin",
+            targetIntensity: 7,
+          },
+        ],
+      },
+    ]);
+  });
+
   it("persists a reorder produced by the drag list's onDragEnd", async () => {
     await renderEditor();
 
