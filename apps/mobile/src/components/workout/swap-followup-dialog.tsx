@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { useMutation } from "convex/react";
 import { api } from "@opentrainer/backend";
@@ -49,15 +50,19 @@ export function SwapFollowUpDialog({
     api.ai.swapMutations.acceptPermanentSwap,
   );
 
-  const handleAccept = async (swap: SwapData) => {
-    await acceptPermanentSwap({ swapId: swap._id, accepted: true });
+  // An answered swap leaves the list. After the last one, move on as
+  // Dismiss all does; an empty list renders nothing. Track answers here,
+  // since two can be in flight before the list updates.
+  const answeredIds = useRef(new Set<string>());
+  const answer = async (swap: SwapData, accepted: boolean) => {
+    await acceptPermanentSwap({ swapId: swap._id, accepted });
     await markPromptShown({ swapId: swap._id });
+    answeredIds.current.add(swap._id);
+    if (swaps.every((s) => answeredIds.current.has(s._id))) onComplete();
   };
 
-  const handleDecline = async (swap: SwapData) => {
-    await acceptPermanentSwap({ swapId: swap._id, accepted: false });
-    await markPromptShown({ swapId: swap._id });
-  };
+  const handleAccept = (swap: SwapData) => answer(swap, true);
+  const handleDecline = (swap: SwapData) => answer(swap, false);
 
   const handleDismissAll = async () => {
     await Promise.all(swaps.map((swap) => markPromptShown({ swapId: swap._id })));

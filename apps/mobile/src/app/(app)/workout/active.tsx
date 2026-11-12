@@ -226,6 +226,8 @@ type PendingExercise = {
   muscleGroups?: string[];
 };
 
+type FinishTimes = { startedAtOverride: number; completedAtOverride: number };
+
 function getEntryGroupKey(entry: EntryData) {
   return getExerciseGroupKey({
     name: entry.exerciseName,
@@ -304,12 +306,21 @@ export default function ActiveWorkoutScreen() {
   // y offset inside the ScrollView and scroll imperatively.
   const scrollRef = useRef<ScrollView>(null);
   const exercisePositions = useRef<Map<string, number>>(new Map());
-  // Set while finishing a workout that will open its next-session summary.
-  // Completing clears the active workout, so the no-workout redirect must
-  // not race that navigation back to home.
-  const opensSummaryRef = useRef(false);
+  // Rejected sets that still failed when the lifter tapped Finish.
+  const [notSavedAtFinish, setNotSavedAtFinish] = useState<{
+    count: number;
+    times?: FinishTimes;
+  }>({ count: 0 });
+  const [showNotSaved, setShowNotSaved] = useState(false);
 
-  const workout = useQuery(api.workouts.getActiveWorkout);
+  const activeWorkout = useQuery(api.workouts.getActiveWorkout);
+  // Completing clears the active workout, but the screen still shows the
+  // finished one until the lifter leaves it: the summary navigation, the
+  // swap follow-up, and the save-as-routine offer all need it.
+  const [finishedWorkout, setFinishedWorkout] = useState<
+    NonNullable<typeof activeWorkout> | null
+  >(null);
+  const workout = finishedWorkout ?? activeWorkout;
   const user = useQuery(api.users.getCurrentUser);
   const preferredUnit: WeightUnit = user?.preferredUnits ?? "lb";
   const effortScale: EffortScale = user?.effortScale ?? "rpe";
@@ -322,6 +333,8 @@ export default function ActiveWorkoutScreen() {
     pendingSets,
     logSet,
     retry: retryPendingSets,
+    retryFailedSets,
+    discardFailedSets,
   } = usePendingSets(workout?._id);
   // Sets the server has not confirmed show after the saved ones. A set leaves
   // the pending list only after the server has it, so match on clientId to
@@ -426,7 +439,7 @@ export default function ActiveWorkoutScreen() {
   }, [entries, pendingExercises]);
 
   useEffect(() => {
-    if (workout === null && !opensSummaryRef.current) {
+    if (workout === null) {
       // integration: web pushes /dashboard; the dashboard tab is (tabs) index.
       router.replace("/(app)/(tabs)");
     }
@@ -797,11 +810,6 @@ export default function ActiveWorkoutScreen() {
     setSwapExercise(null);
   };
 
-  // A routine workout goes straight to its summary. The swap follow-up still
-  // goes first when there are swaps, and it leads back into that flow.
-  const opensSummaryAfterCompletion = () =>
-    !!workout.routineId && !(pendingSwaps && pendingSwaps.length > 0);
-
   const handleCompletionSuccess = (usedTimeOverride: boolean) => {
     analytics.capture("workout_completed", {
       workout_id: workout._id,
@@ -826,7 +834,42 @@ export default function ActiveWorkoutScreen() {
     }
   };
 
-  const handleComplete = async () => {
+  /**
+   * Sends rejected sets again, then completes the workout. A set the server
+   * still rejects opens the not-saved dialog instead, unless the lifter chose
+   * to finish without it. Sets that are only pending need no wait: the Convex
+   * client runs this client's mutations in call order, so they reach the
+   * server before completeWorkout.
+   */
+  const finishWorkout = async (
+    times: FinishTimes | undefined,
+    unsavedSets: "retry" | "discard",
+  ) => {
+    if (unsavedSets === "retry") {
+      const notSavedCount = await retryFailedSets();
+      if (notSavedCount > 0) {
+        setNotSavedAtFinish({ count: notSavedCount, times });
+        setShowNotSaved(true);
+        return;
+      }
+    }
+
+    vibrate("success");
+    setFinishedWorkout(workout);
+    try {
+      await completeWorkout({ workoutId: workout._id, ...times });
+    } catch (error) {
+      setFinishedWorkout(null);
+      throw error;
+    }
+    if (unsavedSets === "discard") discardFailedSets();
+    handleCompletionSuccess(times !== undefined);
+  };
+
+  const handleComplete = async (
+    times?: FinishTimes,
+    unsavedSets: "retry" | "discard" = "retry",
+  ) => {
     const completionStart = cardioPersistenceGate.tryStartCompletion();
     if (completionStart !== "started") {
       if (completionStart === "cardio_save_pending") {
@@ -835,14 +878,11 @@ export default function ActiveWorkoutScreen() {
       return;
     }
 
+    setShowNotSaved(false);
     setIsCompleting(true);
-    vibrate("success");
-    opensSummaryRef.current = opensSummaryAfterCompletion();
     try {
-      await completeWorkout({ workoutId: workout._id });
-      handleCompletionSuccess(false);
+      await finishWorkout(times, unsavedSets);
     } catch (error) {
-      opensSummaryRef.current = false;
       toast.error("Failed to complete workout");
       analytics.captureException(error);
       console.error(error);
@@ -875,17 +915,12 @@ export default function ActiveWorkoutScreen() {
     }
 
     setIsCompletingWithEditedTime(true);
-    vibrate("success");
-    opensSummaryRef.current = opensSummaryAfterCompletion();
     try {
-      await completeWorkout({
-        workoutId: workout._id,
-        startedAtOverride: startedAt,
-        completedAtOverride: completedAt,
-      });
-      handleCompletionSuccess(true);
+      await finishWorkout(
+        { startedAtOverride: startedAt, completedAtOverride: completedAt },
+        "retry",
+      );
     } catch (error) {
-      opensSummaryRef.current = false;
       analytics.captureException(error);
       console.error(error);
       throw error;
@@ -907,19 +942,21 @@ export default function ActiveWorkoutScreen() {
     } else if (hasExercises) {
       setShowSaveRoutine(true);
     } else {
-      // integration: web pushes /dashboard.
-      router.replace("/(app)/(tabs)");
+      leaveFinishedWorkout();
     }
   };
+
+  // The workout is complete, so the no-workout redirect takes the lifter home.
+  const leaveFinishedWorkout = () => setFinishedWorkout(null);
 
   const handleSwapFollowUpComplete = () => {
     setShowSwapFollowUp(false);
     handlePostWorkoutFlow();
   };
 
-  const handleRoutineDialogComplete = () => {
-    // integration: web pushes /dashboard.
-    router.replace("/(app)/(tabs)");
+  const handleSaveRoutineOpenChange = (open: boolean) => {
+    setShowSaveRoutine(open);
+    if (!open) leaveFinishedWorkout();
   };
 
   const handleConfirmCancel = async () => {
@@ -1105,7 +1142,7 @@ export default function ActiveWorkoutScreen() {
             </Button>
             <Button
               size="sm"
-              onPress={handleComplete}
+              onPress={() => handleComplete()}
               disabled={hasPendingCardioSaves || isWorkoutCompleting}
             >
               {hasPendingCardioSaves
@@ -1331,10 +1368,10 @@ export default function ActiveWorkoutScreen() {
 
       <SaveAsRoutineDialog
         open={showSaveRoutine}
-        onOpenChange={setShowSaveRoutine}
+        onOpenChange={handleSaveRoutineOpenChange}
         workoutId={workout._id}
         workoutTitle={workout.title}
-        onComplete={handleRoutineDialogComplete}
+        onComplete={leaveFinishedWorkout}
       />
 
       {swapExercise && (
@@ -1351,10 +1388,38 @@ export default function ActiveWorkoutScreen() {
 
       <SwapFollowUpDialog
         open={showSwapFollowUp}
-        onOpenChange={setShowSwapFollowUp}
+        onOpenChange={(open) => !open && handleSwapFollowUpComplete()}
         swaps={pendingSwaps ?? []}
         onComplete={handleSwapFollowUpComplete}
       />
+
+      <Dialog open={showNotSaved} onOpenChange={setShowNotSaved}>
+        <DialogHeader>
+          <DialogTitle>
+            {notSavedAtFinish.count === 1
+              ? "1 set not saved"
+              : `${notSavedAtFinish.count} sets not saved`}
+          </DialogTitle>
+          <DialogDescription>
+            {notSavedAtFinish.count === 1
+              ? "This set did not save. Try again, or finish and leave it out."
+              : "These sets did not save. Try again, or finish and leave them out."}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onPress={() => handleComplete(notSavedAtFinish.times, "discard")}
+          >
+            {notSavedAtFinish.count === 1
+              ? "Finish without it"
+              : "Finish without them"}
+          </Button>
+          <Button onPress={() => handleComplete(notSavedAtFinish.times)}>
+            Try again
+          </Button>
+        </DialogFooter>
+      </Dialog>
 
       <EditSetSheet
         set={editingSet}
