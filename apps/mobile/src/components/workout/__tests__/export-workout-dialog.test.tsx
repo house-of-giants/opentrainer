@@ -1,11 +1,12 @@
 import { Share } from "react-native";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { useQuery } from "convex/react";
 import * as Clipboard from "expo-clipboard";
 import { api } from "@opentrainer/backend";
 import type { Id } from "@opentrainer/backend";
 
 import { toast } from "@/components/ui/toast";
+import { analytics } from "@/lib/analytics";
 import { ExportWorkoutDialog } from "@/components/workout/export-workout-dialog";
 import { ThemeProvider } from "@/theme/theme-provider";
 
@@ -18,6 +19,12 @@ jest.mock("expo-clipboard", () => ({
 jest.mock("@/components/ui/toast", () => ({
   toast: { success: jest.fn(), error: jest.fn(), info: jest.fn(), message: jest.fn() },
 }));
+
+jest.mock("@/lib/analytics", () => ({
+  analytics: { capture: jest.fn(), identify: jest.fn(), captureException: jest.fn() },
+}));
+
+const mockCapture = analytics.capture as jest.Mock;
 
 const workoutId = "workout_1" as Id<"workouts">;
 
@@ -116,6 +123,9 @@ describe("ExportWorkoutDialog", () => {
     expect(JSON.parse(copied)).toEqual(exportPayload);
     expect(copied).toBe(JSON.stringify(exportPayload, null, 2));
     expect(toast.success).toHaveBeenCalledWith("Copied to clipboard");
+    expect(mockCapture.mock.calls).toEqual([
+      ["data_exported", { scope: "workout", method: "copy" }],
+    ]);
   });
 
   it("reports a clipboard failure the way the web dialog does", async () => {
@@ -127,6 +137,7 @@ describe("ExportWorkoutDialog", () => {
     await fireEvent.press(screen.getByText("Copy"));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to copy"));
+    expect(mockCapture).not.toHaveBeenCalled();
   });
 
   it("shares the JSON with the web download filename", async () => {
@@ -143,6 +154,26 @@ describe("ExportWorkoutDialog", () => {
         title: "push-day.json",
       }),
     );
+    await waitFor(() =>
+      expect(mockCapture.mock.calls).toEqual([
+        ["data_exported", { scope: "workout", method: "share" }],
+      ]),
+    );
+    shareSpy.mockRestore();
+  });
+
+  it("does not count a share sheet the user dismissed as an export", async () => {
+    const shareSpy = jest
+      .spyOn(Share, "share")
+      .mockResolvedValue({ action: Share.dismissedAction } as never);
+    await renderDialog();
+
+    await fireEvent.press(screen.getByText("Share"));
+
+    await waitFor(() => expect(shareSpy).toHaveBeenCalledTimes(1));
+    await act(async () => {}); // let the resolved share result reach the handler
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(mockCapture).not.toHaveBeenCalled();
     shareSpy.mockRestore();
   });
 });

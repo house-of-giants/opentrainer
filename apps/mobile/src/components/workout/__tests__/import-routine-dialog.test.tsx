@@ -4,6 +4,7 @@ import { useMutation } from "convex/react";
 import { ImportRoutineDialog } from "@/components/workout/import-routine-dialog";
 import { validRoutineImportJson } from "@/components/workout/__fixtures__/routine-fixtures";
 import { toast } from "@/components/ui/toast";
+import { analytics } from "@/lib/analytics";
 import { ThemeProvider } from "@/theme/theme-provider";
 
 jest.mock("convex/react", () => ({
@@ -20,7 +21,12 @@ jest.mock("@/components/ui/toast", () => ({
   },
 }));
 
+jest.mock("@/lib/analytics", () => ({
+  analytics: { capture: jest.fn(), identify: jest.fn(), captureException: jest.fn() },
+}));
+
 const mockUseMutation = useMutation as jest.Mock;
+const mockCapture = analytics.capture as jest.Mock;
 const mockToast = toast as jest.Mocked<typeof toast>;
 
 const importRoutine = jest.fn();
@@ -60,6 +66,7 @@ describe("ImportRoutineDialog", () => {
     expect(mockToast.success).toHaveBeenCalledWith("Routine imported successfully!");
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(onSuccess).toHaveBeenCalled();
+    expect(mockCapture.mock.calls).toEqual([["routine_imported", { scope: "routine" }]]);
   });
 
   it("surfaces the mutation's validation error for invalid JSON and stays open", async () => {
@@ -79,6 +86,7 @@ describe("ImportRoutineDialog", () => {
     expect(mockToast.success).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(onSuccess).not.toHaveBeenCalled();
+    expect(mockCapture).not.toHaveBeenCalled();
   });
 
   it("does not call the mutation while the input is empty", async () => {

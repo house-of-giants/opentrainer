@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
+import { analytics } from "@/lib/analytics";
 import { useTheme } from "@/theme/theme-provider";
 
 // Port of apps/web/src/components/workout/export-workout-dialog.tsx.
@@ -42,6 +43,7 @@ export function ExportWorkoutDialog({
 
     try {
       await Clipboard.setStringAsync(exportData.json);
+      analytics.capture("data_exported", { scope: "workout", method: "copy" });
       toast.success("Copied to clipboard");
     } catch {
       toast.error("Failed to copy");
@@ -56,7 +58,13 @@ export function ExportWorkoutDialog({
       .toLowerCase()}.json`;
 
     try {
-      await Share.share({ message: exportData.json, title: fileName });
+      const result = await Share.share({
+        message: exportData.json,
+        title: fileName,
+      });
+      if (result.action !== Share.dismissedAction) {
+        analytics.capture("data_exported", { scope: "workout", method: "share" });
+      }
     } catch {
       toast.error("Failed to share");
     }

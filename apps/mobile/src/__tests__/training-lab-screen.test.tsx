@@ -4,6 +4,7 @@ import { useAction, useQuery } from "convex/react";
 import Toast from "react-native-toast-message";
 
 import TrainingLabScreen from "@/app/(app)/training-lab";
+import { analytics } from "@/lib/analytics";
 import { ThemeProvider } from "@/theme/theme-provider";
 
 import {
@@ -53,6 +54,11 @@ jest.mock("react-native-toast-message", () => ({
   BaseToast: () => null,
 }));
 
+jest.mock("@/lib/analytics", () => ({
+  analytics: { capture: jest.fn(), identify: jest.fn(), captureException: jest.fn() },
+}));
+
+const mockCapture = analytics.capture as jest.Mock;
 const mockUseQuery = useQuery as jest.Mock;
 const mockUseAction = useAction as jest.Mock;
 const mockToastShow = Toast.show as jest.Mock;
@@ -179,6 +185,9 @@ describe("Training Lab screen", () => {
         text2: undefined,
       });
     });
+    expect(mockCapture.mock.calls).toEqual([
+      ["training_lab_report_generated", { report_type: "full", period_days: 7 }],
+    ]);
   });
 
   it("surfaces the rate limit error message from the action", async () => {
@@ -194,5 +203,31 @@ describe("Training Lab screen", () => {
         text2: undefined,
       });
     });
+    expect(mockCapture).not.toHaveBeenCalledWith(
+      "training_lab_report_generated",
+      expect.anything(),
+    );
+  });
+
+  it("sends report_viewed once per visit, not on every re-render", async () => {
+    await renderTrainingLab();
+    await fireEvent.press(screen.getByText("AI Summary")); // collapse: re-render
+    await fireEvent.press(screen.getByText("AI Summary")); // expand: re-render
+
+    expect(mockCapture.mock.calls).toEqual([
+      ["training_lab_report_viewed", { report_type: "full" }],
+    ]);
+  });
+
+  it("sends no report_viewed when there is no report, or the user is not Pro", async () => {
+    mockQueries({ "ai/trainingLabMutations:getLatestReport": null });
+    await renderTrainingLab();
+    expect(screen.getByText("Analysis Ready")).toBeOnTheScreen();
+
+    mockQueries({ "ai/trainingLabMutations:getCtaState": { ...ctaStateFixture, isPro: false } });
+    await renderTrainingLab();
+    expect(screen.getAllByText("Free During Alpha").length).toBeGreaterThan(0);
+
+    expect(mockCapture).not.toHaveBeenCalled();
   });
 });

@@ -37,6 +37,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
+import { analytics } from "@/lib/analytics";
 import { useTheme, type ThemePreference } from "@/theme/theme-provider";
 
 // Port of apps/web/src/app/profile/page.tsx.
@@ -168,7 +169,10 @@ export default function ProfileScreen() {
       const data = await convex.query(api.users.exportAllData, {});
       const json = JSON.stringify(data, null, 2);
       const fileName = `opentrainer-export-${new Date().toISOString().split("T")[0]}.json`;
-      await Share.share({ message: json, title: fileName });
+      const result = await Share.share({ message: json, title: fileName });
+      if (result.action !== Share.dismissedAction) {
+        analytics.capture("data_exported", { scope: "all_data", method: "share" });
+      }
     } catch (error) {
       console.error("Export failed:", error);
       toast.error("Export failed");

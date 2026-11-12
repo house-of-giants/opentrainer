@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
+import { analytics } from "@/lib/analytics";
 import { useTheme } from "@/theme/theme-provider";
 import { cn } from "@/lib/cn";
 
@@ -54,6 +55,10 @@ export default function TrainingLabScreen() {
     setIsGenerating(true);
     try {
       await generateReport({ reportType: "full", periodDays });
+      analytics.capture("training_lab_report_generated", {
+        report_type: "full",
+        period_days: periodDays,
+      });
       toast.success("Analysis generated!");
     } catch (error) {
       toast.error(
@@ -65,6 +70,18 @@ export default function TrainingLabScreen() {
   };
 
   const handleGenerateReport = () => doGenerateReport(7);
+
+  // One view per screen visit: the report renders only for Pro users.
+  const reportViewedRef = useRef(false);
+  const viewedReportType =
+    ctaState?.isPro && latestReport ? latestReport.type : null;
+  useEffect(() => {
+    if (!viewedReportType || reportViewedRef.current) return;
+    reportViewedRef.current = true;
+    analytics.capture("training_lab_report_viewed", {
+      report_type: viewedReportType,
+    });
+  }, [viewedReportType]);
 
   if (ctaState === undefined) {
     return (

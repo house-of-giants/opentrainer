@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 
 type ImportDayDialogProps = {
   routineId: Id<"routines">;
@@ -52,6 +53,7 @@ export function ImportDayDialog({
     setIsImporting(true);
     try {
       const result = await importDay({ routineId, json: json.trim() });
+      posthog.capture("routine_imported", { scope: "day" });
       toast.success("Day imported successfully!");
       setJson("");
       onOpenChange(false);

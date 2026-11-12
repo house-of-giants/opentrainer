@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useAction } from "convex/react";
 import { api } from "@opentrainer/backend";
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 import {
   VolumeBarChart,
   ExerciseTrendChart,
@@ -43,6 +44,10 @@ export default function TrainingLabPage() {
     setIsGenerating(true);
     try {
       await generateReport({ reportType: "full", periodDays });
+      posthog.capture("training_lab_report_generated", {
+        report_type: "full",
+        period_days: periodDays,
+      });
       toast.success("Analysis generated!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to generate analysis");
@@ -52,6 +57,15 @@ export default function TrainingLabPage() {
   };
 
   const handleGenerateReport = () => doGenerateReport(7);
+
+  // One view per page visit: the report renders only for Pro users.
+  const reportViewedRef = useRef(false);
+  const viewedReportType = ctaState?.isPro && latestReport ? latestReport.type : null;
+  useEffect(() => {
+    if (!viewedReportType || reportViewedRef.current) return;
+    reportViewedRef.current = true;
+    posthog.capture("training_lab_report_viewed", { report_type: viewedReportType });
+  }, [viewedReportType]);
 
   if (ctaState === undefined) {
     return (

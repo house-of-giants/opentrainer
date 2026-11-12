@@ -10,6 +10,8 @@ const isPublicRoute = createRouteMatcher([
   "/privacy",
   "/terms",
   "/demo(.*)",
+  // PostHog reverse proxy (next.config.ts rewrites): signed-out events too.
+  "/ingest(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

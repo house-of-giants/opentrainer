@@ -34,6 +34,10 @@ import { useClientId } from "@/hooks/use-client-id";
 import { useHaptic } from "@/hooks/use-haptic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import {
+	type AnalyticsCapture,
+	createProgressionSuggestionTracker,
+} from "@opentrainer/lib/analytics";
 import { calculateProgressionSuggestion } from "@opentrainer/lib/progression";
 import {
 	calculateVolumeInUnit,
@@ -82,6 +86,8 @@ function ExerciseAccordionWithHistory({
 	targetReps,
 	unit,
 	sets,
+	status,
+	onAddSet,
 	...rest
 }: Omit<
 	React.ComponentProps<typeof ExerciseAccordion>,
@@ -94,18 +100,48 @@ function ExerciseAccordionWithHistory({
 		return calculateProgressionSuggestion(history, targetReps, unit);
 	}, [history, targetReps, unit]);
 
+	// The parent keys this component by exercise group, so a swap remounts it
+	// and the new exercise gets a fresh tracker.
+	const [suggestionTracker] = useState(() =>
+		createProgressionSuggestionTracker(capturePostHogEvent)
+	);
+	const suggestion = ghostData?.suggestion;
+	const suggestionUnit = ghostData?.lastSession.unit;
+	// Matches when ExerciseAccordion renders the target weight and reps.
+	const shownTargetWeight =
+		status === "current" && suggestion?.targetWeight && suggestion.targetReps
+			? suggestion.targetWeight
+			: null;
+	useEffect(() => {
+		if (!shownTargetWeight || !suggestion || !suggestionUnit) return;
+		suggestionTracker.markShown({
+			type: suggestion.type,
+			targetWeight: shownTargetWeight,
+			unit: suggestionUnit,
+		});
+	}, [suggestionTracker, shownTargetWeight, suggestion, suggestionUnit]);
+
 	return (
 		<ExerciseAccordion
 			exerciseName={exerciseName}
 			targetReps={targetReps}
 			sets={sets}
+			status={status}
 			lastSession={ghostData?.lastSession}
-			progressionSuggestion={ghostData?.suggestion}
+			progressionSuggestion={suggestion}
 			unit={unit}
+			onAddSet={(set) => {
+				suggestionTracker.markSetLogged(set);
+				onAddSet(set);
+			}}
 			{...rest}
 		/>
 	);
 }
+
+const capturePostHogEvent: AnalyticsCapture = (event, properties) => {
+	posthog.capture(event, properties);
+};
 
 function TimedExerciseAccordionWithHistory({
 	exerciseName,

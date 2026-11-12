@@ -1,17 +1,27 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { Share } from "react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { getFunctionName } from "convex/server";
 import { useMutation, useQuery } from "convex/react";
 
 import ProfileScreen from "@/app/(app)/(tabs)/profile";
 import { profileUser, profileWorkouts } from "@/__fixtures__/profile-fixtures";
+import { analytics } from "@/lib/analytics";
 import { ThemeProvider } from "@/theme/theme-provider";
 
 jest.mock("convex/react", () => ({
   useQuery: jest.fn(),
   useMutation: jest.fn(() => jest.fn()),
   useAction: jest.fn(() => jest.fn()),
-  useConvex: jest.fn(() => ({ query: jest.fn() })),
+  useConvex: jest.fn(() => ({ query: mockConvexQuery })),
 }));
+
+const mockConvexQuery = jest.fn();
+
+jest.mock("@/lib/analytics", () => ({
+  analytics: { capture: jest.fn(), identify: jest.fn(), captureException: jest.fn() },
+}));
+
+const mockCapture = analytics.capture as jest.Mock;
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
@@ -159,5 +169,26 @@ describe("Profile screen", () => {
 
     expect(screen.queryByText("Profile")).toBeNull();
     expect(screen.queryByText("Training Profile")).toBeNull();
+  });
+  it("counts a shared full-data export once, and not a dismissed one", async () => {
+    mockConvexQuery.mockResolvedValue({ workouts: [] });
+    const shareSpy = jest
+      .spyOn(Share, "share")
+      .mockResolvedValueOnce({ action: Share.sharedAction } as never)
+      .mockResolvedValueOnce({ action: Share.dismissedAction } as never);
+    await renderProfile();
+
+    await fireEvent.press(screen.getByText("Export All Data"));
+    await waitFor(() => expect(shareSpy).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    await waitFor(() => expect(screen.getByText("Export All Data")).toBeOnTheScreen());
+    await fireEvent.press(screen.getByText("Export All Data"));
+    await waitFor(() => expect(shareSpy).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+
+    expect(mockCapture.mock.calls).toEqual([
+      ["data_exported", { scope: "all_data", method: "share" }],
+    ]);
+    shareSpy.mockRestore();
   });
 });

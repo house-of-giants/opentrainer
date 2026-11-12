@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 
 type ImportRoutineDialogProps = {
   open: boolean;
@@ -54,6 +55,7 @@ export function ImportRoutineDialog({
     setIsImporting(true);
     try {
       await importRoutine({ json: json.trim() });
+      posthog.capture("routine_imported", { scope: "routine" });
       toast.success("Routine imported successfully!");
       setJson("");
       onOpenChange(false);
