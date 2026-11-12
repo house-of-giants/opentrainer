@@ -4,13 +4,21 @@ import { useMutation, useQuery } from "convex/react";
 
 import ActiveWorkoutScreen from "@/app/(app)/workout/active";
 import { analytics } from "@/lib/analytics";
+import { resetPendingSets } from "@/test-utils/pending-sets";
 import { ThemeProvider } from "@/theme/theme-provider";
 
 jest.mock("convex/react", () => ({
   useQuery: jest.fn(),
   useMutation: jest.fn(),
   useAction: jest.fn(() => jest.fn()),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories cannot use imports
+  useConvex: () => require("@/test-utils/pending-sets").mockConvexClient,
 }));
+
+jest.mock("@/lib/pending-set-queue", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories cannot use imports
+  require("@/test-utils/pending-sets").pendingSetQueueModuleMock(),
+);
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
@@ -70,7 +78,8 @@ const queryResults: Record<string, unknown> = {
 
 const addLiftingEntry = jest.fn().mockResolvedValue("entry-id");
 
-beforeEach(() => {
+beforeEach(async () => {
+  await resetPendingSets();
   jest.clearAllMocks();
   (useQuery as jest.Mock).mockImplementation((ref, args) => {
     if (args === "skip") return undefined;
@@ -122,18 +131,15 @@ describe("progression suggestion analytics", () => {
     ]);
   });
 
-  it("sends accepted only after the set saves, so a failed save does not count", async () => {
-    addLiftingEntry.mockRejectedValueOnce(new Error("offline"));
+  it("sends accepted when the set is logged, before the server confirms it", async () => {
+    // The device queue keeps an unconfirmed set and retries it, so the set
+    // counts as logged at once.
+    addLiftingEntry.mockImplementationOnce(() => new Promise(() => {}));
     await renderAndWaitForSuggestion();
 
     await logSet("LOG SET 1/3");
-    expect(addLiftingEntry).toHaveBeenCalledTimes(1);
-    expect(suggestionEvents()).toEqual([
-      ["progression_suggestion_shown", { suggestion_type: "increase_weight" }],
-    ]);
 
-    await logSet("LOG SET 1/3"); // retry succeeds
-    expect(addLiftingEntry).toHaveBeenCalledTimes(2);
+    expect(addLiftingEntry).toHaveBeenCalledTimes(1);
     expect(suggestionEvents()).toEqual([
       ["progression_suggestion_shown", { suggestion_type: "increase_weight" }],
       ["progression_suggestion_accepted", { suggestion_type: "increase_weight" }],

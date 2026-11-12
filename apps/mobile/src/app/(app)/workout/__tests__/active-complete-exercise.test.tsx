@@ -10,13 +10,21 @@ import { getFunctionName } from "convex/server";
 import { useQuery, useMutation } from "convex/react";
 
 import ActiveWorkoutScreen from "@/app/(app)/workout/active";
+import { resetPendingSets } from "@/test-utils/pending-sets";
 import { ThemeProvider } from "@/theme/theme-provider";
 
 jest.mock("convex/react", () => ({
   useQuery: jest.fn(),
   useMutation: jest.fn(),
   useAction: jest.fn(() => jest.fn()),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories cannot use imports
+  useConvex: () => require("@/test-utils/pending-sets").mockConvexClient,
 }));
+
+jest.mock("@/lib/pending-set-queue", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories cannot use imports
+  require("@/test-utils/pending-sets").pendingSetQueueModuleMock(),
+);
 
 jest.mock(
   "react-native-safe-area-context",
@@ -88,7 +96,8 @@ const addLiftingEntry = jest.fn(
   },
 );
 
-beforeEach(() => {
+beforeEach(async () => {
+  await resetPendingSets();
   (useQuery as jest.Mock).mockImplementation((ref, args) => {
     if (args === "skip") return undefined;
     const name = getFunctionName(ref);

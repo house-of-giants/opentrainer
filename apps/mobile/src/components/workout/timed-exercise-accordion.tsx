@@ -8,6 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NoteSheet } from "./note-sheet";
 import { RpeSelector } from "./rpe-selector";
+import {
+  SetSyncIndicator,
+  setRowAccessibility,
+  type SetSyncState,
+} from "./set-sync-indicator";
 import { useHaptic } from "@/hooks/use-haptic";
 import { useTheme } from "@/theme/theme-provider";
 import { cn } from "@/lib/cn";
@@ -17,6 +22,7 @@ type ExerciseStatus = "completed" | "current" | "upcoming";
 export interface TimedSetData {
   entryId?: string;
   setNumber: number;
+  syncState?: SetSyncState;
   durationSeconds: number;
   rpe?: number | null;
   rir?: number | null;
@@ -40,6 +46,8 @@ interface TimedExerciseAccordionProps {
     rpe?: number | null;
   }) => Promise<void>;
   onEditSet?: (set: TimedSetData) => void;
+  /** Retries sets the server rejected; a failed set row calls it. */
+  onRetrySync?: () => void;
   onSwap?: () => void;
   onNoteChange?: (note: string) => void;
   onSelect?: () => void;
@@ -71,6 +79,7 @@ export function TimedExerciseAccordion({
   note,
   onAddSet,
   onEditSet,
+  onRetrySync,
   onSwap,
   onNoteChange,
   onSelect,
@@ -211,10 +220,19 @@ export function TimedExerciseAccordion({
               {sets.map((set) => (
                 <Pressable
                   key={set.setNumber}
-                  onPress={() => onEditSet?.(set)}
-                  disabled={!onEditSet || !set.entryId}
+                  onPress={() =>
+                    set.syncState === "failed"
+                      ? onRetrySync?.()
+                      : onEditSet?.(set)
+                  }
+                  disabled={
+                    set.syncState === "failed"
+                      ? !onRetrySync
+                      : !onEditSet || !set.entryId
+                  }
                   className="min-h-11 w-full flex-row items-center justify-between rounded border border-transparent bg-muted/40 px-3 active:border-border active:bg-muted"
                   accessibilityRole="button"
+                  {...setRowAccessibility(set.syncState)}
                 >
                   <Text className="text-sm text-muted-foreground">
                     Set {set.setNumber}
@@ -222,7 +240,11 @@ export function TimedExerciseAccordion({
                   <Text className="font-mono text-sm font-medium tabular-nums text-foreground">
                     {formatDuration(set.durationSeconds)}
                   </Text>
-                  <Check size={16} color={colors.primary} />
+                  <SetSyncIndicator
+                    syncState={set.syncState}
+                    size={16}
+                    textClassName="text-xs"
+                  />
                 </Pressable>
               ))}
             </View>
