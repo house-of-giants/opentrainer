@@ -94,6 +94,45 @@ export function usePendingSets(workoutId: Id<"workouts"> | undefined) {
     [items, workoutId],
   );
 
+  const failedSetsOfWorkout = useCallback(
+    () =>
+      queue
+        .getSnapshot()
+        .filter(
+          (item) => item.args.workoutId === workoutId && item.status === "failed",
+        ),
+    [queue, workoutId],
+  );
+
+  /**
+   * Sends this workout's rejected sets again, before the workout completes.
+   * Resolves to the number of sets the server still has not accepted.
+   */
+  const retryFailedSets = useCallback(async () => {
+    await queue.load();
+    const results = await Promise.all(
+      failedSetsOfWorkout().map((item) =>
+        queue.sync(item.args.clientId, addLiftingEntry),
+      ),
+    );
+    for (const result of results) {
+      if (result.outcome === "failed") analytics.captureException(result.error);
+    }
+    return failedSetsOfWorkout().length;
+  }, [queue, addLiftingEntry, failedSetsOfWorkout]);
+
+  /** Removes this workout's rejected sets, when the lifter finishes without them. */
+  const discardFailedSets = useCallback(() => {
+    for (const item of failedSetsOfWorkout()) queue.remove(item.args.clientId);
+  }, [queue, failedSetsOfWorkout]);
+
   // Log only after stored sets are restored, so a new set's number counts them.
-  return { isLoaded, pendingSets, logSet, retry: replay };
+  return {
+    isLoaded,
+    pendingSets,
+    logSet,
+    retry: replay,
+    retryFailedSets,
+    discardFailedSets,
+  };
 }
