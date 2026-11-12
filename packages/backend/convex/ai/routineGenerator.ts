@@ -113,9 +113,11 @@ export const generateRoutine = action({
       throw new Error("Pro subscription required");
     }
 
-    const rateLimitCheck = await ctx.runQuery(internal.ai.rateLimitQueries.checkAIRateLimit, {
+    // Records one usage row when allowed. The attempt counts even if the model
+    // call fails, because the request reaches the model.
+    const rateLimitCheck = await ctx.runMutation(internal.ai.rateLimitQueries.consumeAIRateLimit, {
       userId: user._id,
-      actionType: "routineGeneration",
+      action: "routineGeneration",
     }) as { allowed: boolean; remaining: number };
 
     logger.set({ ai: { rateLimitRemaining: rateLimitCheck.remaining } });
@@ -265,9 +267,11 @@ export const getRoutineSwapAlternatives = action({
       throw new Error("Pro subscription required");
     }
 
-    const rateLimitCheck = await ctx.runQuery(internal.ai.rateLimitQueries.checkAIRateLimit, {
+    // Records one usage row when allowed. The attempt counts even if the model
+    // call fails, because the request reaches the model.
+    const rateLimitCheck = await ctx.runMutation(internal.ai.rateLimitQueries.consumeAIRateLimit, {
       userId: user._id,
-      actionType: "routineGeneration",
+      action: "routineSwap",
     }) as { allowed: boolean; remaining: number };
 
     logger.set({ ai: { rateLimitRemaining: rateLimitCheck.remaining } });

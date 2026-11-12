@@ -1,11 +1,17 @@
 import { v } from "convex/values";
-import { internalQuery } from "../_generated/server";
-import { checkRateLimit, RATE_LIMITS, type RateLimitType } from "../lib/rateLimit";
+import { internalMutation, internalQuery } from "../_generated/server";
+import {
+  checkRateLimit,
+  consumeAIUsage,
+  RATE_LIMITS,
+  type RateLimitType,
+} from "../lib/rateLimit";
 
 const actionTypeValidator = v.union(
   v.literal("trainingLabReport"),
   v.literal("smartSwap"),
   v.literal("routineGeneration"),
+  v.literal("routineSwap"),
   v.literal("dataExport")
 );
 
@@ -16,6 +22,16 @@ export const checkAIRateLimit = internalQuery({
   },
   handler: async (ctx, args): Promise<{ allowed: boolean; remaining: number; resetAt: number }> => {
     return checkRateLimit(ctx, args.userId, args.actionType as RateLimitType);
+  },
+});
+
+export const consumeAIRateLimit = internalMutation({
+  args: {
+    userId: v.id("users"),
+    action: v.union(v.literal("routineGeneration"), v.literal("routineSwap")),
+  },
+  handler: async (ctx, args): Promise<{ allowed: boolean; remaining: number; resetAt: number }> => {
+    return consumeAIUsage(ctx, args.userId, args.action);
   },
 });
 
