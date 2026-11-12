@@ -14,6 +14,7 @@ export type ImportField =
   | "reps"
   | "rpe"
   | "notes"
+  | "exerciseNotes"
   | "setType"
   | "durationSeconds"
   | "rir"
@@ -38,6 +39,7 @@ export const IMPORT_FIELDS: ReadonlyArray<{
   { field: "rpe", label: "RPE", primary: true },
   { field: "notes", label: "Notes", primary: true },
   { field: "setType", label: "Set type" },
+  { field: "exerciseNotes", label: "Exercise notes" },
   { field: "durationSeconds", label: "Time (seconds)" },
   { field: "rir", label: "RIR" },
   { field: "distance", label: "Distance" },
@@ -74,6 +76,7 @@ const FIELD_HEADER_GUESSES: Record<ImportField, string[]> = {
   reps: ["reps", "repetitions", "rep"],
   rpe: ["rpe"],
   notes: ["notes", "note", "set notes", "comment", "comments"],
+  exerciseNotes: ["exercise notes"],
   setType: ["set type", "type"],
   durationSeconds: ["seconds", "duration seconds", "time seconds"],
   rir: ["rir", "reps in reserve"],
@@ -153,7 +156,7 @@ const IMPORT_PRESETS: ImportPreset[] = [
       workoutTitle: ["title"],
       workoutNotes: ["description"],
       exercise: ["exercise title"],
-      notes: ["exercise notes"],
+      exerciseNotes: ["exercise notes"],
       setType: ["set type"],
       weight: ["weight kg", "weight lbs"],
       reps: ["reps"],
@@ -456,7 +459,7 @@ export function buildImportPlan(
   const workouts = new Map<string, PlannedWorkout>();
   const names = new Map<string, ImportedExerciseName>();
   const skipped: ImportPlan["skipped"] = [];
-  const lastNotes = new Map<string, string>();
+  const exerciseNotes = new Map<string, string>();
   let setCount = 0;
 
   rows.forEach((row, index) => {
@@ -519,8 +522,6 @@ export function buildImportPlan(
     if (isWarmupMarker(setMarker) || isWarmupMarker(cell(row, mapping.setType))) {
       set.isWarmup = true;
     }
-    const notes = cell(row, mapping.notes);
-
     const title = cell(row, mapping.workoutTitle) || undefined;
     const key = `${startedAt}|${normalizeExerciseName(title ?? "")}`;
     let workout = workouts.get(key);
@@ -541,10 +542,15 @@ export function buildImportPlan(
       if (workoutNotes) workout.notes = workoutNotes;
       workouts.set(key, workout);
     }
-    // Hevy repeats an exercise's note on each of its sets; keep it once.
-    const noteKey = `${normalizeExerciseName(exerciseName)}\u0000${notes}`;
-    if (notes && lastNotes.get(key) !== noteKey) set.notes = notes;
-    lastNotes.set(key, noteKey);
+    // Hevy repeats an exercise's note on each of its sets. Keep it once per
+    // exercise in a workout, on the first set it appears with.
+    const exerciseNoteKey = `${key}|${normalizeExerciseName(exerciseName)}`;
+    const exerciseNote = cell(row, mapping.exerciseNotes);
+    const newExerciseNote =
+      exerciseNote && exerciseNotes.get(exerciseNoteKey) !== exerciseNote ? exerciseNote : "";
+    if (exerciseNote) exerciseNotes.set(exerciseNoteKey, exerciseNote);
+    const notes = [newExerciseNote, cell(row, mapping.notes)].filter(Boolean).join("\n");
+    if (notes) set.notes = notes;
     workout.sets.push(set);
     setCount += 1;
 

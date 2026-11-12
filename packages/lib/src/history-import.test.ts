@@ -149,6 +149,19 @@ describe("buildImportPlan", () => {
     ]);
   });
 
+  test("keeps a note on every set that has one", () => {
+    const plan = buildImportPlan(
+      [
+        ["2024-03-18", "Squat", "5", "paused"],
+        ["2024-03-18", "Squat", "5", "paused"],
+      ],
+      { mapping: { date: 0, exercise: 1, reps: 2, notes: 3 }, defaultUnit: "lb" },
+      { now }
+    );
+
+    assert.deepEqual(plan.workouts[0].sets.map((s) => s.notes), ["paused", "paused"]);
+  });
+
   test("ends a workout at its end time or after its length", () => {
     const start = "2024-03-18 07:30:00";
     const withEnd = buildImportPlan(

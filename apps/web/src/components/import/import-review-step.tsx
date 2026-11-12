@@ -115,9 +115,17 @@ export function ImportReviewStep({
             <ul className="mt-1 space-y-0.5 text-muted-foreground">
               {skippedByReason.map(([reason, rows]) => (
                 <li key={reason}>
-                  {SKIP_REASON_LABELS[reason]}: {rows.length} (row
-                  {rows.length === 1 ? "" : "s"} {rows.slice(0, 5).join(", ")}
-                  {rows.length > 5 ? ", …" : ""})
+                  {SKIP_REASON_LABELS[reason]}: {rows.length}{" "}
+                  {rows.length <= 5 ? (
+                    `(row${rows.length === 1 ? "" : "s"} ${rows.join(", ")})`
+                  ) : (
+                    <details className="inline">
+                      <summary className="inline cursor-pointer underline-offset-2 hover:underline">
+                        (rows {rows.slice(0, 5).join(", ")}, …)
+                      </summary>
+                      <span className="block font-mono text-xs">{rows.join(", ")}</span>
+                    </details>
+                  )}
                 </li>
               ))}
             </ul>
