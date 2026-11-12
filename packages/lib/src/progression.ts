@@ -84,7 +84,7 @@ function roundWeight(weight: number, unit: "kg" | "lb"): number {
   return Math.round(weight / increment) * increment;
 }
 
-function parseRepRange(repRange: string | undefined): { min: number; max: number } | null {
+export function parseRepRange(repRange: string | undefined): { min: number; max: number } | null {
   if (!repRange) return null;
   const match = repRange.match(/(\d+)\s*-\s*(\d+)/);
   if (match) {

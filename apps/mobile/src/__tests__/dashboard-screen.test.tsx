@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { getFunctionName } from "convex/server";
 import { useMutation, useQuery } from "convex/react";
 
@@ -73,7 +73,11 @@ function mockQueries(overrides: Record<string, unknown> = {}) {
     "ai/trainingLabMutations:getCtaState": null,
     ...overrides,
   };
-  mockUseQuery.mockImplementation((ref: unknown) => values[getFunctionName(ref as never)]);
+  mockUseQuery.mockImplementation((ref: unknown, args: unknown) => {
+    if (args === "skip") return undefined;
+    const value = values[getFunctionName(ref as never)];
+    return typeof value === "function" ? value(args) : value;
+  });
 }
 
 beforeEach(() => {
@@ -171,5 +175,125 @@ describe("Dashboard screen", () => {
     expect(mockIdentify.mock.calls).toEqual([
       ["user_clerk", { name: "Dom Trainer", email: "qa@houseofgiants.com", is_internal: true }],
     ]);
+  });
+});
+
+describe("Dashboard next session", () => {
+  const routine = {
+    _id: "routine_1",
+    name: "Upper Lower",
+    updatedAt: 1,
+    days: [
+      {
+        name: "Upper",
+        exercises: [{ exerciseName: "Bench Press", kind: "lifting", targetReps: "5" }],
+      },
+      {
+        name: "Lower",
+        exercises: [
+          { exerciseName: "Hip Openers", kind: "mobility" },
+          { exerciseName: "Squat", kind: "lifting", targetReps: "5" },
+        ],
+      },
+    ],
+  };
+
+  function squatSession(id: string) {
+    const set = { setNumber: 1, weight: 315, reps: 5, rpe: null, unit: "lb", isWarmup: false };
+    return { workoutId: id, date: "2026-11-01T00:00:00.000Z", sets: [set], bestSet: set };
+  }
+
+  function routineHistory(routineDayIndex: number) {
+    return [{ ...history[0], routineId: "routine_1", routineDayIndex }];
+  }
+
+  const exerciseHistory: Record<string, unknown> = {
+    // Two sessions at the top of a 5-rep target: the next target adds 5 lb.
+    Squat: [squatSession("w2"), squatSession("w1")],
+    "Bench Press": [],
+  };
+
+  const createWorkout = jest.fn().mockResolvedValue("workout_new");
+
+  beforeEach(() => {
+    mockQueries({
+      "routines:getRoutines": [routine],
+      "workouts:getWorkoutHistory": routineHistory(0),
+      "entries:getExerciseHistory": (args: { exerciseName: string }) =>
+        exerciseHistory[args.exerciseName],
+      "exercises:getWeightStep": null,
+    });
+    mockUseMutation.mockImplementation((ref: unknown) =>
+      getFunctionName(ref as never) === "workouts:createWorkout"
+        ? createWorkout
+        : jest.fn().mockResolvedValue(undefined),
+    );
+  });
+
+  it("shows the day after the last one done, its first lift, and the last and next targets", async () => {
+    await renderDashboard();
+
+    expect(screen.getByText("Next up · Upper Lower")).toBeOnTheScreen();
+    expect(screen.getByText("Day 2 · Lower")).toBeOnTheScreen();
+    expect(screen.getByText("Squat")).toBeOnTheScreen();
+    expect(
+      screen.getByText("Last time 315 lb × 5. Next: 320 lb × 5."),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText("2 sessions left to hit this week's goal.")).toBeNull();
+  });
+
+  it("starts the next day with one tap", async () => {
+    await renderDashboard();
+
+    await fireEvent.press(screen.getByText("Start Day 2"));
+
+    await waitFor(() =>
+      expect(createWorkout).toHaveBeenCalledWith({
+        title: "Lower",
+        routineId: "routine_1",
+        routineDayIndex: 1,
+      }),
+    );
+    expect(mockPush).toHaveBeenCalledWith("/(app)/workout/active");
+    expect(analytics.capture).toHaveBeenCalledWith(
+      "workout_started",
+      expect.objectContaining({ source: "routine", entry_point: "home", is_next_day: true }),
+    );
+  });
+
+  it("goes back to day 1 after the last day", async () => {
+    mockQueries({
+      "routines:getRoutines": [routine],
+      "workouts:getWorkoutHistory": routineHistory(1),
+      "entries:getExerciseHistory": (args: { exerciseName: string }) =>
+        exerciseHistory[args.exerciseName],
+      "exercises:getWeightStep": null,
+    });
+    await renderDashboard();
+
+    expect(screen.getByText("Day 1 · Upper")).toBeOnTheScreen();
+    expect(screen.getByText("Bench Press")).toBeOnTheScreen();
+    expect(screen.getByText("No sets logged yet.")).toBeOnTheScreen();
+    expect(screen.getByText("Start Day 1")).toBeOnTheScreen();
+  });
+
+  it("opens the start sheet to pick a different workout", async () => {
+    await renderDashboard();
+
+    await fireEvent.press(screen.getByText("Pick another workout"));
+    expect(screen.getByText("Start Workout")).toBeOnTheScreen();
+    expect(screen.getByText("Empty Workout")).toBeOnTheScreen();
+  });
+
+  it("keeps the continue prompt while a workout is in progress", async () => {
+    mockQueries({
+      "routines:getRoutines": [routine],
+      "workouts:getWorkoutHistory": routineHistory(0),
+      "workouts:getActiveWorkout": { _id: "workout_active", title: "Upper", startedAt: Date.now() },
+    });
+    await renderDashboard();
+
+    expect(screen.getByText("Continue workout")).toBeOnTheScreen();
+    expect(screen.queryByText("Day 2 · Lower")).toBeNull();
   });
 });

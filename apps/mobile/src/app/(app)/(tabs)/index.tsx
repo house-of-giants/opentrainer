@@ -14,6 +14,7 @@ import { AsciiLogo } from "@/components/ui/ascii-logo";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStartWorkout } from "@/components/workout/start-workout-provider";
+import { useNextRoutineDay, useStartRoutineDay } from "@/hooks/use-next-session";
 import { analytics } from "@/lib/analytics";
 import { formatDuration } from "@/lib/utils";
 import { useTheme } from "@/theme/theme-provider";
@@ -29,6 +30,8 @@ export default function DashboardScreen() {
   const activeWorkout = useQuery(api.workouts.getActiveWorkout);
   const workoutHistory = useQuery(api.workouts.getWorkoutHistory, { limit: 3 });
   const dashboardStats = useQuery(api.workouts.getDashboardStats);
+  const nextSession = useNextRoutineDay();
+  const startRoutineDay = useStartRoutineDay();
 
   const getOrCreateUser = useMutation(api.users.getOrCreateUser);
   const updateWeeklyGoal = useMutation(api.workouts.updateWeeklyGoal);
@@ -154,7 +157,10 @@ export default function DashboardScreen() {
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="gap-4 p-4 pb-24">
-        {dashboardStats && activeWorkout !== undefined && workoutHistory !== undefined ? (
+        {dashboardStats &&
+        activeWorkout !== undefined &&
+        workoutHistory !== undefined &&
+        nextSession !== undefined ? (
           <DashboardBriefCard
             weeklyWorkoutCount={dashboardStats.weeklyWorkoutCount}
             weeklyGoal={dashboardStats.weeklyGoal}
@@ -162,6 +168,16 @@ export default function DashboardScreen() {
             weeklyTotalDuration={dashboardStats.weeklyTotalDuration}
             hasActiveWorkout={!!activeWorkout}
             hasHistory={(workoutHistory?.length ?? 0) > 0}
+            nextSession={nextSession}
+            unit={user.preferredUnits ?? "lb"}
+            isStartingNextSession={startRoutineDay.isStarting}
+            onStartNextSession={() => {
+              if (!nextSession) return;
+              void startRoutineDay.start(nextSession.routine, nextSession.dayIndex, {
+                entryPoint: "home",
+                isNextDay: true,
+              });
+            }}
             onStartWorkout={startWorkout.open}
             onContinueWorkout={() => router.push("/(app)/workout/active")}
           />

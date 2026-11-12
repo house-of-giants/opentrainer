@@ -1,8 +1,11 @@
 import { Text, View } from "react-native";
-import { ArrowRight, CalendarClock, Dumbbell, Flame } from "lucide-react-native";
+import { ArrowRight, CalendarClock, Dumbbell, Flame, Play } from "lucide-react-native";
+import type { WeightUnit } from "@opentrainer/lib/units";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { NextSessionPreview } from "@/components/workout/next-session-preview";
+import type { NextRoutineDay } from "@/hooks/use-next-session";
 import { formatDuration } from "@/lib/utils";
 import { useTheme } from "@/theme/theme-provider";
 
@@ -16,6 +19,11 @@ type DashboardBriefCardProps = {
   weeklyTotalDuration?: number;
   hasActiveWorkout: boolean;
   hasHistory: boolean;
+  /** The next day of the lifter's routine; null without a routine. */
+  nextSession: NextRoutineDay | null;
+  unit: WeightUnit;
+  isStartingNextSession: boolean;
+  onStartNextSession: () => void;
   onStartWorkout: () => void;
   onContinueWorkout: () => void;
 };
@@ -27,6 +35,10 @@ export function DashboardBriefCard({
   weeklyTotalDuration,
   hasActiveWorkout,
   hasHistory,
+  nextSession,
+  unit,
+  isStartingNextSession,
+  onStartNextSession,
   onStartWorkout,
   onContinueWorkout,
 }: DashboardBriefCardProps) {
@@ -44,20 +56,48 @@ export function DashboardBriefCard({
 
   return (
     <Card className="gap-4 border-primary/30 bg-primary/5 p-4">
-      <View className="gap-3">
-        <View>
-          <Text className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Today&apos;s brief
-          </Text>
-          <Text className="mt-1 text-lg font-semibold leading-tight text-foreground">
-            {brief}
-          </Text>
+      {!hasActiveWorkout && nextSession ? (
+        <View className="gap-3">
+          <NextSessionPreview next={nextSession} unit={unit} />
+          <Button
+            size="sm"
+            className="w-full"
+            onPress={onStartNextSession}
+            disabled={isStartingNextSession}
+          >
+            <Play size={14} color={colors.primaryForeground} />
+            <Text className="text-sm font-medium text-primary-foreground">
+              Start Day {nextSession.dayIndex + 1}
+            </Text>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full"
+            onPress={onStartWorkout}
+            disabled={isStartingNextSession}
+          >
+            <Text className="text-sm text-muted-foreground">
+              Pick another workout
+            </Text>
+          </Button>
         </View>
-        <Button size="sm" className="w-full" onPress={onPress}>
-          <Text className="text-sm font-medium text-primary-foreground">{cta}</Text>
-          <ArrowRight size={14} color={colors.primaryForeground} />
-        </Button>
-      </View>
+      ) : (
+        <View className="gap-3">
+          <View>
+            <Text className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+              Today&apos;s brief
+            </Text>
+            <Text className="mt-1 text-lg font-semibold leading-tight text-foreground">
+              {brief}
+            </Text>
+          </View>
+          <Button size="sm" className="w-full" onPress={onPress}>
+            <Text className="text-sm font-medium text-primary-foreground">{cta}</Text>
+            <ArrowRight size={14} color={colors.primaryForeground} />
+          </Button>
+        </View>
+      )}
 
       <View className="flex-row gap-2">
         <BriefMetric
