@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
+import { internalAccountProperties } from "@opentrainer/lib/analytics";
 import { analytics } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/theme/theme-provider";
@@ -164,6 +165,7 @@ export default function OnboardingScreen() {
           analytics.identify(user.clerkId, {
             name: user.name,
             email: user.email,
+            ...internalAccountProperties(user.email),
           });
         }
         analytics.capture("onboarding_completed", {

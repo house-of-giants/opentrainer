@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
+import posthog from "posthog-js";
 import { BottomNav } from "@/components/navigation/bottom-nav";
 import { StartWorkoutSheet } from "@/components/workout/start-workout-sheet";
 import { EditGoalsDialog } from "@/components/profile/edit-goals-dialog";
@@ -128,6 +129,7 @@ export default function ProfilePage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      posthog.capture("data_exported", { scope: "all_data", method: "download" });
     } catch (error) {
       console.error("Export failed:", error);
     } finally {

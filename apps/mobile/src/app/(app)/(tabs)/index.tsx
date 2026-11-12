@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
+import { internalAccountProperties } from "@opentrainer/lib/analytics";
 import { User } from "lucide-react-native";
 
 import { DashboardBriefCard, GoalSettingDialog, WeeklyStatsGrid } from "@/components/dashboard";
@@ -34,6 +35,20 @@ export default function DashboardScreen() {
 
   const [showGoalDialog, setShowGoalDialog] = useState(false);
 
+  // Identify every signed-in visit, not only new accounts, so existing
+  // internal accounts also get the is_internal person property.
+  const clerkUserId = clerkUser?.id;
+  const clerkEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+  const clerkFullName = clerkUser?.fullName;
+  useEffect(() => {
+    if (!clerkUserId) return;
+    analytics.identify(clerkUserId, {
+      name: clerkFullName,
+      email: clerkEmail,
+      ...internalAccountProperties(clerkEmail),
+    });
+  }, [clerkUserId, clerkEmail, clerkFullName]);
+
   useEffect(() => {
     if (isClerkLoaded && clerkUser && user === null) {
       getOrCreateUser({
@@ -43,10 +58,6 @@ export default function DashboardScreen() {
         imageUrl: clerkUser.imageUrl,
       })
         .then((result) => {
-          analytics.identify(clerkUser.id, {
-            name: clerkUser.fullName,
-            email: clerkUser.primaryEmailAddress?.emailAddress,
-          });
           if (result && (result as { isNew?: boolean }).isNew) {
             analytics.capture("user_signed_up", { clerk_id: clerkUser.id });
           }

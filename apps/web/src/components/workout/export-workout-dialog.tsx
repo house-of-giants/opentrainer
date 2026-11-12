@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 import { Copy, Download } from "lucide-react";
 
 type ExportWorkoutDialogProps = {
@@ -36,6 +37,7 @@ export function ExportWorkoutDialog({
 
     try {
       await navigator.clipboard.writeText(exportData.json);
+      posthog.capture("data_exported", { scope: "workout", method: "copy" });
       toast.success("Copied to clipboard");
     } catch {
       toast.error("Failed to copy");
@@ -54,6 +56,7 @@ export function ExportWorkoutDialog({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    posthog.capture("data_exported", { scope: "workout", method: "download" });
     toast.success("Downloaded");
   };
 

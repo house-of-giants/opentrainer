@@ -16,6 +16,7 @@ import { TrainingLabCard } from "@/components/training-lab/training-lab-card";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
 import { formatDuration } from "@/lib/utils";
 import posthog from "posthog-js";
+import { internalAccountProperties } from "@opentrainer/lib/analytics";
 
 export default function DashboardPage() {
 	const router = useRouter();
@@ -32,6 +33,20 @@ export default function DashboardPage() {
 	const [showStartSheet, setShowStartSheet] = useState(false);
 	const [showGoalDialog, setShowGoalDialog] = useState(false);
 
+	// Identify every signed-in visit, not only new accounts, so existing
+	// internal accounts also get the is_internal person property.
+	const clerkUserId = clerkUser?.id;
+	const clerkEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+	const clerkFullName = clerkUser?.fullName;
+	useEffect(() => {
+		if (!clerkUserId) return;
+		posthog.identify(clerkUserId, {
+			name: clerkFullName,
+			email: clerkEmail,
+			...internalAccountProperties(clerkEmail),
+		});
+	}, [clerkUserId, clerkEmail, clerkFullName]);
+
 	useEffect(() => {
 		if (isClerkLoaded && clerkUser && user === null) {
 			getOrCreateUser({
@@ -42,19 +57,8 @@ export default function DashboardPage() {
 			})
 				.then((result) => {
 					if (result && (result as { isNew?: boolean }).isNew) {
-						// Identify + capture new sign-up
-						posthog.identify(clerkUser.id, {
-							name: clerkUser.fullName,
-							email: clerkUser.primaryEmailAddress?.emailAddress,
-						});
 						posthog.capture("user_signed_up", {
 							clerk_id: clerkUser.id,
-						});
-					} else {
-						// Identify returning user
-						posthog.identify(clerkUser.id, {
-							name: clerkUser.fullName,
-							email: clerkUser.primaryEmailAddress?.emailAddress,
 						});
 					}
 				})

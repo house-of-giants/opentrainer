@@ -6,6 +6,7 @@ import { useKeepAwake } from "expo-keep-awake";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@opentrainer/backend";
 import type { Id } from "@opentrainer/backend";
+import { createProgressionSuggestionTracker } from "@opentrainer/lib/analytics";
 import { calculateProgressionSuggestion } from "@opentrainer/lib/progression";
 import {
   calculateVolumeInUnit,
@@ -89,6 +90,8 @@ function ExerciseAccordionWithHistory({
   targetReps,
   unit,
   sets,
+  status,
+  onAddSet,
   ...rest
 }: Omit<
   React.ComponentProps<typeof ExerciseAccordion>,
@@ -96,7 +99,13 @@ function ExerciseAccordionWithHistory({
   | "progressionSuggestion"
   | "weightStepSetting"
   | "onWeightStepChange"
->) {
+  | "onAddSet"
+> & {
+  /** Resolves true once the set is saved. */
+  onAddSet: (
+    set: Parameters<React.ComponentProps<typeof ExerciseAccordion>["onAddSet"]>[0]
+  ) => Promise<boolean>;
+}) {
   const history = useQuery(api.entries.getExerciseHistory, { exerciseName });
   const weightStepSetting = useQuery(api.exercises.getWeightStep, {
     exerciseName,
@@ -129,16 +138,41 @@ function ExerciseAccordionWithHistory({
     }
   };
 
+  // The parent keys this component by exercise group, so a swap remounts it
+  // and the new exercise gets a fresh tracker.
+  const [suggestionTracker] = useState(() =>
+    createProgressionSuggestionTracker(analytics.capture),
+  );
+  const suggestion = ghostData?.suggestion;
+  const suggestionUnit = ghostData?.lastSession.unit;
+  // Matches when ExerciseAccordion renders the target weight and reps.
+  const shownTargetWeight =
+    status === "current" && suggestion?.targetWeight && suggestion.targetReps
+      ? suggestion.targetWeight
+      : null;
+  useEffect(() => {
+    if (!shownTargetWeight || !suggestion || !suggestionUnit) return;
+    suggestionTracker.markShown({
+      type: suggestion.type,
+      targetWeight: shownTargetWeight,
+      unit: suggestionUnit,
+    });
+  }, [suggestionTracker, shownTargetWeight, suggestion, suggestionUnit]);
+
   return (
     <ExerciseAccordion
       exerciseName={exerciseName}
       targetReps={targetReps}
       sets={sets}
+      status={status}
       lastSession={ghostData?.lastSession}
-      progressionSuggestion={ghostData?.suggestion}
+      progressionSuggestion={suggestion}
       weightStepSetting={weightStepSetting}
       onWeightStepChange={handleWeightStepChange}
       unit={unit}
+      onAddSet={async (set) => {
+        if (await onAddSet(set)) suggestionTracker.markSetLogged(set);
+      }}
       {...rest}
     />
   );
@@ -507,9 +541,11 @@ export default function ActiveWorkoutScreen() {
         rpe: set.rpe ?? null,
       });
       setShowRestTimer(true);
+      return true;
     } catch (error) {
       toast.error("Failed to log set");
       console.error(error);
+      return false;
     }
   };
 

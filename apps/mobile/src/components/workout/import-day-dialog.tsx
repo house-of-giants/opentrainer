@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toast";
+import { analytics } from "@/lib/analytics";
 import { useTheme } from "@/theme/theme-provider";
 
 // Port of apps/web/src/components/workout/import-day-dialog.tsx. As on web,
@@ -56,6 +57,7 @@ export function ImportDayDialog({
     setIsImporting(true);
     try {
       const result = await importDay({ routineId, json: json.trim() });
+      analytics.capture("routine_imported", { scope: "day" });
       toast.success("Day imported successfully!");
       setJson("");
       onOpenChange(false);

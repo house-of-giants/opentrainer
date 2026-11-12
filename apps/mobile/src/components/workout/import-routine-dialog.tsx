@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toast";
+import { analytics } from "@/lib/analytics";
 import { useTheme } from "@/theme/theme-provider";
 
 // Port of apps/web/src/components/workout/import-routine-dialog.tsx.
@@ -59,6 +60,7 @@ export function ImportRoutineDialog({
     setIsImporting(true);
     try {
       await importRoutine({ json: json.trim() });
+      analytics.capture("routine_imported", { scope: "routine" });
       toast.success("Routine imported successfully!");
       setJson("");
       onOpenChange(false);

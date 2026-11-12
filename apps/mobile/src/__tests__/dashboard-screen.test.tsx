@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 
 import DashboardScreen from "@/app/(app)/(tabs)/index";
 import { StartWorkoutProvider } from "@/components/workout/start-workout-provider";
+import { analytics } from "@/lib/analytics";
 import { ThemeProvider } from "@/theme/theme-provider";
 
 jest.mock("convex/react", () => ({
@@ -24,10 +25,18 @@ jest.mock("@clerk/clerk-expo", () => ({
       id: "user_clerk",
       imageUrl: "https://img.clerk.com/avatar.png",
       fullName: "Dom Trainer",
-      primaryEmailAddress: { emailAddress: "dom@example.com" },
+      primaryEmailAddress: { emailAddress: mockClerkEmail.value },
     },
   }),
 }));
+
+const mockClerkEmail = { value: "dom@example.com" };
+
+jest.mock("@/lib/analytics", () => ({
+  analytics: { capture: jest.fn(), identify: jest.fn(), captureException: jest.fn() },
+}));
+
+const mockIdentify = analytics.identify as jest.Mock;
 
 const mockUseQuery = useQuery as jest.Mock;
 const mockUseMutation = useMutation as jest.Mock;
@@ -69,6 +78,7 @@ function mockQueries(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockClerkEmail.value = "dom@example.com";
   mockQueries();
   mockUseMutation.mockImplementation(() => jest.fn().mockResolvedValue(undefined));
 });
@@ -145,5 +155,21 @@ describe("Dashboard screen", () => {
     await renderDashboard();
 
     expect(mockReplace).toHaveBeenCalledWith("/(app)/onboarding");
+  });
+  it("identifies a returning signed-in user and marks an external email as not internal", async () => {
+    await renderDashboard();
+
+    expect(mockIdentify.mock.calls).toEqual([
+      ["user_clerk", { name: "Dom Trainer", email: "dom@example.com", is_internal: false }],
+    ]);
+  });
+
+  it("marks a houseofgiants.com account as internal", async () => {
+    mockClerkEmail.value = "qa@houseofgiants.com";
+    await renderDashboard();
+
+    expect(mockIdentify.mock.calls).toEqual([
+      ["user_clerk", { name: "Dom Trainer", email: "qa@houseofgiants.com", is_internal: true }],
+    ]);
   });
 });

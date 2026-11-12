@@ -18,6 +18,7 @@ import { EquipmentConfirmStep } from "./steps/equipment-confirm-step";
 import { AvailabilityStep } from "./steps/availability-step";
 import { UnitsPicker } from "./steps/units-picker";
 import posthog from "posthog-js";
+import { internalAccountProperties } from "@opentrainer/lib/analytics";
 
 const STEPS = ["goals", "experience", "equipment", "equipment-confirm", "availability"] as const;
 type Step = (typeof STEPS)[number];
@@ -142,6 +143,7 @@ export default function OnboardingPage() {
           posthog.identify(user.clerkId, {
             name: user.name,
             email: user.email,
+            ...internalAccountProperties(user.email),
           });
         }
         posthog.capture("onboarding_completed", {
