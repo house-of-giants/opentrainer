@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query, internalQuery } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+import { pickBestSet } from "@opentrainer/lib/progression";
 import { getCurrentUser } from "./auth";
 import type { Id } from "./_generated/dataModel";
 import { createConvexLogger, truncateId } from "./lib/logger";
@@ -507,6 +508,7 @@ export const getExerciseHistory = query({
         reps: number;
         rpe: number | null;
         unit: "kg" | "lb";
+        isWarmup: boolean;
       }>;
       bestSet: {
         weight: number;
@@ -537,15 +539,12 @@ export const getExerciseHistory = query({
           reps: e.lifting!.reps ?? 0,
           rpe: e.lifting!.rpe ?? null,
           unit: e.lifting!.unit,
+          isWarmup: e.lifting!.isWarmup === true,
         }));
 
       if (sets.length === 0) continue;
 
-      const workingSets = sets.filter((s) => s.reps > 0);
-      const bestSet = workingSets.reduce(
-        (best, current) => (current.weight > best.weight ? current : best),
-        workingSets[0] ?? sets[0]
-      );
+      const bestSet = pickBestSet(sets)!;
 
       sessions.push({
         workoutId: workoutIds[i],
@@ -610,107 +609,6 @@ export const getTimedExerciseHistory = query({
         date: new Date(workout.completedAt ?? workout.startedAt).toISOString(),
         sets,
         longestHoldSeconds: Math.max(...sets.map((set) => set.durationSeconds)),
-      });
-    }
-
-    return sessions;
-  },
-});
-
-export const getExerciseHistoryInternal = internalQuery({
-  args: {
-    userId: v.id("users"),
-    exerciseName: v.string(),
-    sessionCount: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const limit = args.sessionCount ?? 3;
-
-    const entries = await ctx.db
-      .query("entries")
-      .withIndex("by_user_created", (q) => q.eq("userId", args.userId))
-      .order("desc")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("exerciseName"), args.exerciseName),
-          q.eq(q.field("kind"), "lifting")
-        )
-      )
-      .collect();
-
-    if (entries.length === 0) {
-      return [];
-    }
-
-    const sessionMap = new Map<Id<"workouts">, (typeof entries)[number][]>();
-    for (const entry of entries) {
-      const existing = sessionMap.get(entry.workoutId);
-      if (existing) {
-        existing.push(entry);
-      } else {
-        sessionMap.set(entry.workoutId, [entry]);
-      }
-    }
-
-    const workoutIds = Array.from(sessionMap.keys());
-    const workouts = await Promise.all(
-      workoutIds.map((id) => ctx.db.get(id))
-    );
-
-    type ExerciseSession = {
-      workoutId: Id<"workouts">;
-      date: string;
-      sets: Array<{
-        setNumber: number;
-        weight: number;
-        reps: number;
-        rpe: number | null;
-        unit: "kg" | "lb";
-      }>;
-      bestSet: {
-        weight: number;
-        reps: number;
-        rpe: number | null;
-        unit: "kg" | "lb";
-      };
-    };
-
-    const sessions: ExerciseSession[] = [];
-
-    for (let i = 0; i < workoutIds.length && sessions.length < limit; i++) {
-      const workout = workouts[i];
-      if (!workout || workout.status !== "completed") {
-        continue;
-      }
-
-      const sessionEntries = sessionMap.get(workoutIds[i])!;
-      sessionEntries.sort((a, b) => 
-        (a.lifting?.setNumber ?? 0) - (b.lifting?.setNumber ?? 0)
-      );
-
-      const sets = sessionEntries
-        .filter((e) => e.lifting && e.lifting.durationSeconds === undefined)
-        .map((e) => ({
-          setNumber: e.lifting!.setNumber,
-          weight: e.lifting!.weight ?? 0,
-          reps: e.lifting!.reps ?? 0,
-          rpe: e.lifting!.rpe ?? null,
-          unit: e.lifting!.unit,
-        }));
-
-      if (sets.length === 0) continue;
-
-      const workingSets = sets.filter((s) => s.reps > 0);
-      const bestSet = workingSets.reduce(
-        (best, current) => (current.weight > best.weight ? current : best),
-        workingSets[0] ?? sets[0]
-      );
-
-      sessions.push({
-        workoutId: workoutIds[i],
-        date: new Date(workout.completedAt ?? workout.startedAt).toISOString(),
-        sets,
-        bestSet,
       });
     }
 

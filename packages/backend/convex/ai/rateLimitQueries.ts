@@ -6,7 +6,6 @@ const actionTypeValidator = v.union(
   v.literal("trainingLabReport"),
   v.literal("smartSwap"),
   v.literal("routineGeneration"),
-  v.literal("progression"),
   v.literal("dataExport")
 );
 

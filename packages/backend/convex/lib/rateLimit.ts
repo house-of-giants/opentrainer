@@ -16,10 +16,6 @@ export const RATE_LIMITS = {
     windowMs: TWENTY_FOUR_HOURS_MS,
     maxRequests: 10,
   },
-  progression: {
-    windowMs: TWENTY_FOUR_HOURS_MS,
-    maxRequests: 50,
-  },
   dataExport: {
     windowMs: TWENTY_FOUR_HOURS_MS,
     maxRequests: 5,
@@ -76,7 +72,7 @@ export async function checkRateLimit(
   } else if (actionType === "trainingLabReport") {
     count = await countTrainingLabUsage(ctx, userId, windowStart);
   } else {
-    // routineGeneration and progression don't persist trackable records
+    // routineGeneration doesn't persist trackable records
     // TODO: Add dedicated aiUsage table for accurate per-action tracking
     count = 0;
   }

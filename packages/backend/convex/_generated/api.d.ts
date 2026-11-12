@@ -11,7 +11,6 @@
 import type * as ai_aggregators from "../ai/aggregators.js";
 import type * as ai_equipmentParser from "../ai/equipmentParser.js";
 import type * as ai_gemini from "../ai/gemini.js";
-import type * as ai_progression from "../ai/progression.js";
 import type * as ai_prompts from "../ai/prompts.js";
 import type * as ai_rateLimitQueries from "../ai/rateLimitQueries.js";
 import type * as ai_routineGenerator from "../ai/routineGenerator.js";
@@ -49,7 +48,6 @@ declare const fullApi: ApiFromModules<{
   "ai/aggregators": typeof ai_aggregators;
   "ai/equipmentParser": typeof ai_equipmentParser;
   "ai/gemini": typeof ai_gemini;
-  "ai/progression": typeof ai_progression;
   "ai/prompts": typeof ai_prompts;
   "ai/rateLimitQueries": typeof ai_rateLimitQueries;
   "ai/routineGenerator": typeof ai_routineGenerator;
