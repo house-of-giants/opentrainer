@@ -182,7 +182,8 @@ export function HistoryImportFlow() {
   };
 
   if (step === "file" || !file || !settings || !plan) {
-    return <FileStep error={fileError} onFile={handleFile} />;
+    // Wait for the profile so a CSV with no unit column gets the user's unit.
+    return <FileStep error={fileError} onFile={handleFile} disabled={user === undefined} />;
   }
 
   if (step === "map") {
@@ -284,12 +285,14 @@ export function HistoryImportFlow() {
   );
 }
 
-function FileStep({
+export function FileStep({
   error,
   onFile,
+  disabled = false,
 }: {
   error: string | null;
   onFile: (file: File | undefined) => void;
+  disabled?: boolean;
 }) {
   const inputId = useId();
   return (
@@ -306,13 +309,14 @@ function FileStep({
         className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center hover:bg-muted/50 focus-within:ring-2 focus-within:ring-ring"
       >
         <FileUp className="h-6 w-6 text-muted-foreground" />
-        <span className="font-medium">Choose CSV file</span>
+        <span className="font-medium">{disabled ? "Loading your profile…" : "Choose CSV file"}</span>
         <span className="text-xs text-muted-foreground">One row per set, with a header row</span>
         <input
           id={inputId}
           type="file"
           accept=".csv,text/csv"
           className="sr-only"
+          disabled={disabled}
           onChange={(event) => {
             void onFile(event.target.files?.[0]);
             event.target.value = "";

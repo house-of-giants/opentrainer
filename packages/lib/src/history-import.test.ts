@@ -41,6 +41,16 @@ describe("parseImportDate", () => {
     assert.equal(parseImportDate("2024-02-30"), undefined);
     assert.equal(parseImportDate("yesterday"), undefined);
   });
+
+  test("rejects clock values out of range instead of rolling them over", () => {
+    assert.equal(parseImportDate("2024-03-18 25:00"), undefined);
+    assert.equal(parseImportDate("2024-03-18 07:61"), undefined);
+    assert.equal(parseImportDate("18 Mar 2024, 07:30:60"), undefined);
+    assert.equal(parseImportDate("Mar 18, 2024, 13:30 PM"), undefined);
+    assert.equal(parseImportDate("2024-03-18 0:15 AM"), undefined);
+    assert.deepEqual(localParts(parseImportDate("2024-03-18 12:30 AM")), [2024, 3, 18, 0, 30, 0]);
+    assert.deepEqual(localParts(parseImportDate("Mar 18, 2024, 12:05 PM")), [2024, 3, 18, 12, 5, 0]);
+  });
 });
 
 describe("cell parsing", () => {

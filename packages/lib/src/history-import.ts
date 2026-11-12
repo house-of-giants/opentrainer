@@ -245,6 +245,11 @@ function localTime(
   seconds = 0,
   ms = 0
 ): number | undefined {
+  // Reject clock values that Date would roll over, such as 25:00 or 07:61.
+  const clockOk =
+    hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59 &&
+    seconds >= 0 && seconds <= 59 && ms >= 0 && ms <= 999;
+  if (!clockOk) return undefined;
   const date = new Date(year, month, day, hours, minutes, seconds, ms);
   // Reject roll-overs such as February 30.
   if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
@@ -266,6 +271,8 @@ const DOTTED_DAY_MONTH_YEAR = /^(\d{1,2})\.(\d{1,2})\.(\d{4}),? (\d{1,2}):(\d{2}
 
 function to24Hour(hours: number, meridiem: string | undefined): number {
   if (!meridiem) return hours;
+  // A 12-hour clock has no hour 0 or 13; NaN makes localTime reject it.
+  if (hours < 1 || hours > 12) return Number.NaN;
   const pm = meridiem.toLowerCase() === "pm";
   return (hours % 12) + (pm ? 12 : 0);
 }

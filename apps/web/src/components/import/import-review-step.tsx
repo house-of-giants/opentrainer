@@ -70,7 +70,9 @@ export function ImportReviewStep({
   const skippedByReason = useMemo(() => {
     const groups = new Map<SkipReason, number[]>();
     for (const { row, reason } of plan.skipped) {
-      groups.set(reason, [...(groups.get(reason) ?? []), row]);
+      const rows = groups.get(reason);
+      if (rows) rows.push(row);
+      else groups.set(reason, [row]);
     }
     return [...groups.entries()];
   }, [plan.skipped]);
