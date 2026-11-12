@@ -69,7 +69,7 @@ export function showStartWorkoutError(error: unknown) {
 }
 
 type StartRoutineDayOptions = {
-  entryPoint: "home" | "start_sheet";
+  entryPoint: "home" | "start_sheet" | "onboarding";
   isNextDay: boolean;
 };
 
@@ -108,7 +108,13 @@ export function useStartRoutineDay() {
           entry_point: entryPoint,
           is_next_day: isNextDay,
         });
-        router.push("/(app)/workout/active");
+        // Onboarding ends here, so the workout replaces its screen instead of
+        // leaving it underneath.
+        if (entryPoint === "onboarding") {
+          router.replace("/(app)/workout/active");
+        } else {
+          router.push("/(app)/workout/active");
+        }
         return true;
       } catch (error) {
         showStartWorkoutError(error);

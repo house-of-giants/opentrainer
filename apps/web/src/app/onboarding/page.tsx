@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@opentrainer/backend";
@@ -17,11 +17,22 @@ import { EquipmentStep } from "./steps/equipment-step";
 import { EquipmentConfirmStep } from "./steps/equipment-confirm-step";
 import { AvailabilityStep } from "./steps/availability-step";
 import { UnitsPicker } from "./steps/units-picker";
+import { PathStep, type OnboardingPath } from "./steps/path-step";
 import posthog from "posthog-js";
 import { internalAccountProperties } from "@opentrainer/lib/analytics";
 
-const STEPS = ["goals", "experience", "equipment", "equipment-confirm", "availability"] as const;
-type Step = (typeof STEPS)[number];
+// The first step picks a path and units. Only "Generate one" goes on to the
+// profile questions; the other two paths finish here and open the routine
+// builder, which ends on day 1 of the saved routine.
+const GENERATE_STEPS = [
+  "path",
+  "goals",
+  "experience",
+  "equipment",
+  "equipment-confirm",
+  "availability",
+] as const;
+type Step = (typeof GENERATE_STEPS)[number];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -31,8 +42,12 @@ export default function OnboardingPage() {
   const updatePreferences = useMutation(api.users.updatePreferences);
   const parseEquipment = useAction(api.ai.equipmentParser.parseEquipment);
 
-  const [currentStep, setCurrentStep] = useState<Step>("goals");
+  const [currentStep, setCurrentStep] = useState<Step>("path");
   const [initialized, setInitialized] = useState(false);
+  const [path, setPath] = useState<OnboardingPath | null>(null);
+  // Set once this page hands off to the routine builder, so the finished
+  // user doc does not also redirect to the dashboard over the builder.
+  const handingOff = useRef(false);
   
   const [goals, setGoals] = useState<Goal[]>([]);
   // New accounts get "lb" from the backend, so default from the browser locale.
@@ -51,7 +66,7 @@ export default function OnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user && user.onboardingCompletedAt) {
+    if (user && user.onboardingCompletedAt && !handingOff.current) {
       router.replace("/dashboard");
     }
   }, [user, router]);
@@ -82,11 +97,14 @@ export default function OnboardingPage() {
     return null;
   }
 
-  const stepIndex = STEPS.indexOf(currentStep);
-  const progress = ((stepIndex + 1) / STEPS.length) * 100;
+  const stepIndex = GENERATE_STEPS.indexOf(currentStep);
+  const isGenerating = path === "generate";
+  const progress = isGenerating ? ((stepIndex + 1) / GENERATE_STEPS.length) * 100 : 0;
 
   const canProceed = (): boolean => {
     switch (currentStep) {
+      case "path":
+        return path !== null;
       case "goals":
         return goals.length > 0;
       case "experience":
@@ -102,8 +120,43 @@ export default function OnboardingPage() {
     }
   };
 
+  const identify = () => {
+    if (user?.clerkId) {
+      posthog.identify(user.clerkId, {
+        name: user.name,
+        email: user.email,
+        ...internalAccountProperties(user.email),
+      });
+    }
+  };
+
+  // "Bring my program" and "Start from scratch" skip every profile question.
+  const finishIntoBuilder = async (chosen: Exclude<OnboardingPath, "generate">) => {
+    setIsSubmitting(true);
+    handingOff.current = true;
+    try {
+      await updatePreferences({ preferredUnits: units });
+      await completeOnboarding({});
+      identify();
+      posthog.capture("onboarding_completed", {
+        path: chosen,
+        preferred_units: units,
+      });
+      router.replace(`/routines/new?onboarding=${chosen}`);
+    } catch {
+      handingOff.current = false;
+      toast.error("Failed to save. Please try again.");
+      setIsSubmitting(false);
+    }
+  };
+
   const handleNext = async () => {
     if (!canProceed()) return;
+
+    if (currentStep === "path" && path && path !== "generate") {
+      await finishIntoBuilder(path);
+      return;
+    }
 
     if (currentStep === "equipment") {
       setCurrentStep("equipment-confirm");
@@ -138,15 +191,9 @@ export default function OnboardingPage() {
           weeklyAvailability: days,
           sessionDuration: duration,
         });
-        // Identify and track onboarding completion
-        if (user?.clerkId) {
-          posthog.identify(user.clerkId, {
-            name: user.name,
-            email: user.email,
-            ...internalAccountProperties(user.email),
-          });
-        }
+        identify();
         posthog.capture("onboarding_completed", {
+          path: "generate",
           goals,
           experience_level: experience,
           equipment_count: equipment.length,
@@ -163,15 +210,15 @@ export default function OnboardingPage() {
     }
 
     const nextIndex = stepIndex + 1;
-    if (nextIndex < STEPS.length) {
-      setCurrentStep(STEPS[nextIndex]);
+    if (nextIndex < GENERATE_STEPS.length) {
+      setCurrentStep(GENERATE_STEPS[nextIndex]);
     }
   };
 
   const handleBack = () => {
     const prevIndex = stepIndex - 1;
     if (prevIndex >= 0) {
-      setCurrentStep(STEPS[prevIndex]);
+      setCurrentStep(GENERATE_STEPS[prevIndex]);
     }
   };
 
@@ -210,21 +257,24 @@ export default function OnboardingPage() {
           <div />
         )}
         <div className="flex-1 text-center">
-          <span className="text-xs text-muted-foreground">
-            Step {stepIndex + 1} of {STEPS.length}
-          </span>
+          {isGenerating && (
+            <span className="text-xs text-muted-foreground">
+              Step {stepIndex + 1} of {GENERATE_STEPS.length}
+            </span>
+          )}
         </div>
         <div className="w-16" />
       </header>
 
       <main className="flex-1 px-6 pb-32">
         <div className="mx-auto max-w-md pt-4">
-          {currentStep === "goals" && (
+          {currentStep === "path" && (
             <div className="space-y-8">
-              <GoalsStep selected={goals} onSelect={setGoals} />
+              <PathStep selected={path} onSelect={setPath} />
               <UnitsPicker value={units} onChange={setUnits} />
             </div>
           )}
+          {currentStep === "goals" && <GoalsStep selected={goals} onSelect={setGoals} />}
           {currentStep === "experience" && (
             <ExperienceStep selected={experience} onSelect={setExperience} />
           )}

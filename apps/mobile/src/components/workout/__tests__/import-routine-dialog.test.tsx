@@ -33,7 +33,7 @@ const importRoutine = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
-  importRoutine.mockResolvedValue(null);
+  importRoutine.mockResolvedValue("routine_1");
   mockUseMutation.mockImplementation(() => importRoutine);
 });
 
@@ -65,7 +65,7 @@ describe("ImportRoutineDialog", () => {
     );
     expect(mockToast.success).toHaveBeenCalledWith("Routine imported successfully!");
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(onSuccess).toHaveBeenCalled();
+    expect(onSuccess).toHaveBeenCalledWith("routine_1");
     expect(mockCapture.mock.calls).toEqual([["routine_imported", { scope: "routine" }]]);
   });
 

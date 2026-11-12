@@ -54,12 +54,19 @@ async function renderOnboarding() {
   );
 }
 
+// "Generate one" is the only path that asks the profile questions below.
+async function chooseGenerate() {
+  await fireEvent.press(screen.getByText("Generate one"));
+  await fireEvent.press(screen.getByText("Continue"));
+}
+
 describe("Onboarding wizard", () => {
-  it("renders the goals step first and gates the CTA on a selection", async () => {
+  it("asks for goals after Generate one and gates the CTA on a selection", async () => {
     await renderOnboarding();
+    await chooseGenerate();
 
     expect(screen.getByText("What are you training for?")).toBeOnTheScreen();
-    expect(screen.getByText("Step 1 of 5")).toBeOnTheScreen();
+    expect(screen.getByText("Step 2 of 6")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: /Continue/ })).toBeDisabled();
 
     // Pressing a disabled CTA must not advance the machine.
@@ -72,11 +79,12 @@ describe("Onboarding wizard", () => {
 
     await fireEvent.press(screen.getByText("Continue"));
     expect(screen.getByText("How long have you been lifting?")).toBeOnTheScreen();
-    expect(screen.getByText("Step 2 of 5")).toBeOnTheScreen();
+    expect(screen.getByText("Step 3 of 6")).toBeOnTheScreen();
   });
 
   it("walks every step, parses equipment, and completes onboarding", async () => {
     await renderOnboarding();
+    await chooseGenerate();
 
     await fireEvent.press(screen.getByText("Strength"));
     await fireEvent.press(screen.getByText("Hypertrophy"));
@@ -102,7 +110,7 @@ describe("Onboarding wizard", () => {
     await waitFor(() =>
       expect(screen.getByText("We detected this equipment")).toBeOnTheScreen(),
     );
-    expect(screen.getByText("Step 4 of 5")).toBeOnTheScreen();
+    expect(screen.getByText("Step 5 of 6")).toBeOnTheScreen();
     expect(screen.getByText("Full gym assumed")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Barbell" })).toBeSelected();
     expect(screen.getByRole("button", { name: "Dumbbells" })).toBeSelected();
@@ -110,7 +118,7 @@ describe("Onboarding wizard", () => {
 
     await fireEvent.press(screen.getByText("Continue"));
     expect(screen.getByText("How often can you train?")).toBeOnTheScreen();
-    expect(screen.getByText("Step 5 of 5")).toBeOnTheScreen();
+    expect(screen.getByText("Step 6 of 6")).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByText("Get Started"));
 
@@ -131,6 +139,7 @@ describe("Onboarding wizard", () => {
   it("falls back to manual selection when the parser fails", async () => {
     parseEquipment.mockRejectedValueOnce(new Error("gemini down"));
     await renderOnboarding();
+    await chooseGenerate();
 
     await fireEvent.press(screen.getByText("Strength"));
     await fireEvent.press(screen.getByText("Continue"));
@@ -167,6 +176,7 @@ describe("Onboarding wizard", () => {
       sessionDuration: 45,
     });
     await renderOnboarding();
+    await chooseGenerate();
 
     expect(screen.getByRole("button", { name: /Endurance/ })).toBeSelected();
     await fireEvent.press(screen.getByText("Continue"));
@@ -194,6 +204,7 @@ describe("Onboarding wizard", () => {
 
   it("steps back to the previous step", async () => {
     await renderOnboarding();
+    await chooseGenerate();
 
     await fireEvent.press(screen.getByText("Strength"));
     await fireEvent.press(screen.getByText("Continue"));
@@ -201,12 +212,17 @@ describe("Onboarding wizard", () => {
 
     await fireEvent.press(screen.getByLabelText("Back"));
     expect(screen.getByText("What are you training for?")).toBeOnTheScreen();
-    expect(screen.getByText("Step 1 of 5")).toBeOnTheScreen();
+    expect(screen.getByText("Step 2 of 6")).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByLabelText("Back"));
+    expect(screen.getByText("How do you want to start?")).toBeOnTheScreen();
+    expect(screen.getByRole("radio", { name: /Generate one/ })).toBeChecked();
   });
 
   it("shows a save error without leaving the last step", async () => {
     completeOnboarding.mockRejectedValueOnce(new Error("offline"));
     await renderOnboarding();
+    await chooseGenerate();
 
     await fireEvent.press(screen.getByText("Strength"));
     await fireEvent.press(screen.getByText("Continue"));
