@@ -7,6 +7,7 @@ import {
   defaultUnitForRegion,
   displayWeight,
   editedWeightForStorage,
+  volumeFromPounds,
 } from "./units";
 
 describe("weight units", () => {
@@ -52,6 +53,19 @@ describe("weight units", () => {
       }),
       226
     );
+  });
+});
+
+describe("stored workout volume", () => {
+  test("shows stored pound volume in kilograms for a kg lifter", () => {
+    // 1102.31 lb is the stored value for 100 kg x 5.
+    assert.equal(volumeFromPounds(1102.31, "kg"), 500);
+    assert.equal(volumeFromPounds(20_450, "kg"), 9276);
+  });
+
+  test("shows stored pound volume as whole pounds for an lb lifter", () => {
+    assert.equal(volumeFromPounds(2227.31, "lb"), 2227);
+    assert.equal(volumeFromPounds(0, "lb"), 0);
   });
 });
 

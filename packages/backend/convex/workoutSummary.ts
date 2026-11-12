@@ -1,5 +1,6 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
+import { convertWeight } from "@opentrainer/lib/units";
 
 type WorkoutSummary = NonNullable<Doc<"workouts">["summary"]>;
 
@@ -32,7 +33,9 @@ export function buildWorkoutSummary(
     if (entry.kind === "lifting" && entry.lifting) {
       totalSets++;
       if (entry.lifting.weight && entry.lifting.reps) {
-        totalVolume += entry.lifting.weight * entry.lifting.reps;
+        // Stored volume is pounds; convert kg sets before adding them.
+        totalVolume +=
+          convertWeight(entry.lifting.weight, entry.lifting.unit, "lb") * entry.lifting.reps;
       }
       continue;
     }

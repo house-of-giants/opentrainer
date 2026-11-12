@@ -5,7 +5,7 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useConvex, useMutation, useQuery } from "convex/react";
 import { File, Paths } from "expo-file-system";
 import { api } from "@opentrainer/backend";
-import { displayWeight } from "@opentrainer/lib/units";
+import { displayWeight, volumeFromPounds } from "@opentrainer/lib/units";
 import type { EffortScale } from "@opentrainer/lib/effort";
 import { buildDataExportFile, type DataExportFormat } from "@opentrainer/lib/data-export";
 import {
@@ -132,7 +132,7 @@ export default function ProfileScreen() {
     (acc, w) => acc + (w.summary?.totalSets ?? 0),
     0,
   );
-  const totalVolume = completedWorkouts.reduce(
+  const totalVolumeLb = completedWorkouts.reduce(
     (acc, w) => acc + (w.summary?.totalVolume ?? 0),
     0,
   );
@@ -153,6 +153,7 @@ export default function ProfileScreen() {
       ? `${user.weeklyAvailability} days/week · ${user.sessionDuration} min`
       : "Not set";
   const preferredUnit = (user?.preferredUnits ?? "lb") as "lb" | "kg";
+  const totalVolume = volumeFromPounds(totalVolumeLb, preferredUnit);
   const storedBodyweightUnit = (user?.bodyweightUnit ?? "lb") as "lb" | "kg";
   const bodyweightDisplay = user?.bodyweight
     ? `${displayWeight(user.bodyweight, storedBodyweightUnit, preferredUnit)} ${preferredUnit}`
