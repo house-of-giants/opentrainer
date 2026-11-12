@@ -7,6 +7,10 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
 import type { Id } from "@opentrainer/backend";
 import {
+  editorExerciseToRoutineExercise,
+  routineExerciseToEditorFields,
+} from "@opentrainer/lib/routine-editor";
+import {
   NestableDraggableFlatList,
   NestableScrollContainer,
   ScaleDecorator,
@@ -163,24 +167,9 @@ export default function EditRoutineScreen() {
               catalogEntry._id === ex.exerciseId ||
               catalogEntry.name === ex.exerciseName,
           );
-          let targetDuration = ex.targetDuration;
-          if (ex.kind === "cardio" && !targetDuration && ex.targetReps) {
-            const match = ex.targetReps.match(/(\d+)/);
-            if (match) {
-              targetDuration = parseInt(match[1], 10);
-            }
-          }
           return {
             id: newLocalId(),
-            exerciseId: ex.exerciseId,
-            exerciseName: ex.exerciseName,
-            kind: ex.kind,
-            targetSets: ex.targetSets || 3,
-            targetReps: ex.targetReps || "8-12",
-            measurementType: ex.measurementType ?? catalogExercise?.measurementType,
-            targetDuration: targetDuration || 20,
-            targetHoldSeconds: ex.targetHoldSeconds || 30,
-            perSide: ex.perSide || false,
+            ...routineExerciseToEditorFields(ex, catalogExercise?.measurementType),
             restSeconds: 90,
           };
         }),
@@ -312,25 +301,7 @@ export default function EditRoutineScreen() {
         description: description.trim() || undefined,
         days: days.map((d) => ({
           name: d.name,
-          exercises: d.exercises.map((e) => ({
-            exerciseId: e.exerciseId,
-            exerciseName: e.exerciseName,
-            kind: e.kind,
-            targetSets:
-              e.kind === "lifting" || e.kind === "mobility" ? e.targetSets : 1,
-            targetReps:
-              (e.kind === "lifting" && e.measurementType !== "duration") ||
-              e.kind === "mobility"
-                ? e.targetReps
-                : undefined,
-            measurementType: e.kind === "lifting" ? e.measurementType : undefined,
-            targetDuration: e.kind === "cardio" ? e.targetDuration : undefined,
-            targetHoldSeconds:
-              e.kind === "mobility" || e.measurementType === "duration"
-                ? e.targetHoldSeconds
-                : undefined,
-            perSide: e.kind === "mobility" ? e.perSide : undefined,
-          })),
+          exercises: d.exercises.map(editorExerciseToRoutineExercise),
         })),
       });
       vibrate("success");
