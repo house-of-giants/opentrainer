@@ -64,6 +64,7 @@ export interface UserContext {
   accountAgeDays?: number;
   email?: string;
   isAlphaUser?: boolean;
+  proReason?: "early_access" | "paid";
 }
 
 export interface WorkoutContext {

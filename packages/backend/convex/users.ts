@@ -46,7 +46,7 @@ export const getOrCreateUser = mutation({
       name: args.name,
       imageUrl: args.imageUrl,
       tier: "pro",
-      isAlphaUser: true,
+      proReason: "early_access",
       preferredUnits: "lb",
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -54,7 +54,7 @@ export const getOrCreateUser = mutation({
 
     logger.success({
       action: "user_created",
-      user: { id: truncateId(userId), tier: "pro", isAlphaUser: true },
+      user: { id: truncateId(userId), tier: "pro", proReason: "early_access" },
     });
 
     return userId;

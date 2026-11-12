@@ -37,7 +37,7 @@ export function ProPlanCard() {
 			<div className="relative">
 				<div className="mb-4 flex justify-center">
 					<span className="rounded-full bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-600">
-						Alpha — Free for Everyone
+						Early Access — Free for Everyone
 					</span>
 				</div>
 
@@ -49,12 +49,9 @@ export function ProPlanCard() {
 				</div>
 
 				<div className="mb-6 text-center">
-					<div className="flex items-baseline justify-center gap-2">
-						<span className="text-4xl font-bold">$0</span>
-						<span className="text-muted-foreground line-through">$8/mo</span>
-					</div>
+					<div className="text-4xl font-bold">$0</div>
 					<p className="mt-1 text-sm text-muted-foreground">
-						Free while we&apos;re in alpha
+						Free during early access
 					</p>
 				</div>
 
@@ -82,7 +79,7 @@ export function ProPlanCard() {
 				</Button>
 
 				<p className="mt-3 text-center text-xs text-muted-foreground">
-					No credit card required during alpha.
+					No credit card required during early access.
 				</p>
 			</div>
 		</Card>
