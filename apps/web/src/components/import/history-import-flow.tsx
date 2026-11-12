@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useState } from "react";
 import Link from "next/link";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
 import type { Id } from "@opentrainer/backend/convex/_generated/dataModel";
 import { FileUp, Loader2 } from "lucide-react";
@@ -37,8 +37,9 @@ type ImportResult = {
 export function HistoryImportFlow() {
   const user = useQuery(api.users.getCurrentUser);
   // getExercises returns only system exercises until auth is ready. Wait for
-  // the signed-in user so the user's custom exercises are matched too.
-  const allExercises = useQuery(api.exercises.getExercises, user ? {} : "skip");
+  // Convex auth so the user's custom exercises are matched too.
+  const { isAuthenticated } = useConvexAuth();
+  const allExercises = useQuery(api.exercises.getExercises, isAuthenticated ? {} : "skip");
   const createExercise = useMutation(api.exercises.createExercise);
   const importWorkouts = useMutation(api.historyImport.importWorkouts);
 
