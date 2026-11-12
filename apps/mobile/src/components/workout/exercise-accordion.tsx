@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import {
+  ChartLine,
   Check,
   ChevronDown,
   ChevronUp,
@@ -94,6 +95,8 @@ interface ExerciseAccordionProps {
   onSwap?: () => void;
   onNoteChange?: (note: string) => void;
   onSelect?: () => void;
+  /** Opens the exercise history screen. Omit to hide the button. */
+  onViewHistory?: () => void;
 }
 
 function SegmentedProgress({
@@ -371,6 +374,7 @@ export function ExerciseAccordion({
   onSwap,
   onNoteChange,
   onSelect,
+  onViewHistory,
   effortScale,
 }: ExerciseAccordionProps) {
   const weightMode = getWeightMode(equipment);
@@ -530,6 +534,17 @@ export function ExerciseAccordion({
                   accessibilityLabel="Swap exercise"
                 >
                   <Shuffle size={14} color={colors.mutedForeground} />
+                </Button>
+              )}
+              {status === "current" && onViewHistory && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 shrink-0 px-0"
+                  onPress={onViewHistory}
+                  accessibilityLabel={`View history for ${exerciseName}`}
+                >
+                  <ChartLine size={14} color={colors.mutedForeground} />
                 </Button>
               )}
               {status === "current" && onNoteChange && (

@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
-import { ChevronRight, MessageSquare } from "lucide-react-native";
+import { ChartLine, ChevronRight, MessageSquare } from "lucide-react-native";
 import type { Doc } from "@opentrainer/backend";
 import { displayWeight, type WeightUnit } from "@opentrainer/lib/units";
 
@@ -184,6 +184,7 @@ export function WorkoutExerciseCard({
   onEditSet,
   onEditCardio,
   onEditNote,
+  onViewHistory,
 }: {
   exercise: { name: string; entries: Doc<"entries">[] };
   note?: string;
@@ -192,6 +193,8 @@ export function WorkoutExerciseCard({
   onEditSet: (entry: Doc<"entries">) => void;
   onEditCardio: (entry: Doc<"entries">) => void;
   onEditNote: () => void;
+  /** Opens the exercise history screen. Omit to hide the button. */
+  onViewHistory?: () => void;
 }) {
   const { colors } = useTheme();
 
@@ -201,6 +204,17 @@ export function WorkoutExerciseCard({
         <Text className="flex-1 font-semibold text-foreground">
           {exercise.name}
         </Text>
+        {onViewHistory && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0"
+            onPress={onViewHistory}
+            accessibilityLabel={`View history for ${exercise.name}`}
+          >
+            <ChartLine size={16} color={colors.mutedForeground} />
+          </Button>
+        )}
         {editable && (
           <Button
             variant="ghost"

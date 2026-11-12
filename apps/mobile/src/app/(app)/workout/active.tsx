@@ -107,6 +107,7 @@ function ExerciseAccordionWithHistory({
     set: Parameters<React.ComponentProps<typeof ExerciseAccordion>["onAddSet"]>[0]
   ) => Promise<boolean>;
 }) {
+  const router = useRouter();
   const history = useQuery(api.entries.getExerciseHistory, { exerciseName });
   const weightStepSetting = useQuery(api.exercises.getWeightStep, {
     exerciseName,
@@ -174,6 +175,15 @@ function ExerciseAccordionWithHistory({
       onAddSet={async (set) => {
         if (await onAddSet(set)) suggestionTracker.markSetLogged(set);
       }}
+      onViewHistory={
+        history && history.length > 0
+          ? () =>
+              router.push({
+                pathname: "/(app)/exercise/[name]",
+                params: { name: exerciseName },
+              })
+          : undefined
+      }
       {...rest}
     />
   );

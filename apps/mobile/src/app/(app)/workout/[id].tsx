@@ -66,6 +66,15 @@ type GroupedExercise = {
   entries: Doc<"entries">[];
 };
 
+/** Rep-based lifting sets are what the exercise history screen shows. */
+function isRepLiftingEntry(entry: Doc<"entries">) {
+  return (
+    entry.kind === "lifting" &&
+    !!entry.lifting &&
+    entry.lifting.durationSeconds === undefined
+  );
+}
+
 function SummaryStat({
   label,
   value,
@@ -697,6 +706,15 @@ export default function WorkoutDetailsScreen() {
                 onEditSet={handleEditSet}
                 onEditCardio={handleEditCardio}
                 onEditNote={() => openExerciseNote(exercise.name)}
+                onViewHistory={
+                  exercise.entries.some(isRepLiftingEntry)
+                    ? () =>
+                        router.push({
+                          pathname: "/(app)/exercise/[name]",
+                          params: { name: exercise.name },
+                        })
+                    : undefined
+                }
               />
             ))}
           </View>
