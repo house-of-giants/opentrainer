@@ -160,9 +160,9 @@ export default function Home() {
             </a>
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
               </svg>
-              Zero tracking pixels
+              No ads, no data sales
             </p>
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -557,8 +557,15 @@ export default function Home() {
               Ready to simplify your training?
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-              No tracking pixels. No selling your data. Just a workout log that
-              works.
+              No ads. No selling your data. We use{" "}
+              <Link
+                href="/privacy"
+                className="underline underline-offset-4 hover:text-foreground"
+              >
+                product analytics
+              </Link>{" "}
+              to see which features get used and what breaks. Just a workout
+              log that works.
             </p>
             <div className="mt-8 flex flex-col items-center gap-3">
               <SignedOut>
