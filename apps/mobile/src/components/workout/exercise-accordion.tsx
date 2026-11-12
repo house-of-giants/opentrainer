@@ -22,6 +22,11 @@ import { SetStepper } from "./set-stepper";
 import { WeightStepSheet } from "./weight-step-sheet";
 import { RpeSelector } from "./rpe-selector";
 import { NoteSheet } from "./note-sheet";
+import {
+  SetSyncIndicator,
+  setRowAccessibility,
+  type SetSyncState,
+} from "./set-sync-indicator";
 import { useHaptic } from "@/hooks/use-haptic";
 import { useTheme } from "@/theme/theme-provider";
 import { cn } from "@/lib/cn";
@@ -31,6 +36,7 @@ type ExerciseStatus = "completed" | "current" | "upcoming";
 interface SetData {
   entryId?: string;
   setNumber: number;
+  syncState?: SetSyncState;
   reps: number;
   weight: number;
   unit: "lb" | "kg";
@@ -89,9 +95,13 @@ interface ExerciseAccordionProps {
   weightStepSetting?: WeightStepSetting | null;
   onWeightStepChange?: (setting: WeightStepSetting | null) => void;
   onAddSet: (
-    set: Omit<SetData, "setNumber" | "entryId"> & { rpe?: number | null },
+    set: Omit<SetData, "setNumber" | "entryId" | "syncState"> & {
+      rpe?: number | null;
+    },
   ) => void;
   onEditSet?: (set: SetData) => void;
+  /** Retries sets the server rejected; a failed set row calls it. */
+  onRetrySync?: () => void;
   onSwap?: () => void;
   onNoteChange?: (note: string) => void;
   onSelect?: () => void;
@@ -354,6 +364,49 @@ function formatLoggedSet(set: SetData) {
       : `${set.weight}${set.unit} × ${set.reps}`;
 }
 
+function LoggedSetRow({
+  set,
+  onEditSet,
+  onRetrySync,
+}: {
+  set: SetData;
+  onEditSet?: (set: SetData) => void;
+  onRetrySync?: () => void;
+}) {
+  const isFailed = set.syncState === "failed";
+  const onPress = isFailed
+    ? onRetrySync
+    : onEditSet && set.entryId
+      ? () => onEditSet(set)
+      : undefined;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      className={cn(
+        "flex-row items-center justify-between rounded px-2.5 py-1.5",
+        "border border-transparent bg-muted/40",
+        onPress && "active:border-border active:bg-muted",
+      )}
+      accessibilityRole="button"
+      {...setRowAccessibility(set.syncState)}
+    >
+      <Text className="font-mono text-[11px] text-muted-foreground">
+        {set.setNumber}
+      </Text>
+      <Text className="font-mono text-xs tabular-nums text-foreground">
+        {formatLoggedSet(set)}
+      </Text>
+      <SetSyncIndicator
+        syncState={set.syncState}
+        size={14}
+        textClassName="text-[11px]"
+      />
+    </Pressable>
+  );
+}
+
 export function ExerciseAccordion({
   exerciseName,
   sets,
@@ -371,6 +424,7 @@ export function ExerciseAccordion({
   onWeightStepChange,
   onAddSet,
   onEditSet,
+  onRetrySync,
   onSwap,
   onNoteChange,
   onSelect,
@@ -615,29 +669,12 @@ export function ExerciseAccordion({
                   const loggedSet = sets.find((s) => s.setNumber === setNumber);
                   if (loggedSet) {
                     return (
-                      <Pressable
+                      <LoggedSetRow
                         key={setNumber}
-                        onPress={() =>
-                          onEditSet && loggedSet.entryId && onEditSet(loggedSet)
-                        }
-                        disabled={!onEditSet || !loggedSet.entryId}
-                        className={cn(
-                          "flex-row items-center justify-between rounded px-2.5 py-1.5",
-                          "border border-transparent bg-muted/40",
-                          onEditSet &&
-                            loggedSet.entryId &&
-                            "active:border-border active:bg-muted",
-                        )}
-                        accessibilityRole="button"
-                      >
-                        <Text className="font-mono text-[11px] text-muted-foreground">
-                          {setNumber}
-                        </Text>
-                        <Text className="font-mono text-xs tabular-nums text-foreground">
-                          {formatLoggedSet(loggedSet)}
-                        </Text>
-                        <Check size={14} color={colors.primary} />
-                      </Pressable>
+                        set={loggedSet}
+                        onEditSet={onEditSet}
+                        onRetrySync={onRetrySync}
+                      />
                     );
                   } else {
                     const displayReps =
@@ -666,27 +703,12 @@ export function ExerciseAccordion({
           ) : sets.length > 0 ? (
             <View className="gap-1">
               {sets.map((set) => (
-                <Pressable
+                <LoggedSetRow
                   key={set.setNumber}
-                  onPress={() => onEditSet && set.entryId && onEditSet(set)}
-                  disabled={!onEditSet || !set.entryId}
-                  className={cn(
-                    "flex-row items-center justify-between rounded px-2.5 py-1.5",
-                    "border border-transparent bg-muted/40",
-                    onEditSet &&
-                      set.entryId &&
-                      "active:border-border active:bg-muted",
-                  )}
-                  accessibilityRole="button"
-                >
-                  <Text className="font-mono text-[11px] text-muted-foreground">
-                    {set.setNumber}
-                  </Text>
-                  <Text className="font-mono text-xs tabular-nums text-foreground">
-                    {formatLoggedSet(set)}
-                  </Text>
-                  <Check size={14} color={colors.primary} />
-                </Pressable>
+                  set={set}
+                  onEditSet={onEditSet}
+                  onRetrySync={onRetrySync}
+                />
               ))}
             </View>
           ) : null}

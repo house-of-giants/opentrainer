@@ -10,13 +10,20 @@ import ActiveWorkoutScreen from "@/app/(app)/workout/active";
 import { TrainingReminderOffer } from "@/components/reminders/training-reminder-offer";
 import { profileUser, profileWorkouts } from "@/__fixtures__/profile-fixtures";
 import { ThemeProvider } from "@/theme/theme-provider";
+import { resetPendingSets } from "@/test-utils/pending-sets";
 
 jest.mock("convex/react", () => ({
   useQuery: jest.fn(),
   useMutation: jest.fn(() => jest.fn()),
   useAction: jest.fn(() => jest.fn()),
-  useConvex: jest.fn(() => ({ query: jest.fn() })),
+  useConvex: jest.fn(() => ({
+    query: jest.fn(),
+    ...require("@/test-utils/pending-sets").mockConvexClient,
+  })),
 }));
+jest.mock("@/lib/pending-set-queue", () =>
+  require("@/test-utils/pending-sets").pendingSetQueueModuleMock(),
+);
 
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn() };
 let mockIsFocused = true;
@@ -98,6 +105,7 @@ beforeEach(async () => {
   jest.clearAllMocks();
   mockIsFocused = true;
   await AsyncStorage.clear();
+  await resetPendingSets();
   getPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true });
   requestPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true });
   scheduleNotificationAsync.mockResolvedValue("notification-id");

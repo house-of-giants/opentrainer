@@ -57,13 +57,18 @@ import {
 } from "@/components/workout/edit-set-sheet";
 import { WorkoutTimeEditorDialog } from "@/components/workout/workout-time-editor-dialog";
 import { SessionCommandCenter } from "@/components/workout/session-command-center";
+import type { SetSyncState } from "@/components/workout/set-sync-indicator";
 import { useClientId } from "@/hooks/use-client-id";
+import { usePendingSets } from "@/hooks/use-pending-sets";
 import { useHaptic } from "@/hooks/use-haptic";
 import { analytics } from "@/lib/analytics";
 import { queueReminderOffer } from "@/lib/training-reminders";
 
 type EntryData = {
   _id: string;
+  clientId?: string;
+  /** Set only for a set the server has not confirmed yet. */
+  syncState?: SetSyncState;
   exerciseName: string;
   kind: "lifting" | "cardio";
   lifting?: {
@@ -103,10 +108,9 @@ function ExerciseAccordionWithHistory({
   | "onWeightStepChange"
   | "onAddSet"
 > & {
-  /** Resolves true once the set is saved. */
   onAddSet: (
     set: Parameters<React.ComponentProps<typeof ExerciseAccordion>["onAddSet"]>[0]
-  ) => Promise<boolean>;
+  ) => void;
 }) {
   const router = useRouter();
   const history = useQuery(api.entries.getExerciseHistory, { exerciseName });
@@ -173,8 +177,9 @@ function ExerciseAccordionWithHistory({
       weightStepSetting={weightStepSetting}
       onWeightStepChange={handleWeightStepChange}
       unit={unit}
-      onAddSet={async (set) => {
-        if (await onAddSet(set)) suggestionTracker.markSetLogged(set);
+      onAddSet={(set) => {
+        onAddSet(set);
+        suggestionTracker.markSetLogged(set);
       }}
       onViewHistory={
         history && history.length > 0
@@ -308,10 +313,38 @@ export default function ActiveWorkoutScreen() {
   const user = useQuery(api.users.getCurrentUser);
   const preferredUnit: WeightUnit = user?.preferredUnits ?? "lb";
   const effortScale: EffortScale = user?.effortScale ?? "rpe";
-  const entries = useQuery(
+  const serverEntries = useQuery(
     api.entries.getEntriesByWorkout,
     workout ? { workoutId: workout._id } : "skip",
   );
+  const {
+    isLoaded: pendingSetsLoaded,
+    pendingSets,
+    logSet,
+    retry: retryPendingSets,
+  } = usePendingSets(workout?._id);
+  // Sets the server has not confirmed show after the saved ones. A set leaves
+  // the pending list only after the server has it, so match on clientId to
+  // show it once in between.
+  const entries = useMemo((): EntryData[] | undefined => {
+    if (!serverEntries) return undefined;
+    const savedClientIds = new Set(
+      serverEntries.map((entry) => entry.clientId),
+    );
+    const unsaved = pendingSets
+      .filter((item) => !savedClientIds.has(item.args.clientId))
+      .map(
+        ({ args, status }): EntryData => ({
+          _id: `pending:${args.clientId}`,
+          clientId: args.clientId,
+          syncState: status,
+          exerciseName: args.exerciseName,
+          kind: "lifting",
+          lifting: args.lifting,
+        }),
+      );
+    return [...(serverEntries as EntryData[]), ...unsaved];
+  }, [serverEntries, pendingSets]);
   const routineExercises = useQuery(
     api.workouts.getRoutineExercisesForWorkout,
     workout ? { workoutId: workout._id } : "skip",
@@ -323,7 +356,6 @@ export default function ActiveWorkoutScreen() {
 
   const duration = useDuration(workout?.startedAt);
 
-  const addLiftingEntry = useMutation(api.entries.addLiftingEntry);
   const addCardioEntry = useMutation(api.entries.addCardioEntry);
   const updateLiftingEntry = useMutation(api.entries.updateLiftingEntry);
   const deleteEntry = useMutation(api.entries.deleteEntry);
@@ -505,7 +537,12 @@ export default function ActiveWorkoutScreen() {
     return () => clearTimeout(timeout);
   }, [currentExerciseIndex, exerciseList]);
 
-  if (workout === undefined || workout === null || user === undefined) {
+  if (
+    workout === undefined ||
+    workout === null ||
+    user === undefined ||
+    !pendingSetsLoaded
+  ) {
     return (
       <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
         <View className="flex-1 p-4">
@@ -525,7 +562,7 @@ export default function ActiveWorkoutScreen() {
     setRestTimerSeconds(pending?.restSeconds ?? DEFAULT_REST_SECONDS);
   };
 
-  const handleAddSet = async (
+  const handleAddSet = (
     exerciseName: string,
     set: {
       reps: number;
@@ -544,36 +581,30 @@ export default function ActiveWorkoutScreen() {
     const existingSets = group?.entries ?? [];
     const setNumber = existingSets.length + 1;
 
-    try {
-      await addLiftingEntry({
-        workoutId: workout._id,
-        clientId: generateClientId(),
-        exerciseName,
-        lifting: {
-          setNumber,
-          reps: set.reps,
-          weight: set.weight,
-          unit: preferredUnit,
-          isBodyweight: set.isBodyweight,
-          ...effortForStorage(set.rpe, effortScale),
-        },
-      });
-      analytics.capture("set_logged", {
-        exercise_name: exerciseName,
-        set_number: setNumber,
+    // The set shows and the rest timer starts now; the queue saves it.
+    logSet({
+      workoutId: workout._id,
+      clientId: generateClientId(),
+      exerciseName,
+      lifting: {
+        setNumber,
         reps: set.reps,
         weight: set.weight,
         unit: preferredUnit,
-        is_bodyweight: set.isBodyweight ?? false,
-        rpe: set.rpe ?? null,
-      });
-      startRestTimer(groupKey);
-      return true;
-    } catch (error) {
-      toast.error("Failed to log set");
-      console.error(error);
-      return false;
-    }
+        isBodyweight: set.isBodyweight,
+        ...effortForStorage(set.rpe, effortScale),
+      },
+    });
+    analytics.capture("set_logged", {
+      exercise_name: exerciseName,
+      set_number: setNumber,
+      reps: set.reps,
+      weight: set.weight,
+      unit: preferredUnit,
+      is_bodyweight: set.isBodyweight ?? false,
+      rpe: set.rpe ?? null,
+    });
+    startRestTimer(groupKey);
   };
 
   const handleAddTimedSet = async (
@@ -594,30 +625,25 @@ export default function ActiveWorkoutScreen() {
       ) ?? [];
     const setNumber = existingSets.length + 1;
 
-    try {
-      await addLiftingEntry({
-        workoutId: workout._id,
-        clientId: generateClientId(),
-        exerciseName,
-        lifting: {
-          setNumber,
-          durationSeconds: set.durationSeconds,
-          unit: "lb",
-          ...effortForStorage(set.rpe, effortScale),
-        },
-      });
-      analytics.capture("set_logged", {
-        exercise_name: exerciseName,
-        set_number: setNumber,
-        measurement_type: "duration",
-        duration_seconds: set.durationSeconds,
-        rpe: set.rpe ?? null,
-      });
-      startRestTimer(groupKey);
-    } catch (error) {
-      analytics.captureException(error);
-      throw error;
-    }
+    logSet({
+      workoutId: workout._id,
+      clientId: generateClientId(),
+      exerciseName,
+      lifting: {
+        setNumber,
+        durationSeconds: set.durationSeconds,
+        unit: "lb",
+        ...effortForStorage(set.rpe, effortScale),
+      },
+    });
+    analytics.capture("set_logged", {
+      exercise_name: exerciseName,
+      set_number: setNumber,
+      measurement_type: "duration",
+      duration_seconds: set.durationSeconds,
+      rpe: set.rpe ?? null,
+    });
+    startRestTimer(groupKey);
   };
 
   const handleLogCardio = async (
@@ -1171,7 +1197,9 @@ export default function ActiveWorkoutScreen() {
                       entry.lifting?.durationSeconds !== undefined,
                   )
                   .map((entry) => ({
-                    entryId: entry._id,
+                    // An unsaved set has no server id, so it cannot be edited yet.
+                    entryId: entry.syncState ? undefined : entry._id,
+                    syncState: entry.syncState,
                     setNumber: entry.lifting!.setNumber,
                     durationSeconds: entry.lifting!.durationSeconds!,
                     rpe: entry.lifting!.rpe ?? null,
@@ -1199,6 +1227,7 @@ export default function ActiveWorkoutScreen() {
                       effortScale={effortScale}
                       onAddSet={(set) => handleAddTimedSet(name, set)}
                       onEditSet={(set) => handleEditTimedSet(name, set)}
+                      onRetrySync={retryPendingSets}
                       onSwap={() => setSwapExercise({ groupKey, name })}
                       onNoteChange={(note) => handleNoteChange(name, note)}
                       onSelect={() => {
@@ -1215,7 +1244,8 @@ export default function ActiveWorkoutScreen() {
                 .map((e) => {
                   const sourceUnit = e.lifting!.unit ?? "lb";
                   return {
-                    entryId: e._id,
+                    entryId: e.syncState ? undefined : e._id,
+                    syncState: e.syncState,
                     setNumber: e.lifting!.setNumber,
                     reps: e.lifting!.reps ?? 0,
                     weight: displayWeight(
@@ -1268,6 +1298,7 @@ export default function ActiveWorkoutScreen() {
                       isBodyweight?: boolean;
                       rpe?: number | null;
                     }) => handleEditSet(name, set)}
+                    onRetrySync={retryPendingSets}
                     onSwap={() => setSwapExercise({ groupKey, name })}
                     onNoteChange={(note: string) => handleNoteChange(name, note)}
                     onSelect={() => {
