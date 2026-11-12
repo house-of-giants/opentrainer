@@ -20,6 +20,7 @@ async function renderCard(props: Partial<AccordionProps> = {}) {
         equipment={["dumbbell"]}
         defaultWeight={20}
         unit="lb"
+        effortScale="rpe"
         onAddSet={jest.fn()}
         {...props}
       />
