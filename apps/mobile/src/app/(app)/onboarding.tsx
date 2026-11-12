@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -21,9 +21,11 @@ import {
   EquipmentStep,
   ExperienceStep,
   GoalsStep,
+  PathStep,
   UnitsPicker,
   type ExperienceLevel,
   type Goal,
+  type OnboardingPath,
 } from "@/components/onboarding";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -35,14 +37,18 @@ import { cn } from "@/lib/cn";
 import { useTheme } from "@/theme/theme-provider";
 
 // Port of apps/web/src/app/onboarding/page.tsx.
-const STEPS = [
+// The first step picks a path and units. Only "Generate one" goes on to the
+// profile questions; the other two paths finish here and open the routine
+// builder, which ends on day 1 of the saved routine.
+const GENERATE_STEPS = [
+  "path",
   "goals",
   "experience",
   "equipment",
   "equipment-confirm",
   "availability",
 ] as const;
-type Step = (typeof STEPS)[number];
+type Step = (typeof GENERATE_STEPS)[number];
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -53,8 +59,12 @@ export default function OnboardingScreen() {
   const updatePreferences = useMutation(api.users.updatePreferences);
   const parseEquipment = useAction(api.ai.equipmentParser.parseEquipment);
 
-  const [currentStep, setCurrentStep] = useState<Step>("goals");
+  const [currentStep, setCurrentStep] = useState<Step>("path");
   const [initialized, setInitialized] = useState(false);
+  const [path, setPath] = useState<OnboardingPath | null>(null);
+  // Set once this screen hands off to the routine builder, so the finished
+  // user doc does not also redirect home over the builder.
+  const handingOff = useRef(false);
 
   const [goals, setGoals] = useState<Goal[]>([]);
   // New accounts get "lb" from the backend, so default from the device region.
@@ -72,7 +82,7 @@ export default function OnboardingScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user && user.onboardingCompletedAt) {
+    if (user && user.onboardingCompletedAt && !handingOff.current) {
       router.replace("/(app)/(tabs)");
     }
   }, [user, router]);
@@ -105,11 +115,16 @@ export default function OnboardingScreen() {
     );
   }
 
-  const stepIndex = STEPS.indexOf(currentStep);
-  const progress = ((stepIndex + 1) / STEPS.length) * 100;
+  const stepIndex = GENERATE_STEPS.indexOf(currentStep);
+  const isGenerating = path === "generate";
+  const progress = isGenerating
+    ? ((stepIndex + 1) / GENERATE_STEPS.length) * 100
+    : 0;
 
   const canProceed = (): boolean => {
     switch (currentStep) {
+      case "path":
+        return path !== null;
       case "goals":
         return goals.length > 0;
       case "experience":
@@ -125,8 +140,46 @@ export default function OnboardingScreen() {
     }
   };
 
+  const identify = () => {
+    if (user?.clerkId) {
+      analytics.identify(user.clerkId, {
+        name: user.name,
+        email: user.email,
+        ...internalAccountProperties(user.email),
+      });
+    }
+  };
+
+  // "Bring my program" and "Start from scratch" skip every profile question.
+  const finishIntoBuilder = async (chosen: Exclude<OnboardingPath, "generate">) => {
+    setIsSubmitting(true);
+    handingOff.current = true;
+    try {
+      await updatePreferences({ preferredUnits: units });
+      await completeOnboarding({});
+      identify();
+      analytics.capture("onboarding_completed", {
+        path: chosen,
+        preferred_units: units,
+      });
+      router.replace({
+        pathname: "/(app)/routines/new",
+        params: { onboarding: chosen },
+      });
+    } catch {
+      handingOff.current = false;
+      toast.error("Failed to save. Please try again.");
+      setIsSubmitting(false);
+    }
+  };
+
   const handleNext = async () => {
     if (!canProceed()) return;
+
+    if (currentStep === "path" && path && path !== "generate") {
+      await finishIntoBuilder(path);
+      return;
+    }
 
     if (currentStep === "equipment") {
       setCurrentStep("equipment-confirm");
@@ -161,14 +214,9 @@ export default function OnboardingScreen() {
           weeklyAvailability: days,
           sessionDuration: duration,
         });
-        if (user?.clerkId) {
-          analytics.identify(user.clerkId, {
-            name: user.name,
-            email: user.email,
-            ...internalAccountProperties(user.email),
-          });
-        }
+        identify();
         analytics.capture("onboarding_completed", {
+          path: "generate",
           goals,
           experience_level: experience,
           equipment_count: equipment.length,
@@ -185,15 +233,15 @@ export default function OnboardingScreen() {
     }
 
     const nextIndex = stepIndex + 1;
-    if (nextIndex < STEPS.length) {
-      setCurrentStep(STEPS[nextIndex]);
+    if (nextIndex < GENERATE_STEPS.length) {
+      setCurrentStep(GENERATE_STEPS[nextIndex]);
     }
   };
 
   const handleBack = () => {
     const prevIndex = stepIndex - 1;
     if (prevIndex >= 0) {
-      setCurrentStep(STEPS[prevIndex]);
+      setCurrentStep(GENERATE_STEPS[prevIndex]);
     }
   };
 
@@ -233,9 +281,11 @@ export default function OnboardingScreen() {
           <View className="w-16" />
         )}
         <View className="flex-1 items-center">
-          <Text className="text-xs text-muted-foreground">
-            Step {stepIndex + 1} of {STEPS.length}
-          </Text>
+          {isGenerating && (
+            <Text className="text-xs text-muted-foreground">
+              Step {stepIndex + 1} of {GENERATE_STEPS.length}
+            </Text>
+          )}
         </View>
         <View className="w-16" />
       </View>
@@ -249,11 +299,14 @@ export default function OnboardingScreen() {
           contentContainerClassName="px-6 pb-8 pt-4"
           keyboardShouldPersistTaps="handled"
         >
-          {currentStep === "goals" && (
+          {currentStep === "path" && (
             <View className="gap-8">
-              <GoalsStep selected={goals} onSelect={setGoals} />
+              <PathStep selected={path} onSelect={setPath} />
               <UnitsPicker value={units} onChange={setUnits} />
             </View>
+          )}
+          {currentStep === "goals" && (
+            <GoalsStep selected={goals} onSelect={setGoals} />
           )}
           {currentStep === "experience" && (
             <ExperienceStep selected={experience} onSelect={setExperience} />

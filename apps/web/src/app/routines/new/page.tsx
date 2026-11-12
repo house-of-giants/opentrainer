@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
@@ -28,6 +28,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  FileUp,
   GripVertical,
   Plus,
   Save,
@@ -58,6 +59,17 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { normalizeExerciseName } from "@opentrainer/lib/exercise-names";
+import { FirstDayReady, type SavedRoutine } from "@/components/onboarding/first-day-ready";
+import type { OnboardingPath } from "@/app/onboarding/steps/path-step";
+
+type BuilderOnboardingPath = Exclude<OnboardingPath, "generate">;
+
+// Onboarding opens this page with `?onboarding=<path>`. It hides the AI card
+// (the lifter already chose not to generate), offers the CSV history import
+// on "Bring my program", and ends on day 1 instead of the routines list.
+function parseOnboardingPath(value: unknown): BuilderOnboardingPath | null {
+  return value === "bring_program" || value === "from_scratch" ? value : null;
+}
 
 type RoutineExercise = {
   id: string;
@@ -217,7 +229,12 @@ function SortableExerciseItem({
   );
 }
 
-export default function NewRoutinePage() {
+export default function NewRoutinePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ onboarding?: string | string[] }>;
+}) {
+  const onboardingPath = parseOnboardingPath(use(searchParams).onboarding);
   const router = useRouter();
   const { vibrate } = useHaptic();
   const createRoutine = useMutation(api.routines.createRoutine);
@@ -232,6 +249,7 @@ export default function NewRoutinePage() {
     { id: crypto.randomUUID(), name: "Day 1", exercises: [], isExpanded: true },
   ]);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedRoutine, setSavedRoutine] = useState<SavedRoutine | null>(null);
 
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
@@ -428,27 +446,32 @@ export default function NewRoutinePage() {
 
     setIsSaving(true);
     try {
-      await createRoutine({
+      const savedDays = days.map((d) => ({
+        name: d.name,
+        exercises: d.exercises.map((e) => ({
+          exerciseId: e.exerciseId,
+          exerciseName: e.exerciseName,
+          kind: e.kind,
+          targetSets: e.targetSets || 1,
+          targetReps: e.measurementType === "duration" ? undefined : e.targetReps,
+          measurementType: e.measurementType,
+          targetHoldSeconds: e.measurementType === "duration" ? e.targetHoldSeconds : undefined,
+          restSeconds: e.restSeconds >= 0 ? e.restSeconds : undefined,
+        })),
+      }));
+      const routineId = await createRoutine({
         name: routineName.trim(),
         description: description.trim() || undefined,
         source: "manual",
-        days: days.map((d) => ({
-          name: d.name,
-          exercises: d.exercises.map((e) => ({
-            exerciseId: e.exerciseId,
-            exerciseName: e.exerciseName,
-            kind: e.kind,
-            targetSets: e.targetSets || 1,
-            targetReps: e.measurementType === "duration" ? undefined : e.targetReps,
-            measurementType: e.measurementType,
-            targetHoldSeconds: e.measurementType === "duration" ? e.targetHoldSeconds : undefined,
-            restSeconds: e.restSeconds >= 0 ? e.restSeconds : undefined,
-          })),
-        })),
+        days: savedDays,
       });
 
       vibrate("success");
       toast.success("Routine created!");
+      if (onboardingPath) {
+        setSavedRoutine({ _id: routineId, name: routineName.trim(), days: savedDays });
+        return;
+      }
       router.push("/routines");
     } catch (error) {
       toast.error("Failed to create routine");
@@ -483,12 +506,19 @@ export default function NewRoutinePage() {
 
   const needsSeeding = exercises && exercises.length === 0;
 
+  if (savedRoutine) {
+    return <FirstDayReady routine={savedRoutine} />;
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
         <div className="flex h-14 items-center gap-4 px-4">
-          <Link href="/routines">
-            <Button variant="ghost" size="icon">
+          <Link
+            href={onboardingPath ? "/dashboard" : "/routines"}
+            aria-label={onboardingPath ? "Go to dashboard" : "Back to routines"}
+          >
+            <Button variant="ghost" size="icon" tabIndex={-1}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
@@ -502,6 +532,25 @@ export default function NewRoutinePage() {
 
       <main className="flex-1 p-4 pb-24">
         <div className="space-y-6">
+          {onboardingPath === "bring_program" && (
+            <Link href="/profile/import" className="block">
+              <Card className="p-4 transition-colors hover:border-primary/40">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <FileUp className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm">Import workout history from a CSV</p>
+                    <p className="text-xs text-muted-foreground">
+                      Bring your past sets from Strong, Hevy, or a spreadsheet.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          )}
+
+          {!onboardingPath && (
           <Link href="/routines/new/ai">
             <Card className="p-4 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-500/20 hover:border-violet-500/40 transition-colors cursor-pointer">
               <div className="flex items-center gap-3">
@@ -517,15 +566,20 @@ export default function NewRoutinePage() {
               </div>
             </Card>
           </Link>
+          )}
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+          {onboardingPath !== "from_scratch" && (
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  {onboardingPath ? "or enter your routine" : "or build manually"}
+                </span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">or build manually</span>
-            </div>
-          </div>
+          )}
 
           <div className="space-y-4">
             <div className="space-y-2">

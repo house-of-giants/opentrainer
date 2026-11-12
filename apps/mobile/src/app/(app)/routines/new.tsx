@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Linking, Text, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation } from "convex/react";
 import { api } from "@opentrainer/backend";
 import type { Id } from "@opentrainer/backend";
@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  Download,
   GripVertical,
   Plus,
   Save,
@@ -23,11 +24,13 @@ import {
   X,
 } from "lucide-react-native";
 
+import { FirstDayReady, type OnboardingPath } from "@/components/onboarding";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toast";
+import { ImportRoutineDialog } from "@/components/workout/import-routine-dialog";
 import { RoutineExercisePicker } from "@/components/workout/routine-exercise-picker";
 import { useHaptic } from "@/hooks/use-haptic";
 import { newLocalId } from "@/lib/local-id";
@@ -40,6 +43,17 @@ import { useTheme } from "@/theme/theme-provider";
 //   react-native-draggable-flatlist: long-press the grip to drag an exercise
 //   within its day. Web's per-day DndContext never allowed cross-day drags, so
 //   parity holds there.
+// - Onboarding opens this screen with `?onboarding=<path>`. It hides the AI
+//   card (the lifter already chose not to generate), offers paste and the web
+//   CSV import on "Bring my program", and ends on day 1 instead of going back.
+const WEB_HISTORY_IMPORT_URL = "https://opentrainer.app/profile/import";
+
+type BuilderOnboardingPath = Exclude<OnboardingPath, "generate">;
+
+function parseOnboardingPath(value: unknown): BuilderOnboardingPath | null {
+  return value === "bring_program" || value === "from_scratch" ? value : null;
+}
+
 type RoutineExercise = {
   id: string;
   exerciseId?: Id<"exercises">;
@@ -202,6 +216,13 @@ export default function NewRoutineScreen() {
   const { vibrate } = useHaptic();
   const { colors } = useTheme();
   const createRoutine = useMutation(api.routines.createRoutine);
+  const onboardingPath = parseOnboardingPath(
+    useLocalSearchParams<{ onboarding?: string }>().onboarding,
+  );
+  const [readyRoutineId, setReadyRoutineId] = useState<Id<"routines"> | null>(
+    null,
+  );
+  const [showImport, setShowImport] = useState(false);
 
   const [routineName, setRoutineName] = useState("");
   const [description, setDescription] = useState("");
@@ -338,7 +359,7 @@ export default function NewRoutineScreen() {
 
     setIsSaving(true);
     try {
-      await createRoutine({
+      const routineId = await createRoutine({
         name: routineName.trim(),
         description: description.trim() || undefined,
         source: "manual",
@@ -361,6 +382,10 @@ export default function NewRoutineScreen() {
 
       vibrate("success");
       toast.success("Routine created!");
+      if (onboardingPath) {
+        setReadyRoutineId(routineId);
+        return;
+      }
       // Web pushes /routines; the mobile screen is stacked on top of the
       // routines tab, so popping back lands on the same list.
       router.back();
@@ -372,14 +397,22 @@ export default function NewRoutineScreen() {
     }
   };
 
+  if (readyRoutineId) {
+    return <FirstDayReady routineId={readyRoutineId} />;
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
       <View className="h-14 flex-row items-center gap-2 border-b border-border px-2">
         <Button
           variant="ghost"
           size="icon"
-          onPress={() => router.back()}
-          accessibilityLabel="Back to routines"
+          // Onboarding replaced itself with this screen, so there is nothing
+          // to go back to.
+          onPress={() =>
+            onboardingPath ? router.replace("/(app)/(tabs)") : router.back()
+          }
+          accessibilityLabel={onboardingPath ? "Go to home" : "Back to routines"}
         >
           <ArrowLeft size={20} color={colors.foreground} />
         </Button>
@@ -400,6 +433,33 @@ export default function NewRoutineScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="gap-6 p-4">
+          {onboardingPath === "bring_program" && (
+            <View className="gap-3">
+              <Button
+                variant="outline"
+                className="w-full"
+                onPress={() => setShowImport(true)}
+              >
+                <Download size={16} color={colors.foreground} />
+                <Text className="text-sm font-medium text-foreground">
+                  Paste a routine
+                </Text>
+              </Button>
+              <Text className="text-sm text-muted-foreground">
+                Workout history in a CSV? Import it at{" "}
+                <Text
+                  accessibilityRole="link"
+                  className="text-primary underline"
+                  onPress={() => void Linking.openURL(WEB_HISTORY_IMPORT_URL)}
+                >
+                  opentrainer.app
+                </Text>
+                .
+              </Text>
+            </View>
+          )}
+
+          {!onboardingPath && (
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push("/(app)/routines/new/ai")}
@@ -420,14 +480,17 @@ export default function NewRoutineScreen() {
               </View>
             </Card>
           </Pressable>
+          )}
 
-          <View className="flex-row items-center gap-2">
-            <View className="h-px flex-1 bg-border" />
-            <Text className="text-xs uppercase text-muted-foreground">
-              or build manually
-            </Text>
-            <View className="h-px flex-1 bg-border" />
-          </View>
+          {onboardingPath !== "from_scratch" && (
+            <View className="flex-row items-center gap-2">
+              <View className="h-px flex-1 bg-border" />
+              <Text className="text-xs uppercase text-muted-foreground">
+                {onboardingPath ? "or build it here" : "or build manually"}
+              </Text>
+              <View className="h-px flex-1 bg-border" />
+            </View>
+          )}
 
           <View className="gap-4">
             <View className="gap-2">
@@ -563,6 +626,14 @@ export default function NewRoutineScreen() {
           </View>
         </View>
       </NestableScrollContainer>
+
+      {onboardingPath === "bring_program" && (
+        <ImportRoutineDialog
+          open={showImport}
+          onOpenChange={setShowImport}
+          onSuccess={setReadyRoutineId}
+        />
+      )}
 
       <RoutineExercisePicker
         open={showExercisePicker}

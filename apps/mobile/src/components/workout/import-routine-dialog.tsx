@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
 import { useMutation } from "convex/react";
 import { api } from "@opentrainer/backend";
+import type { Id } from "@opentrainer/backend";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +24,7 @@ import { useTheme } from "@/theme/theme-provider";
 type ImportRoutineDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onSuccess?: (routineId: Id<"routines">) => void;
 };
 
 const EXAMPLE_JSON = `{
@@ -59,12 +60,12 @@ export function ImportRoutineDialog({
 
     setIsImporting(true);
     try {
-      await importRoutine({ json: json.trim() });
+      const routineId = await importRoutine({ json: json.trim() });
       analytics.capture("routine_imported", { scope: "routine" });
       toast.success("Routine imported successfully!");
       setJson("");
       onOpenChange(false);
-      onSuccess?.();
+      onSuccess?.(routineId);
     } catch (error) {
       if (error instanceof Error) {
         // Web extends the toast to 10s with pre-wrap styling; the RN toast

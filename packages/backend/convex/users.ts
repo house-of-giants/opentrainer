@@ -106,26 +106,33 @@ export const updateOnboarding = mutation({
   },
 });
 
+// Only the "Generate one" path asks the profile questions. A lifter who
+// brings a program or builds one finishes with no answers, so every answer is
+// optional and an omitted one stays unset.
 export const completeOnboarding = mutation({
   args: {
-    goals: v.array(
-      v.union(
-        v.literal("strength"),
-        v.literal("hypertrophy"),
-        v.literal("endurance"),
-        v.literal("weight_loss"),
-        v.literal("general_fitness")
+    goals: v.optional(
+      v.array(
+        v.union(
+          v.literal("strength"),
+          v.literal("hypertrophy"),
+          v.literal("endurance"),
+          v.literal("weight_loss"),
+          v.literal("general_fitness")
+        )
       )
     ),
-    experienceLevel: v.union(
-      v.literal("beginner"),
-      v.literal("intermediate"),
-      v.literal("advanced")
+    experienceLevel: v.optional(
+      v.union(
+        v.literal("beginner"),
+        v.literal("intermediate"),
+        v.literal("advanced")
+      )
     ),
-    equipmentDescription: v.string(),
-    equipment: v.array(v.string()),
-    weeklyAvailability: v.number(),
-    sessionDuration: v.number(),
+    equipmentDescription: v.optional(v.string()),
+    equipment: v.optional(v.array(v.string())),
+    weeklyAvailability: v.optional(v.number()),
+    sessionDuration: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);

@@ -1,12 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { getFunctionName } from "convex/server";
 import { useMutation, useQuery } from "convex/react";
+import { Linking } from "react-native";
 
 import NewRoutineScreen from "@/app/(app)/routines/new";
 import {
   exerciseCatalogFixture,
   muscleGroupsFixture,
+  validRoutineImportJson,
 } from "@/components/workout/__fixtures__/routine-fixtures";
+import { analytics } from "@/lib/analytics";
 import { ThemeProvider } from "@/theme/theme-provider";
 import { dragState } from "../test-utils/draggable-flatlist-mock";
 
@@ -16,8 +19,16 @@ jest.mock("convex/react", () => ({
 }));
 
 const mockBack = jest.fn();
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
+let mockSearchParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: mockBack }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, back: mockBack }),
+  useLocalSearchParams: () => mockSearchParams,
+}));
+
+jest.mock("@/lib/analytics", () => ({
+  analytics: { capture: jest.fn(), identify: jest.fn(), captureException: jest.fn() },
 }));
 
 // Renders each list inline and records the latest data + onDragEnd handler per
@@ -31,6 +42,8 @@ const mockUseQuery = useQuery as jest.Mock;
 const mockUseMutation = useMutation as jest.Mock;
 
 const createRoutine = jest.fn().mockResolvedValue("routine_new");
+const createWorkout = jest.fn().mockResolvedValue("workout_1");
+const importRoutine = jest.fn().mockResolvedValue("routine_imported");
 const createExercise = jest.fn().mockResolvedValue("ex_custom");
 const seedExercises = jest.fn().mockResolvedValue({ added: 10 });
 
@@ -46,9 +59,12 @@ function mockQueries(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
   dragState.reset();
+  mockSearchParams = {};
   mockQueries();
   const mutations: Record<string, jest.Mock> = {
     "routines:createRoutine": createRoutine,
+    "routines:importRoutineFromJson": importRoutine,
+    "workouts:createWorkout": createWorkout,
     "exercises:createExercise": createExercise,
     "exercises:seedSystemExercises": seedExercises,
   };
@@ -188,5 +204,137 @@ describe("Routine builder", () => {
       "Squat",
       "Bench Press",
     ]);
+  });
+});
+
+// The routine docs the ready screen reads back after a save or a paste.
+const savedRoutine = {
+  _id: "routine_new",
+  name: "My Split",
+  source: "manual",
+  isActive: true,
+  days: [
+    {
+      name: "Day 1",
+      exercises: [{ exerciseName: "Bench Press", kind: "lifting", targetSets: 3, targetReps: "8-12" }],
+    },
+  ],
+};
+const importedRoutine = {
+  ...savedRoutine,
+  _id: "routine_imported",
+  name: "Imported PPL",
+  source: "imported",
+  days: [{ name: "Push Day", exercises: [{ exerciseName: "Bench Press", kind: "lifting" }] }],
+};
+
+function mockReadyQueries() {
+  mockUseQuery.mockImplementation((ref: unknown, args?: { routineId?: string }) => {
+    const name = getFunctionName(ref as never);
+    if (name === "routines:getRoutine") {
+      return args?.routineId === "routine_imported" ? importedRoutine : savedRoutine;
+    }
+    const values: Record<string, unknown> = {
+      "exercises:getExercises": exerciseCatalogFixture,
+      "exercises:getMuscleGroups": muscleGroupsFixture,
+      "users:getCurrentUser": { _id: "user_1", preferredUnits: "kg" },
+      "entries:getExerciseHistory": [],
+      "exercises:getWeightStep": null,
+    };
+    return values[name];
+  });
+}
+
+async function saveMySplit() {
+  await fireEvent.changeText(screen.getByPlaceholderText("e.g., Push Pull Legs"), "My Split");
+  await addExercise("Bench Press");
+  await fireEvent.press(screen.getByText("Save"));
+}
+
+describe("Routine builder opened from onboarding", () => {
+  beforeEach(() => mockReadyQueries());
+
+  it("after a save, shows day 1 and starts it with Show me day 1", async () => {
+    mockSearchParams = { onboarding: "from_scratch" };
+    await renderBuilder();
+
+    await saveMySplit();
+
+    expect(await screen.findByRole("button", { name: "Show me day 1" })).toBeOnTheScreen();
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(screen.getByText("Next up · My Split")).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Show me day 1" }));
+
+    await waitFor(() =>
+      expect(createWorkout).toHaveBeenCalledWith({
+        title: "Day 1",
+        routineId: "routine_new",
+        routineDayIndex: 0,
+      }),
+    );
+    // Onboarding is over: the workout replaces the builder instead of
+    // stacking on top of it.
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/(app)/workout/active"));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(analytics.capture).toHaveBeenCalledWith(
+      "workout_started",
+      expect.objectContaining({ source: "routine", day_index: 0, entry_point: "onboarding" }),
+    );
+  });
+
+  it("lets the lifter skip day 1 and go home", async () => {
+    mockSearchParams = { onboarding: "from_scratch" };
+    await renderBuilder();
+    await saveMySplit();
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Go to home" }));
+
+    expect(mockReplace).toHaveBeenCalledWith("/(app)/(tabs)");
+    expect(createWorkout).not.toHaveBeenCalled();
+  });
+
+  it("Bring my program offers a paste and a CSV link to the web import", async () => {
+    mockSearchParams = { onboarding: "bring_program" };
+    const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    await renderBuilder();
+
+    await fireEvent.press(screen.getByRole("link", { name: /opentrainer\.app/ }));
+    expect(openURL).toHaveBeenCalledWith("https://opentrainer.app/profile/import");
+
+    await fireEvent.press(screen.getByRole("button", { name: /Paste a routine/ }));
+    await fireEvent.changeText(screen.getByLabelText("Routine JSON"), validRoutineImportJson);
+    await fireEvent.press(screen.getByRole("button", { name: "Import Routine" }));
+
+    expect(importRoutine).toHaveBeenCalledWith({ json: validRoutineImportJson });
+    await fireEvent.press(await screen.findByRole("button", { name: "Show me day 1" }));
+
+    await waitFor(() =>
+      expect(createWorkout).toHaveBeenCalledWith({
+        title: "Push Day",
+        routineId: "routine_imported",
+        routineDayIndex: 0,
+      }),
+    );
+    openURL.mockRestore();
+  });
+
+  it("Start from scratch shows only the builder, without paste or CSV", async () => {
+    mockSearchParams = { onboarding: "from_scratch" };
+    await renderBuilder();
+
+    expect(screen.queryByRole("button", { name: /Paste a routine/ })).not.toBeOnTheScreen();
+    expect(screen.queryByRole("link", { name: /opentrainer\.app/ })).not.toBeOnTheScreen();
+    expect(screen.getByPlaceholderText("e.g., Push Pull Legs")).toBeOnTheScreen();
+  });
+
+  it("outside onboarding, a save still returns to the routines list", async () => {
+    await renderBuilder();
+
+    await saveMySplit();
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Show me day 1" })).not.toBeOnTheScreen();
+    expect(screen.queryByRole("button", { name: /Paste a routine/ })).not.toBeOnTheScreen();
   });
 });

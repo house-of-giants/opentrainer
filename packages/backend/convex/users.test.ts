@@ -179,3 +179,63 @@ describe("billing webhook tier changes", () => {
 		assert.equal(user.isAlphaUser, true);
 	});
 });
+
+const completeOnboarding = makeFunctionReference<
+	"mutation",
+	{
+		goals?: Array<"strength" | "hypertrophy" | "endurance" | "weight_loss" | "general_fitness">;
+		experienceLevel?: "beginner" | "intermediate" | "advanced";
+		equipmentDescription?: string;
+		equipment?: string[];
+		weeklyAvailability?: number;
+		sessionDuration?: number;
+	},
+	Id<"users">
+>("users:completeOnboarding");
+
+describe("completeOnboarding", () => {
+	async function setupOnboardingUser() {
+		const db = convexTest(schema, modules);
+		const t = db.withIdentity({ subject: "onboarding-user" });
+		const userId = await db.run((ctx) =>
+			ctx.db.insert("users", { clerkId: "onboarding-user", createdAt: 1, updatedAt: 1 }),
+		);
+		return { db, t, userId };
+	}
+
+	test("a lifter who brings a program finishes without profile answers, and none are invented", async () => {
+		const { db, t, userId } = await setupOnboardingUser();
+
+		await t.mutation(completeOnboarding, {});
+		const user = await readUser(db, userId);
+
+		assert.equal(typeof user.onboardingCompletedAt, "number");
+		assert.equal(user.goals, undefined);
+		assert.equal(user.experienceLevel, undefined);
+		assert.equal(user.equipment, undefined);
+		assert.equal(user.weeklyAvailability, undefined);
+		assert.equal(user.sessionDuration, undefined);
+	});
+
+	test("the generate path still saves every answer", async () => {
+		const { db, t, userId } = await setupOnboardingUser();
+
+		await t.mutation(completeOnboarding, {
+			goals: ["strength"],
+			experienceLevel: "advanced",
+			equipmentDescription: "Garage gym",
+			equipment: ["barbell"],
+			weeklyAvailability: 3,
+			sessionDuration: 45,
+		});
+		const user = await readUser(db, userId);
+
+		assert.equal(typeof user.onboardingCompletedAt, "number");
+		assert.deepEqual(user.goals, ["strength"]);
+		assert.equal(user.experienceLevel, "advanced");
+		assert.equal(user.equipmentDescription, "Garage gym");
+		assert.deepEqual(user.equipment, ["barbell"]);
+		assert.equal(user.weeklyAvailability, 3);
+		assert.equal(user.sessionDuration, 45);
+	});
+});
