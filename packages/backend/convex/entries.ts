@@ -1,10 +1,11 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { pickBestSet } from "@opentrainer/lib/progression";
 import { getCurrentUser } from "./auth";
 import type { Id } from "./_generated/dataModel";
 import { createConvexLogger, truncateId } from "./lib/logger";
 import { recomputeWorkoutSummary } from "./workoutSummary";
+import { resolveExerciseId } from "./lib/exerciseIdentity";
 
 const liftingDataValidator = v.object({
   setNumber: v.number(),
@@ -131,7 +132,8 @@ export const addLiftingEntry = mutation({
       workoutId: args.workoutId,
       userId: user._id,
       clientId: args.clientId,
-      exerciseId: args.exerciseId,
+      exerciseId:
+        args.exerciseId ?? (await resolveExerciseId(ctx, user._id, args.exerciseName)),
       exerciseName: args.exerciseName,
       kind: "lifting",
       lifting: args.lifting,
@@ -199,7 +201,8 @@ export const addCardioEntry = mutation({
       workoutId: args.workoutId,
       userId: user._id,
       clientId: args.clientId,
-      exerciseId: args.exerciseId,
+      exerciseId:
+        args.exerciseId ?? (await resolveExerciseId(ctx, user._id, args.exerciseName)),
       exerciseName: args.exerciseName,
       kind: "cardio",
       cardio: args.cardio,
@@ -335,7 +338,8 @@ export const addMobilityEntry = mutation({
       workoutId: args.workoutId,
       userId: user._id,
       clientId: args.clientId,
-      exerciseId: args.exerciseId,
+      exerciseId:
+        args.exerciseId ?? (await resolveExerciseId(ctx, user._id, args.exerciseName)),
       exerciseName: args.exerciseName,
       kind: "mobility",
       mobility: args.mobility,
@@ -455,11 +459,62 @@ export const getLastSetForExercise = query({
   },
 });
 
+const exerciseHistoryArgs = {
+  exerciseName: v.string(),
+  // Optional for clients that know it. Old clients send only the name.
+  exerciseId: v.optional(v.id("exercises")),
+  sessionCount: v.optional(v.number()),
+};
+
+/**
+ * One user's lifting entries for an exercise, newest first. Reads two indexes:
+ * entries linked to the exercise the name (or exerciseId) resolves to, and
+ * entries logged under the exact name. The name read keeps entries that have
+ * no exercise id, or whose name no longer resolves, so no history is lost.
+ */
+async function getLiftingHistoryEntries(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  args: { exerciseName: string; exerciseId?: Id<"exercises"> }
+) {
+  let exerciseId: Id<"exercises"> | undefined;
+  if (args.exerciseId) {
+    const exercise = await ctx.db.get(args.exerciseId);
+    if (exercise && (exercise.isSystemExercise || exercise.userId === userId)) {
+      exerciseId = exercise._id;
+    }
+  }
+  exerciseId ??= await resolveExerciseId(ctx, userId, args.exerciseName);
+
+  const [byId, byName] = await Promise.all([
+    exerciseId
+      ? ctx.db
+          .query("entries")
+          .withIndex("by_user_exercise_created", (q) =>
+            q.eq("userId", userId).eq("exerciseId", exerciseId)
+          )
+          .collect()
+      : [],
+    ctx.db
+      .query("entries")
+      .withIndex("by_user_exercise_name_created", (q) =>
+        q.eq("userId", userId).eq("exerciseName", args.exerciseName)
+      )
+      .collect(),
+  ]);
+
+  const entries = new Map(
+    [...byId, ...byName]
+      .filter((entry) => entry.kind === "lifting")
+      .map((entry) => [entry._id, entry])
+  );
+  return [...entries.values()].sort(
+    (a, b) => b.createdAt - a.createdAt || b._creationTime - a._creationTime
+  );
+}
+
 export const getExerciseHistory = query({
-  args: {
-    exerciseName: v.string(),
-    sessionCount: v.optional(v.number()),
-  },
+  args: exerciseHistoryArgs,
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
     if (!user) {
@@ -468,17 +523,7 @@ export const getExerciseHistory = query({
 
     const limit = args.sessionCount ?? 3;
 
-    const entries = await ctx.db
-      .query("entries")
-      .withIndex("by_user_created", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("exerciseName"), args.exerciseName),
-          q.eq(q.field("kind"), "lifting")
-        )
-      )
-      .collect();
+    const entries = await getLiftingHistoryEntries(ctx, user._id, args);
 
     if (entries.length === 0) {
       return [];
@@ -559,26 +604,13 @@ export const getExerciseHistory = query({
 });
 
 export const getTimedExerciseHistory = query({
-  args: {
-    exerciseName: v.string(),
-    sessionCount: v.optional(v.number()),
-  },
+  args: exerciseHistoryArgs,
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
     if (!user) return [];
 
     const limit = args.sessionCount ?? 3;
-    const entries = await ctx.db
-      .query("entries")
-      .withIndex("by_user_created", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("exerciseName"), args.exerciseName),
-          q.eq(q.field("kind"), "lifting")
-        )
-      )
-      .collect();
+    const entries = await getLiftingHistoryEntries(ctx, user._id, args);
 
     const sessionMap = new Map<Id<"workouts">, (typeof entries)[number][]>();
     for (const entry of entries) {

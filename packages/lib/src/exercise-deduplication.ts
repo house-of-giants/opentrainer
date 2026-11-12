@@ -14,7 +14,7 @@ export type ExerciseDeduplicationGroup<T extends DeduplicableExercise> = {
 };
 
 function hasExerciseName(
-	exercise: DeduplicableExercise,
+	exercise: Pick<DeduplicableExercise, "name" | "aliases">,
 	normalizedName: string
 ) {
 	return (
@@ -32,6 +32,27 @@ function exerciseNamesOverlap(
 	return (
 		hasExerciseName(left, normalizeExerciseName(right.name)) ||
 		hasExerciseName(right, normalizeExerciseName(left.name))
+	);
+}
+
+/**
+ * The exercise a logged name refers to for one user. Exact names win over
+ * aliases, and at each step the user's own exercise wins over a system one.
+ */
+export function findExerciseByName<
+	T extends Pick<DeduplicableExercise, "name" | "aliases">,
+>(userExercises: readonly T[], systemExercises: readonly T[], name: string) {
+	const normalizedName = normalizeExerciseName(name);
+	if (!normalizedName) return undefined;
+	const exactName = (exercise: T) =>
+		normalizeExerciseName(exercise.name) === normalizedName;
+	const nameOrAlias = (exercise: T) => hasExerciseName(exercise, normalizedName);
+
+	return (
+		userExercises.find(exactName) ??
+		systemExercises.find(exactName) ??
+		userExercises.find(nameOrAlias) ??
+		systemExercises.find(nameOrAlias)
 	);
 }
 
