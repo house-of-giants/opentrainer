@@ -60,6 +60,7 @@ import { SessionCommandCenter } from "@/components/workout/session-command-cente
 import { useClientId } from "@/hooks/use-client-id";
 import { useHaptic } from "@/hooks/use-haptic";
 import { analytics } from "@/lib/analytics";
+import { queueReminderOffer } from "@/lib/training-reminders";
 
 type EntryData = {
   _id: string;
@@ -779,6 +780,7 @@ export default function ActiveWorkoutScreen() {
       used_time_override: usedTimeOverride,
     });
     toast.success("Workout completed!");
+    queueReminderOffer();
 
     const hasSwapsNeedingFollowUp = pendingSwaps && pendingSwaps.length > 0;
 

@@ -12,11 +12,14 @@ Notifications.setNotificationHandler({
   }),
 });
 
-async function ensurePermission(): Promise<boolean> {
+/**
+ * Resolve to true when local notifications may be shown. Asks the OS only when
+ * not yet granted; iOS flips canAskAgain to false after a denial, so this
+ * never nags. Shared with the training reminders.
+ */
+export async function ensureNotificationPermission(): Promise<boolean> {
   const settings = await Notifications.getPermissionsAsync();
   if (settings.granted) return true;
-  // Lazy request on first schedule; iOS flips canAskAgain to false after a
-  // denial, so this never nags.
   if (!settings.canAskAgain) return false;
   const requested = await Notifications.requestPermissionsAsync();
   return requested.granted;
@@ -32,7 +35,7 @@ export async function scheduleRestEndNotification(
 ): Promise<string | null> {
   if (!Number.isFinite(secondsFromNow) || secondsFromNow < 1) return null;
   try {
-    if (!(await ensurePermission())) return null;
+    if (!(await ensureNotificationPermission())) return null;
     return await Notifications.scheduleNotificationAsync({
       content: {
         title: "Rest over",

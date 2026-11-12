@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Pressable, View } from "react-native";
 import { Dumbbell, History, Home, Plus, User } from "lucide-react-native";
 
+import { TrainingReminderOffer } from "@/components/reminders/training-reminder-offer";
 import {
   StartWorkoutProvider,
   useStartWorkout,
@@ -15,6 +16,7 @@ export default function TabsLayout() {
   return (
     <StartWorkoutProvider>
       <TabsNavigator />
+      <TrainingReminderOffer />
     </StartWorkoutProvider>
   );
 }
