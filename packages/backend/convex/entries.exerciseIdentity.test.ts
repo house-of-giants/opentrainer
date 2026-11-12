@@ -209,6 +209,23 @@ describe("exercise history after a custom exercise is renamed", () => {
 	});
 });
 
+describe("timed history after a custom exercise is renamed", () => {
+	test("holds logged under the old name show in the new name's history", async () => {
+		const { t, as } = setup();
+		await t.run(async (ctx) => {
+			const userId = await insertUser(ctx, "timed-renamer");
+			const exerciseId = await insertCustomExercise(ctx, userId, "Copenhagen Plank");
+			const workoutId = await insertWorkout(ctx, userId, 0);
+			await insertSet(ctx, { userId, workoutId, exerciseName: "Side Plank Adductor", exerciseId, hour: 0, setNumber: 1, durationSeconds: 40 });
+		});
+
+		const history = await as("timed-renamer").query(getTimedExerciseHistory, {
+			exerciseName: "Copenhagen Plank",
+		});
+		assert.deepEqual(history.map((session) => session.longestHoldSeconds), [40]);
+	});
+});
+
 describe("legacy entries without an exercise id", () => {
 	async function seedLegacy() {
 		const { t, as } = setup();
