@@ -23,6 +23,56 @@ jest.mock("@/lib/analytics", () => ({
 
 const mockCapture = analytics.capture as jest.Mock;
 
+// Files the screen writes, keyed by uri. The mock follows the expo-file-system
+// `new File(directory, name)` API that the screen uses.
+const mockWrittenFiles = new Map<string, string>();
+jest.mock("expo-file-system", () => ({
+  Paths: { cache: { uri: "file:///cache/" } },
+  File: class {
+    uri: string;
+    constructor(directory: { uri: string }, name: string) {
+      this.uri = `${directory.uri}${name}`;
+    }
+    create() {}
+    write(content: string) {
+      mockWrittenFiles.set(this.uri, content);
+    }
+  },
+}));
+
+const exportPayload = {
+  exportedAt: "2026-11-12T10:00:00.000Z",
+  routines: [{ name: "Upper / Lower" }],
+  workouts: [
+    {
+      title: "Upper, heavy",
+      status: "completed",
+      startedAt: "2026-11-10T14:03:00.000Z",
+      entries: [
+        {
+          exerciseName: "Bench Press",
+          kind: "lifting",
+          lifting: { setNumber: 1, reps: 10, weight: 95, unit: "lb", isWarmup: true },
+          createdAt: "2026-11-10T14:05:00.000Z",
+        },
+        {
+          exerciseName: "Bench Press",
+          kind: "lifting",
+          lifting: { setNumber: 2, reps: 5, weight: 185, unit: "lb", rpe: 8 },
+          notes: "paused",
+          createdAt: "2026-11-10T14:08:00.000Z",
+        },
+        {
+          exerciseName: "Rower",
+          kind: "cardio",
+          cardio: { mode: "steady", durationSeconds: 600 },
+          createdAt: "2026-11-10T14:30:00.000Z",
+        },
+      ],
+    },
+  ],
+};
+
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
 }));
@@ -56,6 +106,7 @@ function mockQueries(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockWrittenFiles.clear();
   mockQueries();
 });
 
@@ -170,8 +221,35 @@ describe("Profile screen", () => {
     expect(screen.queryByText("Profile")).toBeNull();
     expect(screen.queryByText("Training Profile")).toBeNull();
   });
-  it("counts a shared full-data export once, and not a dismissed one", async () => {
-    mockConvexQuery.mockResolvedValue({ workouts: [] });
+  it("shares workout history as a CSV file, not as message text", async () => {
+    mockConvexQuery.mockResolvedValue(exportPayload);
+    const shareSpy = jest
+      .spyOn(Share, "share")
+      .mockResolvedValue({ action: Share.sharedAction } as never);
+    await renderProfile();
+
+    await fireEvent.press(screen.getByText("Export Workout History"));
+    await waitFor(() => expect(shareSpy).toHaveBeenCalledTimes(1));
+
+    const [content] = shareSpy.mock.calls[0];
+    expect(content).not.toHaveProperty("message");
+    expect(content.url).toMatch(/^file:\/\/\/cache\/opentrainer-export-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(content.title).toBe(content.url!.replace("file:///cache/", ""));
+    expect(mockWrittenFiles.get(content.url!)).toBe(
+      "date,workout_title,exercise,set_number,set_type,weight,unit,reps,duration_seconds,rpe,rir,notes\r\n" +
+        '2026-11-10T14:03:00.000Z,"Upper, heavy",Bench Press,1,warmup,95,lb,10,,,,\r\n' +
+        '2026-11-10T14:03:00.000Z,"Upper, heavy",Bench Press,2,work,185,lb,5,,8,,paused\r\n',
+    );
+    await waitFor(() =>
+      expect(mockCapture.mock.calls).toEqual([
+        ["data_exported", { scope: "all_data", method: "share", format: "csv" }],
+      ]),
+    );
+    shareSpy.mockRestore();
+  });
+
+  it("shares all data as a JSON file and does not count a dismissed share", async () => {
+    mockConvexQuery.mockResolvedValue(exportPayload);
     const shareSpy = jest
       .spyOn(Share, "share")
       .mockResolvedValueOnce({ action: Share.sharedAction } as never)
@@ -181,13 +259,21 @@ describe("Profile screen", () => {
     await fireEvent.press(screen.getByText("Export All Data"));
     await waitFor(() => expect(shareSpy).toHaveBeenCalledTimes(1));
     await act(async () => {});
-    await waitFor(() => expect(screen.getByText("Export All Data")).toBeOnTheScreen());
+
+    const [content] = shareSpy.mock.calls[0];
+    expect(content).not.toHaveProperty("message");
+    expect(content.url).toMatch(/^file:\/\/\/cache\/opentrainer-export-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(JSON.parse(mockWrittenFiles.get(content.url!)!)).toEqual(exportPayload);
+
+    await waitFor(() =>
+      expect(screen.getByText("A JSON file with your workouts, routines & more")).toBeOnTheScreen(),
+    );
     await fireEvent.press(screen.getByText("Export All Data"));
     await waitFor(() => expect(shareSpy).toHaveBeenCalledTimes(2));
     await act(async () => {});
 
     expect(mockCapture.mock.calls).toEqual([
-      ["data_exported", { scope: "all_data", method: "share" }],
+      ["data_exported", { scope: "all_data", method: "share", format: "json" }],
     ]);
     shareSpy.mockRestore();
   });

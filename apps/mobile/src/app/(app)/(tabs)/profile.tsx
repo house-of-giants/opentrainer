@@ -3,13 +3,16 @@ import { Image, Pressable, ScrollView, Share, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useConvex, useMutation, useQuery } from "convex/react";
+import { File, Paths } from "expo-file-system";
 import { api } from "@opentrainer/backend";
 import { displayWeight } from "@opentrainer/lib/units";
 import type { EffortScale } from "@opentrainer/lib/effort";
+import { buildDataExportFile, type DataExportFormat } from "@opentrainer/lib/data-export";
 import {
   Calendar,
   Download,
   Dumbbell,
+  FileSpreadsheet,
   Gauge,
   LogOut,
   Monitor,
@@ -91,7 +94,7 @@ export default function ProfileScreen() {
   const [showBodyweightDialog, setShowBodyweightDialog] = useState(false);
   const [showUnitsDialog, setShowUnitsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<DataExportFormat | null>(null);
   const [isSavingEffortScale, setIsSavingEffortScale] = useState(false);
   const updatePreferences = useMutation(api.users.updatePreferences);
 
@@ -161,23 +164,25 @@ export default function ProfileScreen() {
     setPreference(next);
   };
 
-  // Web downloads a JSON blob; native hands the same payload to the share
-  // sheet, matching the workout export dialog.
-  const handleExportData = async () => {
-    setIsExporting(true);
+  // Web downloads the file; native writes it to the cache directory and hands
+  // the file itself to the iOS share sheet (Save to Files, AirDrop, Mail).
+  const handleExportData = async (format: DataExportFormat) => {
+    setExportingFormat(format);
     try {
       const data = await convex.query(api.users.exportAllData, {});
-      const json = JSON.stringify(data, null, 2);
-      const fileName = `opentrainer-export-${new Date().toISOString().split("T")[0]}.json`;
-      const result = await Share.share({ message: json, title: fileName });
+      const { fileName, content } = buildDataExportFile(data, format);
+      const file = new File(Paths.cache, fileName);
+      file.create({ overwrite: true });
+      file.write(content);
+      const result = await Share.share({ url: file.uri, title: fileName });
       if (result.action !== Share.dismissedAction) {
-        analytics.capture("data_exported", { scope: "all_data", method: "share" });
+        analytics.capture("data_exported", { scope: "all_data", method: "share", format });
       }
     } catch (error) {
       console.error("Export failed:", error);
       toast.error("Export failed");
     } finally {
-      setIsExporting(false);
+      setExportingFormat(null);
     }
   };
 
@@ -291,15 +296,27 @@ export default function ProfileScreen() {
 
         <Section title="Account">
           <SettingRow
+            icon={FileSpreadsheet}
+            label="Export Workout History"
+            value={
+              exportingFormat === "csv"
+                ? "Preparing export..."
+                : "A CSV file with one row per set"
+            }
+            onPress={() => handleExportData("csv")}
+            disabled={exportingFormat !== null}
+            accessory={null}
+          />
+          <SettingRow
             icon={Download}
             label="Export All Data"
             value={
-              isExporting
+              exportingFormat === "json"
                 ? "Preparing export..."
-                : "Download your workouts, routines & more"
+                : "A JSON file with your workouts, routines & more"
             }
-            onPress={handleExportData}
-            disabled={isExporting}
+            onPress={() => handleExportData("json")}
+            disabled={exportingFormat !== null}
             accessory={null}
           />
           {/* Mobile-only: web signs out through Clerk's <UserButton />, which
