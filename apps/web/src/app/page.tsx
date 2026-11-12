@@ -66,7 +66,7 @@ export default function Home() {
             <div className="flex flex-col items-center gap-6 text-center lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:text-left">
               <div className="flex flex-col items-center gap-5 lg:items-start lg:gap-6">
                 <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs sm:text-sm font-medium text-primary">
-                  Alpha Launch: First 1,000 users get Pro free for life
+                  Pro is free during early access
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
                   Log workouts in seconds,
@@ -104,7 +104,7 @@ export default function Home() {
                   </div>
                   <SignedOut>
                     <p className="text-xs text-muted-foreground">
-                      Claim your lifetime Pro seat before the Alpha ends.
+                      No credit card required.
                     </p>
                   </SignedOut>
                 </div>
@@ -363,7 +363,7 @@ export default function Home() {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
                 </span>
-                Built in public, free during alpha
+                Built in public, free during early access
               </div>
               
               <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -389,13 +389,13 @@ export default function Home() {
           <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
               <span className="mb-4 inline-block rounded-full bg-violet-500/10 px-4 py-1.5 text-sm font-semibold text-violet-600">
-                Alpha: Pro is Free for Everyone
+                Early Access: Pro is Free for Everyone
               </span>
               <h2 className="text-3xl font-bold tracking-tight">
                 Simple pricing
               </h2>
               <p className="mt-2 text-muted-foreground">
-                Everything is free while we&apos;re in alpha. Help us build the best workout tracker.
+                Everything is free during early access. Help us build the best workout tracker.
               </p>
             </div>
             <div className="mx-auto mt-12 grid max-w-4xl gap-8 md:grid-cols-2">
@@ -448,15 +448,12 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-semibold">Pro</h3>
                   <span className="rounded-full bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-600">
-                    Free in Alpha
+                    Free in Early Access
                   </span>
                 </div>
-                <div className="mt-4 flex items-baseline gap-2">
-                  <span className="text-4xl font-bold">$0</span>
-                  <span className="text-muted-foreground line-through">$8/mo</span>
-                </div>
+                <div className="mt-4 text-4xl font-bold">$0</div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Free while we&apos;re in alpha
+                  Free during early access
                 </p>
                 <ul className="mt-8 flex-1 space-y-4 text-sm">
                   <li className="flex items-start gap-3">
@@ -528,8 +525,8 @@ export default function Home() {
               answer="Our AI generates routines based on your actual goals, experience level, and available equipment. Not generic templates."
             />
             <FAQItem
-              question="Is everything really free during alpha?"
-              answer="Yes! During our alpha period, all Pro features are completely free. This includes unlimited AI routines, Training Lab insights, and Smart Swap. No credit card required."
+              question="Is everything really free during early access?"
+              answer="Yes! During early access, all Pro features are completely free. This includes unlimited AI routines, Training Lab insights, and Smart Swap. No credit card required."
             />
             <FAQItem
               question="Is there an iPhone app?"
@@ -544,8 +541,8 @@ export default function Home() {
               answer="Not yet, but it's on our roadmap. For now you start fresh. We'll announce import support when it's ready."
             />
             <FAQItem
-              question="What happens after alpha ends?"
-              answer="We'll introduce paid Pro plans, but alpha users will get special pricing as a thank-you for helping us build. The free tier will always exist with generous limits."
+              question="What happens after early access ends?"
+              answer="We'll introduce paid Pro plans. The free tier will always exist with generous limits."
             />
           </div>
         </section>
@@ -575,7 +572,7 @@ export default function Home() {
                   </Button>
                 </SignUpButton>
                 <p className="text-xs text-muted-foreground">
-                  Claim your lifetime Pro seat before the Alpha ends.
+                  No credit card required.
                 </p>
               </SignedOut>
               <SignedIn>
@@ -595,7 +592,7 @@ export default function Home() {
       <footer className="border-t py-8">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row lg:px-8">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} OpenTrainer. Pro is free during alpha.
+            © {new Date().getFullYear()} OpenTrainer. Pro is free during early access.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <Link href="/privacy" className="hover:text-foreground">

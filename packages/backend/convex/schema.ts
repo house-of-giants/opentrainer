@@ -56,8 +56,14 @@ export default defineSchema({
     // Subscription tier
     tier: v.optional(v.union(v.literal("free"), v.literal("pro"))),
     
-    // Alpha program tracking
+    // Alpha program tracking. Alpha accounts keep Pro for life.
     isAlphaUser: v.optional(v.boolean()),
+
+    // Why this account has Pro, separate from tier. Unset on accounts created
+    // before this field, which includes every alpha account.
+    // early_access: free Pro given at sign-up while early access runs.
+    // paid: set by the billing webhook on a paid plan.
+    proReason: v.optional(v.union(v.literal("early_access"), v.literal("paid"))),
     
     // Onboarding tracking
     onboardingCompletedAt: v.optional(v.number()),

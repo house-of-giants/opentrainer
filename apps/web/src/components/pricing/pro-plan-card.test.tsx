@@ -17,3 +17,14 @@ describe("ProPlanCard claims", () => {
     assert.match(html, /Muscle Workload/);
   });
 });
+
+describe("ProPlanCard pricing promises", () => {
+  test("says Pro is free during early access without a lifetime promise or a struck price", () => {
+    const html = renderToStaticMarkup(<ProPlanCard />);
+
+    assert.match(html, /free during early access/i);
+    assert.doesNotMatch(html, /lifetime|for life/i);
+    assert.doesNotMatch(html, /\$8/);
+    assert.doesNotMatch(html, /line-through/);
+  });
+});

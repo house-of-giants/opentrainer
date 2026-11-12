@@ -30,7 +30,7 @@ export const upsertUser = internalMutation({
       name: args.name,
       imageUrl: args.imageUrl,
       tier: "pro",
-      isAlphaUser: true,
+      proReason: "early_access",
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -74,13 +74,17 @@ export const updateUserTier = internalMutation({
       return;
     }
 
-    if (user.isAlphaUser && args.tier === "free") {
-      console.log(`Skipping downgrade for Alpha user ${args.clerkId}`);
+    if (
+      (user.isAlphaUser || user.proReason === "early_access") &&
+      args.tier === "free"
+    ) {
+      console.log(`Skipping downgrade for alpha or early-access user ${args.clerkId}`);
       return;
     }
 
     await ctx.db.patch(user._id, {
       tier: args.tier,
+      proReason: args.tier === "pro" ? "paid" : undefined,
       updatedAt: Date.now(),
     });
 
