@@ -52,6 +52,7 @@ function mockConvex(user: Record<string, unknown>) {
     "entries:getTimedExerciseHistory": [],
     "exercises:getExercises": [],
     "exercises:getMuscleGroups": [],
+    "exercises:getWeightStep": null,
   };
   (useQuery as jest.Mock).mockImplementation((ref, args) => {
     if (args === "skip") return undefined;

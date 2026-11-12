@@ -113,6 +113,21 @@ export default defineSchema({
     .index("by_name", ["name"]),
 
   // --------------------------------------------------------------------------
+  // User Exercise Settings Table
+  // Per-user settings for one exercise. System exercises are shared rows, so
+  // per-user values live here. Keyed by exercise name, like exercise history.
+  // --------------------------------------------------------------------------
+  userExerciseSettings: defineTable({
+    userId: v.id("users"),
+    exerciseName: v.string(),
+    // Weight stepper and "add weight" suggestion step, in weightStepUnit.
+    weightStep: v.number(),
+    weightStepUnit: v.union(v.literal("kg"), v.literal("lb")),
+    updatedAt: v.number(),
+  })
+    .index("by_user_exercise", ["userId", "exerciseName"]),
+
+  // --------------------------------------------------------------------------
   // Workouts Table
   // Individual workout sessions
   // --------------------------------------------------------------------------

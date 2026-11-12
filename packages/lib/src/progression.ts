@@ -1,4 +1,9 @@
 import { convertWeight, displayWeight, type WeightUnit } from "./units";
+import {
+  resolveWeightStep,
+  stepWeight,
+  type WeightStepSetting,
+} from "./weight-step";
 
 type ExerciseSession = {
   workoutId: string;
@@ -137,7 +142,8 @@ function getAvgRpe(sessions: ExerciseSession[]): number | null {
 export function calculateProgressionSuggestion(
   sessions: ExerciseSession[],
   targetRepRange?: string,
-  preferredUnit?: WeightUnit
+  preferredUnit?: WeightUnit,
+  weightStep?: WeightStepSetting | null
 ): { lastSession: GhostSetData; suggestion: ProgressionSuggestion } | null {
   if (sessions.length === 0) return null;
 
@@ -171,6 +177,14 @@ export function calculateProgressionSuggestion(
   const hasMaxRpe = recentRpes.length >= 2 && recentRpes.filter((rpe) => rpe === 10).length >= 2;
   const hasHighRpe = recentRpes.some((rpe) => rpe >= 9);
 
+  // Add the step to the displayed weight, not the raw one, so the result is
+  // not rounded again: a 1.25 kg step must stay 61.25, not become 61.3.
+  const lastWeight = displayWeight(bestSet.weight, bestSet.unit, bestSet.unit);
+  const increasedWeight = stepWeight(
+    lastWeight,
+    resolveWeightStep(bestSet.unit, weightStep)
+  );
+
   let suggestionType: ProgressionSuggestion["type"];
   let targetWeight: number | null = null;
   let targetReps: number | null = null;
@@ -183,41 +197,38 @@ export function calculateProgressionSuggestion(
     reasoning = "RPE at 10 for multiple sessions. Reduce weight 10% to recover.";
   } else if (consecutiveTargetHits >= 2 && (!avgRpe || avgRpe <= 8)) {
     suggestionType = "increase_weight";
-    const increase = bestSet.unit === "kg" ? 2.5 : 5;
-    targetWeight = bestSet.weight + increase;
+    targetWeight = increasedWeight;
     targetReps = repRange?.min ?? bestSet.reps;
     reasoning = `Hit ${repRange?.max} reps for ${consecutiveTargetHits} sessions. Ready to add weight.`;
   } else if (consecutiveSessionsAtWeight >= 2 && avgRpe !== null && avgRpe <= 6) {
     suggestionType = "increase_weight";
-    const increase = bestSet.unit === "kg" ? 2.5 : 5;
-    targetWeight = bestSet.weight + increase;
+    targetWeight = increasedWeight;
     targetReps = repRange?.min ?? bestSet.reps;
     reasoning = `Average RPE ${avgRpe.toFixed(1)} — too easy. Add weight.`;
   } else if (!hasAnyRpeData && consecutiveAtWeightAndReps >= 2) {
     suggestionType = "increase_weight";
-    const increase = bestSet.unit === "kg" ? 2.5 : 5;
-    targetWeight = bestSet.weight + increase;
+    targetWeight = increasedWeight;
     targetReps = bestSet.reps;
     reasoning = `Completed ${bestSet.reps} reps for ${consecutiveAtWeightAndReps} sessions. Try adding weight.`;
   } else if (hasHighRpe) {
     suggestionType = "hold";
-    targetWeight = bestSet.weight;
+    targetWeight = lastWeight;
     targetReps = bestSet.reps;
     reasoning = "High RPE detected. Focus on form and recovery.";
   } else if (repRange && bestSet.reps < repRange.max) {
     suggestionType = "increase_reps";
-    targetWeight = bestSet.weight;
+    targetWeight = lastWeight;
     targetReps = Math.min(bestSet.reps + 1, repRange.max);
     reasoning = `Work toward ${repRange.max} reps before adding weight.`;
   } else if (consecutiveSessionsAtWeight >= 2) {
     suggestionType = "increase_reps";
-    targetWeight = bestSet.weight;
+    targetWeight = lastWeight;
     targetReps = bestSet.reps + 1;
     const rpeNote = avgRpe ? ` (avg RPE ${avgRpe.toFixed(1)})` : "";
     reasoning = `${consecutiveSessionsAtWeight} sessions at this weight${rpeNote}. Push for more reps.`;
   } else {
     suggestionType = "hold";
-    targetWeight = bestSet.weight;
+    targetWeight = lastWeight;
     targetReps = bestSet.reps;
     reasoning = lastRpe
       ? `Last session RPE ${lastRpe}. Build consistency at this weight.`
@@ -226,7 +237,7 @@ export function calculateProgressionSuggestion(
 
   return {
     lastSession: {
-      weight: displayWeight(bestSet.weight, bestSet.unit, bestSet.unit),
+      weight: lastWeight,
       reps: bestSet.reps,
       rpe: bestSet.rpe,
       date: lastSession.date,
@@ -234,10 +245,7 @@ export function calculateProgressionSuggestion(
     },
     suggestion: {
       type: suggestionType,
-      targetWeight:
-        targetWeight === null
-          ? null
-          : displayWeight(targetWeight, bestSet.unit, bestSet.unit),
+      targetWeight,
       targetReps,
       reasoning,
     },

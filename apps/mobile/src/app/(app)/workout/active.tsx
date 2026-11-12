@@ -18,6 +18,7 @@ import {
 } from "@opentrainer/lib/cardio-persistence";
 import { getExerciseGroupKey } from "@opentrainer/lib/workout-exercise-group";
 import { effortForStorage, type EffortScale } from "@opentrainer/lib/effort";
+import type { WeightStepSetting } from "@opentrainer/lib/weight-step";
 import {
   buildRepLiftingUpdate,
   buildTimedLiftingUpdate,
@@ -91,14 +92,42 @@ function ExerciseAccordionWithHistory({
   ...rest
 }: Omit<
   React.ComponentProps<typeof ExerciseAccordion>,
-  "lastSession" | "progressionSuggestion"
+  | "lastSession"
+  | "progressionSuggestion"
+  | "weightStepSetting"
+  | "onWeightStepChange"
 >) {
   const history = useQuery(api.entries.getExerciseHistory, { exerciseName });
+  const weightStepSetting = useQuery(api.exercises.getWeightStep, {
+    exerciseName,
+  });
+  const setWeightStep = useMutation(api.exercises.setWeightStep);
 
   const ghostData = useMemo(() => {
-    if (!history || history.length === 0) return null;
-    return calculateProgressionSuggestion(history, targetReps, unit);
-  }, [history, targetReps, unit]);
+    // Wait for the step too, so the goal does not jump from the default step.
+    if (!history || history.length === 0 || weightStepSetting === undefined) {
+      return null;
+    }
+    return calculateProgressionSuggestion(
+      history,
+      targetReps,
+      unit,
+      weightStepSetting,
+    );
+  }, [history, targetReps, unit, weightStepSetting]);
+
+  const handleWeightStepChange = async (setting: WeightStepSetting | null) => {
+    try {
+      await setWeightStep({
+        exerciseName,
+        weightStep: setting?.weightStep ?? null,
+        unit: setting?.unit ?? unit ?? "lb",
+      });
+    } catch (error) {
+      console.error("Failed to save weight step:", error);
+      toast.error("Failed to save weight step");
+    }
+  };
 
   return (
     <ExerciseAccordion
@@ -107,6 +136,8 @@ function ExerciseAccordionWithHistory({
       sets={sets}
       lastSession={ghostData?.lastSession}
       progressionSuggestion={ghostData?.suggestion}
+      weightStepSetting={weightStepSetting}
+      onWeightStepChange={handleWeightStepChange}
       unit={unit}
       {...rest}
     />

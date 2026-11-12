@@ -173,3 +173,91 @@ describe("progression ignores warm-up sets", () => {
     });
   });
 });
+
+describe("progression weight step", () => {
+  // Two sessions that hit the top of 8-12 at an easy RPE: the "Ready to add
+  // weight" branch.
+  const toppedOutSessions = (weight: number, unit: "lb" | "kg") =>
+    ["2026-11-10", "2026-11-03"].map((date) => ({
+      workoutId: date,
+      date: `${date}T00:00:00.000Z`,
+      sets: [
+        { setNumber: 1, weight, reps: 12, rpe: 7, unit },
+        { setNumber: 2, weight, reps: 12, rpe: 7, unit },
+      ],
+      bestSet: { weight, reps: 12, rpe: 7, unit },
+    }));
+
+  test("adds the default 5 lb when the user has set no step", () => {
+    const result = calculateProgressionSuggestion(
+      toppedOutSessions(100, "lb"),
+      "8-12",
+      "lb"
+    );
+    assert.equal(result?.suggestion.type, "increase_weight");
+    assert.equal(result?.suggestion.targetWeight, 105);
+  });
+
+  test("adds the user's 2.5 lb step instead of 5 lb", () => {
+    const result = calculateProgressionSuggestion(
+      toppedOutSessions(100, "lb"),
+      "8-12",
+      "lb",
+      { weightStep: 2.5, unit: "lb" }
+    );
+    assert.equal(result?.suggestion.type, "increase_weight");
+    assert.equal(result?.suggestion.targetWeight, 102.5);
+  });
+
+  test("keeps a 1.25 kg step exact instead of rounding to 0.1 kg", () => {
+    const result = calculateProgressionSuggestion(
+      toppedOutSessions(60, "kg"),
+      "8-12",
+      "kg",
+      { weightStep: 1.25, unit: "kg" }
+    );
+    assert.equal(result?.suggestion.targetWeight, 61.25);
+  });
+
+  test("uses the custom step in the low-RPE add-weight branch", () => {
+    const sessions = ["2026-11-10", "2026-11-03"].map((date) => ({
+      workoutId: date,
+      date: `${date}T00:00:00.000Z`,
+      sets: [{ setNumber: 1, weight: 20, reps: 10, rpe: 5, unit: "lb" as const }],
+      bestSet: { weight: 20, reps: 10, rpe: 5, unit: "lb" as const },
+    }));
+    const result = calculateProgressionSuggestion(sessions, undefined, "lb", {
+      weightStep: 2.5,
+      unit: "lb",
+    });
+    assert.equal(result?.suggestion.type, "increase_weight");
+    assert.match(result?.suggestion.reasoning ?? "", /too easy/);
+    assert.equal(result?.suggestion.targetWeight, 22.5);
+  });
+
+  test("uses the custom step in the no-RPE add-weight branch", () => {
+    const sessions = ["2026-11-10", "2026-11-03"].map((date) => ({
+      workoutId: date,
+      date: `${date}T00:00:00.000Z`,
+      sets: [{ setNumber: 1, weight: 20, reps: 10, rpe: null, unit: "lb" as const }],
+      bestSet: { weight: 20, reps: 10, rpe: null, unit: "lb" as const },
+    }));
+    const result = calculateProgressionSuggestion(sessions, undefined, "lb", {
+      weightStep: 2.5,
+      unit: "lb",
+    });
+    assert.equal(result?.suggestion.type, "increase_weight");
+    assert.match(result?.suggestion.reasoning ?? "", /Try adding weight/);
+    assert.equal(result?.suggestion.targetWeight, 22.5);
+  });
+
+  test("falls back to the default step when the saved step is in another unit", () => {
+    const result = calculateProgressionSuggestion(
+      toppedOutSessions(100, "lb"),
+      "8-12",
+      "lb",
+      { weightStep: 1.25, unit: "kg" }
+    );
+    assert.equal(result?.suggestion.targetWeight, 105);
+  });
+});
