@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Check, MessageSquare, Shuffle } from "lucide-react-native";
+import type { EffortScale } from "@opentrainer/lib/effort";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ export interface TimedSetData {
   setNumber: number;
   durationSeconds: number;
   rpe?: number | null;
+  rir?: number | null;
   isWarmup?: boolean;
 }
 
@@ -32,6 +34,7 @@ interface TimedExerciseAccordionProps {
     sets: { durationSeconds: number }[];
   };
   note?: string;
+  effortScale: EffortScale;
   onAddSet: (set: {
     durationSeconds: number;
     rpe?: number | null;
@@ -71,6 +74,7 @@ export function TimedExerciseAccordion({
   onSwap,
   onNoteChange,
   onSelect,
+  effortScale,
 }: TimedExerciseAccordionProps) {
   const { vibrate } = useHaptic();
   const { colors } = useTheme();
@@ -239,7 +243,7 @@ export function TimedExerciseAccordion({
             />
           </View>
 
-          <RpeSelector value={rpe} onChange={setRpe} />
+          <RpeSelector value={rpe} onChange={setRpe} scale={effortScale} />
 
           {error && (
             <Text

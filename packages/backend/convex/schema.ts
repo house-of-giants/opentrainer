@@ -44,6 +44,8 @@ export default defineSchema({
     
     // Preferences
     preferredUnits: v.optional(v.union(v.literal("kg"), v.literal("lb"))),
+    // How sets log effort. Absent means "rpe".
+    effortScale: v.optional(v.union(v.literal("rpe"), v.literal("rir"))),
     weeklyAvailability: v.optional(v.number()), // days per week
     sessionDuration: v.optional(v.number()), // minutes
     

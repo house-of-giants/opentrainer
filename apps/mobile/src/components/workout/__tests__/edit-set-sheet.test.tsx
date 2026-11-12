@@ -29,6 +29,7 @@ async function renderSheet(overrides: Partial<Parameters<typeof EditSetSheet>[0]
     <ThemeProvider>
       <EditSetSheet
         set={warmupSet}
+        effortScale="rpe"
         onOpenChange={onOpenChange}
         onSave={onSave}
         onDelete={onDelete}
@@ -63,7 +64,7 @@ describe("EditSetSheet", () => {
       onSave: (entryId, data) => {
         mutationArgs = {
           entryId,
-          lifting: buildRepLiftingUpdate(editingSet, data),
+          lifting: buildRepLiftingUpdate(editingSet, data, "rpe"),
         };
       },
     });
@@ -81,9 +82,46 @@ describe("EditSetSheet", () => {
         unit: "lb",
         isBodyweight: undefined,
         rpe: 8,
+        rir: undefined,
         isWarmup: true,
       },
     });
+  });
+
+  it("stores RIR with the matching RPE when the user edits on the RIR scale", async () => {
+    let lifting: ReturnType<typeof buildRepLiftingUpdate> | undefined;
+    await renderSheet({
+      effortScale: "rir",
+      onSave: (_entryId, data) => {
+        lifting = buildRepLiftingUpdate(warmupSet, data, "rir");
+      },
+    });
+
+    // RPE 8 shows as 2 RIR on this scale.
+    expect(screen.getByLabelText("2 reps in reserve")).toBeSelected();
+    await fireEvent.press(screen.getByLabelText("1 rep in reserve"));
+    await fireEvent.press(screen.getByText("Save"));
+
+    expect(lifting?.rpe).toBe(9);
+    expect(lifting?.rir).toBe(1);
+  });
+
+  it("keeps a logged RIR when an RPE-scale edit leaves the effort alone", async () => {
+    const rirSet: EditableLiftingSet = { ...warmupSet, rpe: 8, rir: 2 };
+    let lifting: ReturnType<typeof buildRepLiftingUpdate> | undefined;
+    await renderSheet({
+      set: rirSet,
+      onSave: (_entryId, data) => {
+        lifting = buildRepLiftingUpdate(rirSet, data, "rpe");
+      },
+    });
+
+    await fireEvent.press(screen.getByLabelText("Increase Reps"));
+    await fireEvent.press(screen.getByText("Save"));
+
+    expect(lifting?.reps).toBe(9);
+    expect(lifting?.rpe).toBe(8);
+    expect(lifting?.rir).toBe(2);
   });
 
   it("clears the warmup flag when the checkbox is unchecked", async () => {

@@ -1,5 +1,6 @@
 import { getExerciseGroup } from "./workout-exercise-group";
 import { editedWeightForStorage, type WeightUnit } from "./units";
+import { effortForStorage, type EffortScale } from "./effort";
 
 type StoredLiftingEntry = {
 	_id: string;
@@ -7,6 +8,7 @@ type StoredLiftingEntry = {
 		weight?: number;
 		unit: WeightUnit;
 		isWarmup?: boolean;
+		rir?: number;
 	};
 };
 
@@ -26,6 +28,7 @@ export type EditableLiftingSet = DisplayedLiftingSet & {
 	storedWeight?: number;
 	storedUnit?: WeightUnit;
 	isWarmup?: boolean;
+	rir?: number | null;
 };
 
 export function createEditableLiftingSet(
@@ -51,13 +54,16 @@ export function createEditableLiftingSet(
 		storedWeight: storedSet?.weight,
 		storedUnit: storedSet?.unit,
 		isWarmup: storedSet?.isWarmup,
+		rir: storedSet?.rir,
 	};
 }
 
 export function buildRepLiftingUpdate(
 	editingSet: EditableLiftingSet,
-	data: { reps?: number; weight?: number; rpe?: number | null; isWarmup?: boolean }
+	data: { reps?: number; weight?: number; rpe?: number | null; isWarmup?: boolean },
+	effortScale: EffortScale
 ) {
+	const effort = effortForStorage(data.rpe, effortScale, editingSet);
 	return {
 		setNumber: editingSet.setNumber,
 		reps: data.reps,
@@ -73,20 +79,24 @@ export function buildRepLiftingUpdate(
 					}),
 		unit: editingSet.storedUnit ?? editingSet.unit,
 		isBodyweight: editingSet.isBodyweight,
-		rpe: data.rpe ?? undefined,
+		rpe: effort.rpe,
+		rir: effort.rir,
 		isWarmup: data.isWarmup ?? editingSet.isWarmup,
 	};
 }
 
 export function buildTimedLiftingUpdate(
 	editingSet: EditableLiftingSet,
-	data: { durationSeconds?: number; rpe?: number | null; isWarmup?: boolean }
+	data: { durationSeconds?: number; rpe?: number | null; isWarmup?: boolean },
+	effortScale: EffortScale
 ) {
+	const effort = effortForStorage(data.rpe, effortScale, editingSet);
 	return {
 		setNumber: editingSet.setNumber,
 		durationSeconds: data.durationSeconds,
 		unit: editingSet.storedUnit ?? editingSet.unit,
-		rpe: data.rpe ?? undefined,
+		rpe: effort.rpe,
+		rir: effort.rir,
 		isWarmup: data.isWarmup ?? editingSet.isWarmup,
 	};
 }

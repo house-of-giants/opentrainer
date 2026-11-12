@@ -64,6 +64,7 @@ type EntryData = {
 		unit: "kg" | "lb";
 		isBodyweight?: boolean;
 		rpe?: number;
+		rir?: number;
 		isWarmup?: boolean;
 	};
 	cardio?: {
@@ -794,6 +795,7 @@ export default function ActiveWorkoutPage() {
 			unit: "lb",
 			durationSeconds: set.durationSeconds,
 			rpe: set.rpe,
+			rir: set.rir,
 			isWarmup: set.isWarmup,
 		});
 	};
@@ -809,8 +811,8 @@ export default function ActiveWorkoutPage() {
 					entryId as unknown as import("@opentrainer/backend/convex/_generated/dataModel").Id<"entries">,
 				lifting:
 					data.durationSeconds !== undefined
-						? buildTimedLiftingUpdate(editingSet, data)
-						: buildRepLiftingUpdate(editingSet, data),
+						? buildTimedLiftingUpdate(editingSet, data, "rpe")
+						: buildRepLiftingUpdate(editingSet, data, "rpe"),
 			});
 			vibrate("success");
 			toast.success("Set updated");
@@ -1010,6 +1012,7 @@ export default function ActiveWorkoutPage() {
 									setNumber: entry.lifting!.setNumber,
 									durationSeconds: entry.lifting!.durationSeconds!,
 									rpe: entry.lifting!.rpe ?? null,
+									rir: entry.lifting!.rir ?? null,
 									isWarmup: entry.lifting!.isWarmup,
 								}));
 

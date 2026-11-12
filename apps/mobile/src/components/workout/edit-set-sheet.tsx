@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { Trash2 } from "lucide-react-native";
+import type { EffortScale } from "@opentrainer/lib/effort";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,10 +28,12 @@ export interface EditableSet {
   isBodyweight?: boolean;
   isWarmup?: boolean;
   rpe?: number | null;
+  rir?: number | null;
 }
 
 interface EditSetSheetProps {
   set: EditableSet | null;
+  effortScale: EffortScale;
   onOpenChange: (open: boolean) => void;
   onSave: (
     entryId: string,
@@ -47,11 +50,13 @@ interface EditSetSheetProps {
 
 function EditSetContent({
   set,
+  effortScale,
   onOpenChange,
   onSave,
   onDelete,
 }: {
   set: EditableSet;
+  effortScale: EffortScale;
   onOpenChange: (open: boolean) => void;
   onSave: EditSetSheetProps["onSave"];
   onDelete: (entryId: string) => void;
@@ -149,7 +154,7 @@ function EditSetContent({
         </View>
 
         <View className="mt-6">
-          <RpeSelector value={rpe} onChange={setRpe} />
+          <RpeSelector value={rpe} onChange={setRpe} scale={effortScale} />
         </View>
 
         <Button
@@ -183,6 +188,7 @@ function EditSetContent({
 
 export function EditSetSheet({
   set,
+  effortScale,
   onOpenChange,
   onSave,
   onDelete,
@@ -193,6 +199,7 @@ export function EditSetSheet({
         <EditSetContent
           key={set.entryId}
           set={set}
+          effortScale={effortScale}
           onOpenChange={onOpenChange}
           onSave={onSave}
           onDelete={onDelete}

@@ -53,7 +53,7 @@ test("editing only RPE preserves the original stored weight and unit", async () 
 			reps: 8,
 			weight: 102.1,
 			rpe: 8,
-		}),
+		}, "rpe"),
 	});
 
 	assert.deepEqual(received, {
@@ -65,6 +65,7 @@ test("editing only RPE preserves the original stored weight and unit", async () 
 			unit: "lb",
 			isBodyweight: undefined,
 			rpe: 8,
+			rir: undefined,
 			isWarmup: undefined,
 		},
 	});
@@ -107,7 +108,7 @@ test("buildRepLiftingUpdate preserves stored warmup flag when omitted from data"
 	);
 	assert.ok(editingSet);
 
-	const update = buildRepLiftingUpdate(editingSet, { reps: 6, weight: 135 });
+	const update = buildRepLiftingUpdate(editingSet, { reps: 6, weight: 135 }, "rpe");
 	assert.equal(update.isWarmup, true);
 });
 
@@ -123,7 +124,7 @@ test("buildRepLiftingUpdate lets an explicit false clear the warmup flag", () =>
 		reps: 5,
 		weight: 135,
 		isWarmup: false,
-	});
+	}, "rpe");
 	assert.equal(update.isWarmup, false);
 });
 
@@ -139,7 +140,8 @@ test("buildTimedLiftingUpdate preserves stored unit and warmup flag", () => {
 			storedUnit: "lb",
 			isWarmup: true,
 		},
-		{ durationSeconds: 45, rpe: null }
+		{ durationSeconds: 45, rpe: null },
+		"rpe"
 	);
 
 	assert.deepEqual(update, {
@@ -147,6 +149,61 @@ test("buildTimedLiftingUpdate preserves stored unit and warmup flag", () => {
 		durationSeconds: 45,
 		unit: "lb",
 		rpe: undefined,
+		rir: undefined,
 		isWarmup: true,
 	});
+});
+
+const rirExerciseGroups = (entryId: string, exerciseName: string) =>
+	new Map([
+		[
+			getExerciseGroupKey({
+				name: exerciseName,
+				category: "lifting",
+				measurementType: "reps",
+			}),
+			{
+				entries: [
+					{
+						_id: entryId,
+						lifting: { weight: 135, unit: "lb" as const, rir: 2 },
+					},
+				],
+			},
+		],
+	]);
+
+test("an RPE-scale edit that keeps the effort keeps the stored RIR", () => {
+	const editingSet = createEditableLiftingSet(
+		rirExerciseGroups("entry-1", "Bench Press"),
+		"Bench Press",
+		{ entryId: "entry-1", setNumber: 1, reps: 5, weight: 135, unit: "lb", rpe: 8 }
+	);
+	assert.ok(editingSet);
+
+	const update = buildRepLiftingUpdate(
+		editingSet,
+		{ reps: 6, weight: 135, rpe: 8 },
+		"rpe"
+	);
+	assert.equal(update.rpe, 8);
+	assert.equal(update.rir, 2);
+});
+
+test("an RIR-scale edit stores RIR with the matching RPE", () => {
+	const update = buildTimedLiftingUpdate(
+		{
+			entryId: "entry-1",
+			exerciseName: "Plank",
+			setNumber: 1,
+			reps: 0,
+			weight: 0,
+			unit: "lb",
+			rpe: null,
+		},
+		{ durationSeconds: 30, rpe: 9 },
+		"rir"
+	);
+	assert.equal(update.rpe, 9);
+	assert.equal(update.rir, 1);
 });
