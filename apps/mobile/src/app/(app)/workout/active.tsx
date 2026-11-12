@@ -99,7 +99,13 @@ function ExerciseAccordionWithHistory({
   | "progressionSuggestion"
   | "weightStepSetting"
   | "onWeightStepChange"
->) {
+  | "onAddSet"
+> & {
+  /** Resolves true once the set is saved. */
+  onAddSet: (
+    set: Parameters<React.ComponentProps<typeof ExerciseAccordion>["onAddSet"]>[0]
+  ) => Promise<boolean>;
+}) {
   const history = useQuery(api.entries.getExerciseHistory, { exerciseName });
   const weightStepSetting = useQuery(api.exercises.getWeightStep, {
     exerciseName,
@@ -164,9 +170,8 @@ function ExerciseAccordionWithHistory({
       weightStepSetting={weightStepSetting}
       onWeightStepChange={handleWeightStepChange}
       unit={unit}
-      onAddSet={(set) => {
-        suggestionTracker.markSetLogged(set);
-        onAddSet(set);
+      onAddSet={async (set) => {
+        if (await onAddSet(set)) suggestionTracker.markSetLogged(set);
       }}
       {...rest}
     />
@@ -536,9 +541,11 @@ export default function ActiveWorkoutScreen() {
         rpe: set.rpe ?? null,
       });
       setShowRestTimer(true);
+      return true;
     } catch (error) {
       toast.error("Failed to log set");
       console.error(error);
+      return false;
     }
   };
 

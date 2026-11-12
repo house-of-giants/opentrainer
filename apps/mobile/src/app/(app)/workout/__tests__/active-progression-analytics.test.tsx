@@ -121,6 +121,24 @@ describe("progression suggestion analytics", () => {
     ]);
   });
 
+  it("sends accepted only after the set saves, so a failed save does not count", async () => {
+    addLiftingEntry.mockRejectedValueOnce(new Error("offline"));
+    await renderAndWaitForSuggestion();
+
+    await logSet("LOG SET 1/3");
+    expect(addLiftingEntry).toHaveBeenCalledTimes(1);
+    expect(suggestionEvents()).toEqual([
+      ["progression_suggestion_shown", { suggestion_type: "increase_weight" }],
+    ]);
+
+    await logSet("LOG SET 1/3"); // retry succeeds
+    expect(addLiftingEntry).toHaveBeenCalledTimes(2);
+    expect(suggestionEvents()).toEqual([
+      ["progression_suggestion_shown", { suggestion_type: "increase_weight" }],
+      ["progression_suggestion_accepted", { suggestion_type: "increase_weight" }],
+    ]);
+  });
+
   it("does not send accepted when the lifter logs a different weight", async () => {
     await renderAndWaitForSuggestion();
 
