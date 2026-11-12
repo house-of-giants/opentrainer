@@ -1,5 +1,7 @@
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getCurrentUser } from "./auth";
 import { createConvexLogger, truncateId } from "./lib/logger";
 import { getMondayWeekStartUtc, WEEK_IN_MS } from "./lib/week";
@@ -404,10 +406,32 @@ export const deleteWorkout = mutation({
   },
 });
 
+const historyStatusValidator = v.optional(
+  v.union(v.literal("completed"), v.literal("cancelled"), v.literal("all")),
+);
+
+// A user's finished workouts, newest start time first. "all" means completed
+// and cancelled; in-progress workouts never appear in history.
+function workoutHistoryQuery(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  status: "completed" | "cancelled" | "all" = "completed",
+) {
+  return ctx.db
+    .query("workouts")
+    .withIndex("by_user_started", (q) => q.eq("userId", userId))
+    .order("desc")
+    .filter((q) =>
+      status === "all"
+        ? q.neq(q.field("status"), "in_progress")
+        : q.eq(q.field("status"), status),
+    );
+}
+
 export const getWorkoutHistory = query({
   args: {
     limit: v.optional(v.number()),
-    status: v.optional(v.union(v.literal("completed"), v.literal("cancelled"), v.literal("all"))),
+    status: historyStatusValidator,
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
@@ -415,23 +439,24 @@ export const getWorkoutHistory = query({
       return [];
     }
 
-    const limit = args.limit ?? 50;
-    const statusFilter = args.status ?? "completed";
+    return await workoutHistoryQuery(ctx, user._id, args.status).take(args.limit ?? 50);
+  },
+});
 
-    let query = ctx.db
-      .query("workouts")
-      .withIndex("by_user_started", (q) => q.eq("userId", user._id))
-      .order("desc");
-
-    if (statusFilter !== "all") {
-      query = query.filter((q) => q.eq(q.field("status"), statusFilter));
-    } else {
-      query = query.filter((q) => q.neq(q.field("status"), "in_progress"));
+// Paginated history for the History screens. getWorkoutHistory stays for
+// callers that need only the newest few workouts and for older app builds.
+export const getWorkoutHistoryPage = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    status: historyStatusValidator,
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx, { requireAuth: false, requireUser: false });
+    if (!user) {
+      return { page: [], isDone: true, continueCursor: "" };
     }
 
-    const workouts = await query.take(limit);
-
-    return workouts;
+    return await workoutHistoryQuery(ctx, user._id, args.status).paginate(args.paginationOpts);
   },
 });
 

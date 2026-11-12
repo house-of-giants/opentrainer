@@ -1,8 +1,8 @@
-import { FlatList, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Text, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
 import { Calendar, Clock, Dumbbell } from "lucide-react-native";
 
@@ -13,10 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useStartWorkout } from "@/components/workout/start-workout-provider";
 import { useTheme } from "@/theme/theme-provider";
 
-// Port of apps/web/src/app/history/page.tsx. The web page is not paginated:
-// it pulls one page of up to 100 completed workouts and groups them by month
-// client-side. Same query here; the flattened month groups feed a FlatList so
-// long histories stay virtualised.
+// Port of apps/web/src/app/history/page.tsx. Both pages read completed
+// workouts newest first, PAGE_SIZE at a time, and group every loaded workout by
+// month client-side. Here the flattened month groups feed a FlatList so long
+// histories stay virtualised, and reaching the end loads the next page.
+const PAGE_SIZE = 50;
+
 type Workout = {
   _id: string;
   title?: string;
@@ -157,15 +159,21 @@ function WorkoutRow({ workout }: { workout: Workout }) {
 export default function HistoryScreen() {
   const startWorkout = useStartWorkout();
   const { colors } = useTheme();
-  const workouts = useQuery(api.workouts.getWorkoutHistory, {
-    limit: 100,
-    status: "completed",
-  });
+  const {
+    results: workouts,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
+    api.workouts.getWorkoutHistoryPage,
+    { status: "completed" },
+    { initialNumItems: PAGE_SIZE },
+  );
+  const firstPageLoading = status === "LoadingFirstPage";
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
       <View className="h-14 flex-row items-center border-b border-border px-4">
-        {workouts === undefined ? (
+        {firstPageLoading ? (
           <Skeleton className="h-6 w-32" />
         ) : (
           <Text className="text-lg font-semibold text-foreground">
@@ -174,13 +182,13 @@ export default function HistoryScreen() {
         )}
       </View>
 
-      {workouts === undefined ? (
+      {firstPageLoading ? (
         <View className="gap-3 p-4">
           {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
         </View>
-      ) : workouts.length === 0 ? (
+      ) : workouts.length === 0 && status === "Exhausted" ? (
         <View className="p-4">
           <Card className="items-center p-8">
             <Dumbbell size={48} color={colors.mutedForeground} />
@@ -197,6 +205,7 @@ export default function HistoryScreen() {
         </View>
       ) : (
         <FlatList
+          testID="history-list"
           data={toRows(workouts as Workout[])}
           keyExtractor={(row) => `${row.kind}:${row.key}`}
           contentContainerClassName="gap-2 p-4 pb-24"
@@ -208,6 +217,20 @@ export default function HistoryScreen() {
             ) : (
               <WorkoutRow workout={item.workout} />
             )
+          }
+          onEndReached={() => {
+            if (status === "CanLoadMore") loadMore(PAGE_SIZE);
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            status === "LoadingMore" ? (
+              <View className="flex-row items-center justify-center gap-2 py-4">
+                <ActivityIndicator size="small" color={colors.mutedForeground} />
+                <Text className="text-sm text-muted-foreground">
+                  Loading older workouts
+                </Text>
+              </View>
+            ) : null
           }
         />
       )}

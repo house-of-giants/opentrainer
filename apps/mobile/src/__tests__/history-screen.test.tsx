@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { getFunctionName } from "convex/server";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 
 import HistoryScreen from "@/app/(app)/(tabs)/history";
 import { StartWorkoutProvider } from "@/components/workout/start-workout-provider";
@@ -8,6 +9,7 @@ import { ThemeProvider } from "@/theme/theme-provider";
 
 jest.mock("convex/react", () => ({
   useQuery: jest.fn(),
+  usePaginatedQuery: jest.fn(),
   useMutation: jest.fn(() => jest.fn().mockResolvedValue(undefined)),
 }));
 
@@ -17,6 +19,8 @@ jest.mock("expo-router", () => ({
 }));
 
 const mockUseQuery = useQuery as jest.Mock;
+const mockUsePaginatedQuery = usePaginatedQuery as jest.Mock;
+const mockLoadMore = jest.fn();
 
 const workouts = [
   {
@@ -35,9 +39,44 @@ const workouts = [
   },
 ];
 
+// An older workout that only arrives with the second page.
+const olderWorkout = {
+  _id: "workout_0",
+  title: "Leg Day",
+  status: "completed",
+  startedAt: new Date("2025-06-02T17:00:00Z").getTime(),
+  summary: { totalDurationMinutes: 60, totalSets: 18, exerciseCount: 5 },
+};
+
+// Stands in for Convex's usePaginatedQuery: serves the given pages one at a
+// time and moves to the next page when loadMore is called.
+function mockHistoryPages(pages: unknown[][], { loadingMore = false } = {}) {
+  mockUsePaginatedQuery.mockImplementation(() => {
+    const [loaded, setLoaded] = useState(1);
+    const exhausted = loaded >= pages.length;
+    return {
+      results: pages.slice(0, loaded).flat(),
+      status: loadingMore ? "LoadingMore" : exhausted ? "Exhausted" : "CanLoadMore",
+      isLoading: loadingMore,
+      loadMore: (numItems: number) => {
+        mockLoadMore(numItems);
+        setLoaded((n) => n + 1);
+      },
+    };
+  });
+}
+
+function mockFirstPageLoading() {
+  mockUsePaginatedQuery.mockReturnValue({
+    results: [],
+    status: "LoadingFirstPage",
+    isLoading: true,
+    loadMore: mockLoadMore,
+  });
+}
+
 function mockQueries(overrides: Record<string, unknown> = {}) {
   const values: Record<string, unknown> = {
-    "workouts:getWorkoutHistory": workouts,
     "workouts:getActiveWorkout": null,
     "routines:getRoutines": [],
     ...overrides,
@@ -48,6 +87,7 @@ function mockQueries(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockQueries();
+  mockHistoryPages([workouts]);
 });
 
 async function renderHistory() {
@@ -61,13 +101,50 @@ async function renderHistory() {
 }
 
 describe("History screen", () => {
-  it("queries one page of completed workouts", async () => {
+  it("pages through completed workouts instead of capping at 100", async () => {
     await renderHistory();
 
-    const historyCall = mockUseQuery.mock.calls.find(
-      ([ref]) => getFunctionName(ref) === "workouts:getWorkoutHistory",
-    );
-    expect(historyCall?.[1]).toEqual({ limit: 100, status: "completed" });
+    const [ref, args, options] = mockUsePaginatedQuery.mock.calls[0];
+    expect(getFunctionName(ref)).toBe("workouts:getWorkoutHistoryPage");
+    expect(args).toEqual({ status: "completed" });
+    expect(options).toEqual({ initialNumItems: 50 });
+  });
+
+  it("loads the next page of older workouts when the list end is reached", async () => {
+    mockHistoryPages([workouts, [olderWorkout]]);
+    await renderHistory();
+
+    expect(screen.queryByText("Leg Day")).toBeNull();
+
+    await fireEvent(screen.getByTestId("history-list"), "endReached");
+
+    expect(mockLoadMore).toHaveBeenCalledTimes(1);
+    expect(mockLoadMore).toHaveBeenCalledWith(50);
+    // The second page joins the same month-grouped list.
+    expect(screen.getByText("Pull Day")).toBeOnTheScreen();
+    expect(screen.getByText("June 2025")).toBeOnTheScreen();
+    expect(screen.getByText("Leg Day")).toBeOnTheScreen();
+    expect(screen.getByText("18 sets")).toBeOnTheScreen();
+
+    // Every page is loaded now, so reaching the end again asks for nothing.
+    await fireEvent(screen.getByTestId("history-list"), "endReached");
+    expect(mockLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a quiet loading row while an older page loads", async () => {
+    mockHistoryPages([workouts, [olderWorkout]], { loadingMore: true });
+    await renderHistory();
+
+    expect(screen.getByText("Loading older workouts")).toBeOnTheScreen();
+
+    await fireEvent(screen.getByTestId("history-list"), "endReached");
+    expect(mockLoadMore).not.toHaveBeenCalled();
+  });
+
+  it("shows no loading row once every page is loaded", async () => {
+    await renderHistory();
+
+    expect(screen.queryByText("Loading older workouts")).toBeNull();
   });
 
   it("groups workouts by month and renders their summaries", async () => {
@@ -96,7 +173,7 @@ describe("History screen", () => {
   });
 
   it("offers the start-workout sheet from the empty state", async () => {
-    mockQueries({ "workouts:getWorkoutHistory": [] });
+    mockHistoryPages([[]]);
     await renderHistory();
 
     expect(screen.getByText("No workouts yet")).toBeOnTheScreen();
@@ -105,7 +182,7 @@ describe("History screen", () => {
   });
 
   it("renders skeletons while the query is loading", async () => {
-    mockQueries({ "workouts:getWorkoutHistory": undefined });
+    mockFirstPageLoading();
     await renderHistory();
 
     expect(screen.queryByText("Workout History")).toBeNull();
