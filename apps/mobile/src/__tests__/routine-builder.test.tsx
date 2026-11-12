@@ -126,6 +126,7 @@ describe("Routine builder", () => {
                 targetReps: "8-12",
                 measurementType: undefined,
                 targetHoldSeconds: undefined,
+                restSeconds: 90,
               },
             ],
           },

@@ -26,7 +26,6 @@ import { useTheme } from "@/theme/theme-provider";
 // exactly like web before handing the row back through onSave.
 export type RoutineExercise = RoutineEditorExerciseFields<Id<"exercises">> & {
   id: string;
-  restSeconds: number;
 };
 
 interface EditExerciseSheetProps {

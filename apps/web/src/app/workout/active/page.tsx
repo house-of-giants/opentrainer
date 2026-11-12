@@ -49,6 +49,7 @@ import {
 	createCardioPersistenceGate,
 } from "@opentrainer/lib/cardio-persistence";
 import { getExerciseGroupKey } from "@opentrainer/lib/workout-exercise-group";
+import { DEFAULT_REST_SECONDS } from "@opentrainer/lib/routine-editor";
 import {
 	buildRepLiftingUpdate,
 	buildTimedLiftingUpdate,
@@ -171,6 +172,7 @@ type PendingExercise = {
 	targetDurationMinutes?: number;
 	measurementType?: "reps" | "duration";
 	targetHoldSeconds?: number;
+	restSeconds?: number;
 	equipment?: string[];
 	muscleGroups?: string[];
 };
@@ -212,7 +214,7 @@ export default function ActiveWorkoutPage() {
 	const { generateClientId } = useClientId();
 	const { vibrate } = useHaptic();
 	const [showAddExercise, setShowAddExercise] = useState(false);
-	const [showRestTimer, setShowRestTimer] = useState(false);
+	const [restTimerSeconds, setRestTimerSeconds] = useState<number | null>(null);
 	const [showSaveRoutine, setShowSaveRoutine] = useState(false);
 	const [pendingExercises, setPendingExercises] = useState<PendingExercise[]>(
 		[]
@@ -355,6 +357,7 @@ export default function ActiveWorkoutPage() {
 					targetDurationMinutes: ex.targetDuration,
 					measurementType: ex.measurementType,
 					targetHoldSeconds: ex.targetHoldSeconds,
+					restSeconds: ex.restSeconds,
 					equipment: exerciseWithEquipment.equipment,
 				};
 			});
@@ -446,6 +449,14 @@ export default function ActiveWorkoutPage() {
 		);
 	}
 
+	// A routine exercise carries its own rest time; other exercises rest 90s.
+	const startRestTimer = (groupKey: string) => {
+		const pending = pendingExercises.find(
+			(exercise) => getExerciseGroupKey(exercise) === groupKey
+		);
+		setRestTimerSeconds(pending?.restSeconds ?? DEFAULT_REST_SECONDS);
+	};
+
 	const handleAddSet = async (
 		exerciseName: string,
 		set: {
@@ -456,11 +467,12 @@ export default function ActiveWorkoutPage() {
 			rpe?: number | null;
 		}
 	) => {
-		const group = exerciseGroups.get(getExerciseGroupKey({
+		const groupKey = getExerciseGroupKey({
 			name: exerciseName,
 			category: "lifting",
 			measurementType: "reps",
-		}));
+		});
+		const group = exerciseGroups.get(groupKey);
 		const existingSets = group?.entries ?? [];
 		const setNumber = existingSets.length + 1;
 
@@ -487,7 +499,7 @@ export default function ActiveWorkoutPage() {
 				is_bodyweight: set.isBodyweight ?? false,
 				rpe: set.rpe ?? null,
 			});
-			setShowRestTimer(true);
+			startRestTimer(groupKey);
 			return true;
 		} catch (error) {
 			toast.error("Failed to log set");
@@ -500,11 +512,12 @@ export default function ActiveWorkoutPage() {
 		exerciseName: string,
 		set: { durationSeconds: number; rpe?: number | null }
 	) => {
-		const group = exerciseGroups.get(getExerciseGroupKey({
+		const groupKey = getExerciseGroupKey({
 			name: exerciseName,
 			category: "lifting",
 			measurementType: "duration",
-		}));
+		});
+		const group = exerciseGroups.get(groupKey);
 		const existingSets = group?.entries.filter(
 			(entry) => entry.kind === "lifting" && entry.lifting?.durationSeconds !== undefined
 		) ?? [];
@@ -529,7 +542,7 @@ export default function ActiveWorkoutPage() {
 				duration_seconds: set.durationSeconds,
 				rpe: set.rpe ?? null,
 			});
-			setShowRestTimer(true);
+			startRestTimer(groupKey);
 		} catch (error) {
 			posthog.captureException(error);
 			throw error;
@@ -1256,11 +1269,11 @@ export default function ActiveWorkoutPage() {
 				</DialogContent>
 			</Dialog>
 
-			{showRestTimer && (
+			{restTimerSeconds !== null && (
 				<RestTimerOverlay
-					durationSeconds={90}
-					onComplete={() => setShowRestTimer(false)}
-					onSkip={() => setShowRestTimer(false)}
+					durationSeconds={restTimerSeconds}
+					onComplete={() => setRestTimerSeconds(null)}
+					onSkip={() => setRestTimerSeconds(null)}
 				/>
 			)}
 		</div>

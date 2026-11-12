@@ -20,6 +20,7 @@ const routineExerciseValidator = v.object({
   targetHoldSeconds: v.optional(v.number()),
   perSide: v.optional(v.boolean()),
   notes: v.optional(v.string()),
+  restSeconds: v.optional(v.number()),
 });
 
 const routineDayValidator = v.object({

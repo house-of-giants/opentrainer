@@ -7,6 +7,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
 import type { Id } from "@opentrainer/backend";
 import {
+  DEFAULT_REST_SECONDS,
   editorExerciseToRoutineExercise,
   routineExerciseToEditorFields,
 } from "@opentrainer/lib/routine-editor";
@@ -59,7 +60,7 @@ const DEFAULT_EXERCISE: Omit<RoutineExercise, "id" | "exerciseName"> = {
   targetDuration: 20,
   targetHoldSeconds: 30,
   perSide: false,
-  restSeconds: 90,
+  restSeconds: DEFAULT_REST_SECONDS,
 };
 
 function getExerciseSummary(exercise: RoutineExercise) {
@@ -170,7 +171,6 @@ export default function EditRoutineScreen() {
           return {
             id: newLocalId(),
             ...routineExerciseToEditorFields(ex, catalogExercise?.measurementType),
-            restSeconds: 90,
           };
         }),
       }));

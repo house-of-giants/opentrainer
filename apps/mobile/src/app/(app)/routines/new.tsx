@@ -354,6 +354,7 @@ export default function NewRoutineScreen() {
             measurementType: e.measurementType,
             targetHoldSeconds:
               e.measurementType === "duration" ? e.targetHoldSeconds : undefined,
+            restSeconds: e.restSeconds > 0 ? e.restSeconds : undefined,
           })),
         })),
       });
