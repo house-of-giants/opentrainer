@@ -1,5 +1,5 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
@@ -16,6 +16,10 @@ export const RATE_LIMITS = {
     windowMs: TWENTY_FOUR_HOURS_MS,
     maxRequests: 10,
   },
+  routineSwap: {
+    windowMs: TWENTY_FOUR_HOURS_MS,
+    maxRequests: 10,
+  },
   dataExport: {
     windowMs: TWENTY_FOUR_HOURS_MS,
     maxRequests: 5,
@@ -23,6 +27,7 @@ export const RATE_LIMITS = {
 } as const;
 
 export type RateLimitType = keyof typeof RATE_LIMITS;
+export type AIUsageAction = Doc<"aiUsage">["action"];
 
 async function countSmartSwapUsage(
   ctx: QueryCtx | MutationCtx,
@@ -55,6 +60,21 @@ async function countTrainingLabUsage(
   return assessments.length;
 }
 
+async function countAIUsage(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+  action: AIUsageAction,
+  windowStart: number
+): Promise<number> {
+  const rows = await ctx.db
+    .query("aiUsage")
+    .withIndex("by_user_action_created", (q) =>
+      q.eq("userId", userId).eq("action", action).gte("createdAt", windowStart)
+    )
+    .collect();
+  return rows.length;
+}
+
 export async function checkRateLimit(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
@@ -71,9 +91,11 @@ export async function checkRateLimit(
     count = await countSmartSwapUsage(ctx, userId, windowStart);
   } else if (actionType === "trainingLabReport") {
     count = await countTrainingLabUsage(ctx, userId, windowStart);
+  } else if (actionType === "routineGeneration" || actionType === "routineSwap") {
+    count = await countAIUsage(ctx, userId, actionType, windowStart);
   } else {
-    // routineGeneration doesn't persist trackable records
-    // TODO: Add dedicated aiUsage table for accurate per-action tracking
+    // dataExport is not counted: users.exportAllData is a query and cannot
+    // record usage, so this limit never blocks an export.
     count = 0;
   }
 
@@ -81,6 +103,24 @@ export async function checkRateLimit(
   const allowed = count < config.maxRequests;
 
   return { allowed, remaining, resetAt };
+}
+
+/**
+ * Checks the limit and, when allowed, records one usage row in the same
+ * transaction. Call it immediately before the model call so that concurrent
+ * requests cannot both pass a stale count.
+ */
+export async function consumeAIUsage(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  action: AIUsageAction
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  const result = await checkRateLimit(ctx, userId, action);
+  if (!result.allowed) {
+    return result;
+  }
+  await ctx.db.insert("aiUsage", { userId, action, createdAt: Date.now() });
+  return { ...result, remaining: result.remaining - 1 };
 }
 
 export async function enforceRateLimit(

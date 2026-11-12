@@ -415,6 +415,21 @@ export default defineSchema({
     .index("by_user_reason", ["userId", "reason"]),
 
   // --------------------------------------------------------------------------
+  // AI Usage Table
+  // One row per model call for actions that persist no other record, so the
+  // rate limiter can count them (see lib/rateLimit.ts)
+  // --------------------------------------------------------------------------
+  aiUsage: defineTable({
+    userId: v.id("users"),
+    action: v.union(
+      v.literal("routineGeneration"),
+      v.literal("routineSwap")
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_user_action_created", ["userId", "action", "createdAt"]),
+
+  // --------------------------------------------------------------------------
   // Feedback Table
   // User-submitted feedback for Alpha program
   // --------------------------------------------------------------------------
