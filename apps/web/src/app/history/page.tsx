@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
 import { api } from "@opentrainer/backend";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,12 +30,21 @@ type Workout = {
   };
 };
 
+// Completed workouts load newest first, PAGE_SIZE at a time. Month groups are
+// rebuilt from every loaded page, so a month split across pages stays whole.
+const PAGE_SIZE = 50;
+
 export default function HistoryPage() {
   const [showStartSheet, setShowStartSheet] = useState(false);
-  const workouts = useQuery(api.workouts.getWorkoutHistory, {
-    limit: 100,
-    status: "completed"
-  });
+  const {
+    results: workouts,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
+    api.workouts.getWorkoutHistoryPage,
+    { status: "completed" },
+    { initialNumItems: PAGE_SIZE },
+  );
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
@@ -86,7 +95,7 @@ export default function HistoryPage() {
       }));
   };
 
-  if (workouts === undefined) {
+  if (status === "LoadingFirstPage") {
     return (
       <div className="flex min-h-screen flex-col">
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
@@ -116,7 +125,7 @@ export default function HistoryPage() {
       </header>
 
       <main className="flex-1 p-4 pb-24">
-        {workouts.length === 0 ? (
+        {workouts.length === 0 && status === "Exhausted" ? (
           <Card className="p-8 text-center">
             <Dumbbell className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <h2 className="mb-2 font-semibold">No workouts yet</h2>
@@ -194,6 +203,16 @@ export default function HistoryPage() {
                 </div>
               </section>
             ))}
+            {(status === "CanLoadMore" || status === "LoadingMore") && (
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={status === "LoadingMore"}
+                onClick={() => loadMore(PAGE_SIZE)}
+              >
+                {status === "LoadingMore" ? "Loading older workouts" : "Load older workouts"}
+              </Button>
+            )}
           </div>
         )}
       </main>
