@@ -217,7 +217,7 @@ export default function TrainingLabScreen() {
 
         <MuscleAnalyticsSection analytics={muscleAnalytics} />
 
-        {!canGenerate && !hasReport && ctaState.totalWorkouts === 0 && (
+        {!canGenerate && !hasReport && (
           <Card className="p-4">
             <View className="flex-row items-center gap-3">
               <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">

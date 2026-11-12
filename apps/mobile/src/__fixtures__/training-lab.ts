@@ -75,12 +75,6 @@ export const ctaStateFixture = {
 export const fullReportFixture = {
   type: "full" as const,
   summary: "Strong week with balanced pushing and pulling volume.",
-  scores: {
-    volumeAdherence: 82,
-    intensityManagement: 74,
-    muscleBalance: 68,
-    recoveryBalance: 90,
-  },
   insights: [
     {
       category: "volume" as const,
