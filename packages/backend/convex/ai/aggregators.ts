@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalQuery } from "../_generated/server";
 import type { Id, Doc } from "../_generated/dataModel";
 import { getMondayWeekKey, getMondayWeekStartUtc, WEEK_IN_MS } from "../lib/week";
+import { isWorkingStrengthSet } from "../lib/muscleAnalytics";
 import { convertWeight, roundWeight, type WeightUnit } from "@opentrainer/lib/units";
 
 const MODALITY_METS: Record<string, number> = {
@@ -528,7 +529,8 @@ function aggregateVolumeByMuscle(
   const muscleStats = new Map<string, { sets: number; totalRpe: number; rpeCount: number }>();
 
   for (const entry of entries) {
-    if (entry.kind !== "lifting") continue;
+    // Count working sets only, as the muscle analytics screen does.
+    if (!isWorkingStrengthSet(entry)) continue;
 
     const exercise = exerciseMap.get(entry.exerciseName);
     const muscleGroups = exercise?.muscleGroups ?? ["other"];
@@ -562,7 +564,7 @@ function aggregateVolumeByMuscleOverTime(
   const weeklyMuscleVolume = new Map<string, Map<string, number>>();
 
   for (const entry of entries) {
-    if (entry.kind !== "lifting") continue;
+    if (!isWorkingStrengthSet(entry)) continue;
 
     const workoutDate = workoutDateMap.get(entry.workoutId);
     if (!workoutDate) continue;

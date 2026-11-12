@@ -3,6 +3,7 @@ import { query, internalMutation, type QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../auth";
 import type { TrainingLabReport, TrainingSnapshot, TrainingLabCTAState, TrainingLabDashboardStats } from "./trainingLabTypes";
+import { getTrainingLabMinimumMessage } from "./trainingLabTypes";
 import { getMondayWeekKey, getMondayWeekStartUtc, WEEK_IN_MS } from "../lib/week";
 import {
   calculateMuscleAnalytics,
@@ -96,14 +97,6 @@ export const storeAssessment = internalMutation({
     subjectSubtype: v.union(v.literal("snapshot"), v.literal("full")),
     model: v.string(),
     summary: v.string(),
-    scores: v.optional(
-      v.object({
-        volumeAdherence: v.number(),
-        intensityManagement: v.number(),
-        muscleBalance: v.number(),
-        recoveryBalance: v.number(),
-      })
-    ),
     insights: v.optional(
       v.array(
         v.object({
@@ -129,14 +122,6 @@ export const storeAssessment = internalMutation({
       promptVersion: "1.0",
       status: "success",
       summary: args.summary,
-      scores: args.scores
-        ? {
-            volumeAdherence: args.scores.volumeAdherence,
-            intensityManagement: args.scores.intensityManagement,
-            muscleBalance: args.scores.muscleBalance,
-            recoveryBalance: args.scores.recoveryBalance,
-          }
-        : undefined,
       insights: args.insights,
       tokenUsage: {
         input: args.tokenUsage.input,
@@ -204,11 +189,13 @@ export const getCtaState = query({
     const workoutsSince = currentWeekWorkouts.filter((w) => w.startedAt > lastAssessmentDate);
     const count = workoutsSince.length;
 
-    const canGenerate = hasReport ? count > 0 : currentWeekWorkouts.length > 0;
+    const minimumMessage = getTrainingLabMinimumMessage(totalWorkouts);
+    const canGenerate =
+      minimumMessage === null && (hasReport ? count > 0 : currentWeekWorkouts.length > 0);
 
     let message: string;
-    if (totalWorkouts === 0) {
-      message = "Complete your first workout to unlock insights";
+    if (minimumMessage !== null) {
+      message = minimumMessage;
     } else if (currentWeekWorkouts.length === 0) {
       message = "Complete a workout this week to generate your analysis";
     } else if (!hasReport) {
