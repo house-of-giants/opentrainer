@@ -33,6 +33,8 @@ const getSwapAlternatives = jest
   .fn()
   .mockResolvedValue({ alternatives: swapAlternatives });
 const createRoutine = jest.fn().mockResolvedValue("routine_1");
+const parseEquipment = jest.fn();
+const updateOnboarding = jest.fn();
 
 const proUser = {
   _id: "user_1",
@@ -54,12 +56,24 @@ beforeEach(() => {
   mockQueries();
   generateRoutine.mockResolvedValue(generatedRoutine);
   getSwapAlternatives.mockResolvedValue({ alternatives: swapAlternatives });
-  mockUseAction.mockImplementation((ref: unknown) =>
-    getFunctionName(ref as never) === "ai/routineGenerator:generateRoutine"
-      ? generateRoutine
-      : getSwapAlternatives,
+  parseEquipment.mockResolvedValue({
+    equipment: ["dumbbells", "pull_up_bar"],
+    note: "Assumed light dumbbells only.",
+  });
+  updateOnboarding.mockResolvedValue("user_1");
+  const actions: Record<string, jest.Mock> = {
+    "ai/routineGenerator:generateRoutine": generateRoutine,
+    "ai/routineGenerator:getRoutineSwapAlternatives": getSwapAlternatives,
+    "ai/equipmentParser:parseEquipment": parseEquipment,
+  };
+  const mutations: Record<string, jest.Mock> = {
+    "routines:createRoutine": createRoutine,
+    "users:updateOnboarding": updateOnboarding,
+  };
+  mockUseAction.mockImplementation((ref: unknown) => actions[getFunctionName(ref as never)]);
+  mockUseMutation.mockImplementation(
+    (ref: unknown) => mutations[getFunctionName(ref as never)],
   );
-  mockUseMutation.mockImplementation(() => createRoutine);
 });
 
 async function renderWizard() {
@@ -268,5 +282,152 @@ describe("AI routine wizard", () => {
     expect(screen.getByText("Generate Routine")).toBeOnTheScreen();
     expect(screen.queryByText("Review Routine")).toBeNull();
     expect(createRoutine).not.toHaveBeenCalled();
+  });
+});
+
+// "Bring my program" and "Start from scratch" finish onboarding without the
+// profile questions, so these lifters reach the generator with no equipment.
+describe("AI routine wizard without saved equipment", () => {
+  const noEquipmentUser = { _id: "user_1", tier: "pro", weeklyAvailability: undefined };
+
+  // The real mutation patches the user doc and Convex pushes the new doc to
+  // getCurrentUser; mirror that so later renders see the saved equipment.
+  function saveEquipmentToProfile() {
+    updateOnboarding.mockImplementation(async (args: { equipment: string[] }) => {
+      mockQueries({
+        "users:getCurrentUser": { ...noEquipmentUser, equipment: args.equipment },
+      });
+      return "user_1";
+    });
+  }
+
+  async function describeGym(text: string) {
+    await fireEvent.changeText(screen.getByLabelText("Gym description"), text);
+    await fireEvent.press(screen.getByText("Analyze Equipment"));
+    await flushAsyncHandler();
+  }
+
+  it("asks for equipment before generating, saves it, then generates with the form choices", async () => {
+    mockQueries({ "users:getCurrentUser": noEquipmentUser });
+    saveEquipmentToProfile();
+    await renderWizard();
+
+    await fireEvent.press(screen.getByText("Strength"));
+    await generate();
+
+    expect(generateRoutine).not.toHaveBeenCalled();
+    expect(screen.getByText("Where do you work out?")).toBeOnTheScreen();
+
+    await describeGym("Home gym with dumbbells and a pull-up bar");
+
+    expect(parseEquipment).toHaveBeenCalledWith({
+      description: "Home gym with dumbbells and a pull-up bar",
+    });
+    expect(screen.getByText("Assumed light dumbbells only.")).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Dumbbells" })).toBeSelected();
+    expect(screen.getByRole("button", { name: "Pull-up Bar" })).toBeSelected();
+    expect(screen.getByRole("button", { name: "Barbell" })).not.toBeSelected();
+
+    // The lifter corrects the parse before saving.
+    await fireEvent.press(screen.getByRole("button", { name: "Kettlebells" }));
+    await fireEvent.press(screen.getByText("Save and Generate"));
+    await flushAsyncHandler();
+
+    expect(updateOnboarding).toHaveBeenCalledTimes(1);
+    expect(updateOnboarding).toHaveBeenCalledWith({
+      equipmentDescription: "Home gym with dumbbells and a pull-up bar",
+      equipment: ["dumbbells", "pull_up_bar", "kettlebells"],
+    });
+    expect(generateRoutine).toHaveBeenCalledTimes(1);
+    expect(generateRoutine).toHaveBeenCalledWith({
+      splitType: "ai_decide",
+      primaryGoal: "strength",
+      daysPerWeek: 4,
+      additionalNotes: undefined,
+    });
+    // The profile write lands before the action reads the profile.
+    expect(updateOnboarding.mock.invocationCallOrder[0]).toBeLessThan(
+      generateRoutine.mock.invocationCallOrder[0],
+    );
+    expect(screen.getByText("Review Routine")).toBeOnTheScreen();
+  });
+
+  it("asks only once: a retry after a failed generation goes straight to the generator", async () => {
+    mockQueries({ "users:getCurrentUser": noEquipmentUser });
+    saveEquipmentToProfile();
+    generateRoutine.mockRejectedValueOnce(new Error("Rate limit exceeded."));
+    await renderWizard();
+
+    await generate();
+    await describeGym("LA Fitness");
+    await fireEvent.press(screen.getByText("Save and Generate"));
+    await flushAsyncHandler();
+
+    expect(toast.error).toHaveBeenCalledWith("Rate limit exceeded.");
+    expect(screen.getByText("Build Your Routine")).toBeOnTheScreen();
+
+    await generate();
+
+    expect(screen.queryByText("Where do you work out?")).toBeNull();
+    expect(parseEquipment).toHaveBeenCalledTimes(1);
+    expect(updateOnboarding).toHaveBeenCalledTimes(1);
+    expect(generateRoutine).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Review Routine")).toBeOnTheScreen();
+  });
+
+  it("treats an empty equipment list as missing and falls back to manual picks when the parse fails", async () => {
+    mockQueries({ "users:getCurrentUser": { ...noEquipmentUser, equipment: [] } });
+    parseEquipment.mockRejectedValueOnce(new Error("model down"));
+    await renderWizard();
+
+    await generate();
+    await describeGym("garage");
+
+    expect(toast.error).toHaveBeenCalledWith(
+      "Failed to analyze equipment. Please select manually.",
+    );
+    // Nothing picked yet, so there is nothing to save.
+    await fireEvent.press(screen.getByText("Save and Generate"));
+    await flushAsyncHandler();
+    expect(updateOnboarding).not.toHaveBeenCalled();
+    expect(generateRoutine).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Resistance Bands" }));
+    await fireEvent.press(screen.getByText("Save and Generate"));
+    await flushAsyncHandler();
+
+    expect(updateOnboarding).toHaveBeenCalledWith({
+      equipmentDescription: "garage",
+      equipment: ["resistance_bands"],
+    });
+    expect(generateRoutine).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not generate when the equipment save fails", async () => {
+    mockQueries({ "users:getCurrentUser": noEquipmentUser });
+    updateOnboarding.mockRejectedValueOnce(new Error("offline"));
+    await renderWizard();
+
+    await generate();
+    await describeGym("LA Fitness");
+    await fireEvent.press(screen.getByText("Save and Generate"));
+    await flushAsyncHandler();
+
+    expect(toast.error).toHaveBeenCalledWith("Failed to save equipment");
+    expect(generateRoutine).not.toHaveBeenCalled();
+    expect(screen.getByText("Save and Generate")).toBeOnTheScreen();
+  });
+});
+
+describe("AI routine wizard with saved equipment", () => {
+  it("generates without asking for equipment", async () => {
+    await renderWizard();
+    await generate();
+
+    expect(screen.queryByText("Where do you work out?")).toBeNull();
+    expect(parseEquipment).not.toHaveBeenCalled();
+    expect(updateOnboarding).not.toHaveBeenCalled();
+    expect(generateRoutine).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Review Routine")).toBeOnTheScreen();
   });
 });
