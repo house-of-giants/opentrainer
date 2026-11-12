@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react-native";
 import { getFunctionName } from "convex/server";
 import { useQuery } from "convex/react";
+import * as Notifications from "expo-notifications";
 
 import ActiveWorkoutScreen from "@/app/(app)/workout/active";
 import { ThemeProvider } from "@/theme/theme-provider";
@@ -174,5 +175,52 @@ describe("ActiveWorkoutScreen", () => {
     } finally {
       queryResults["workouts:getActiveWorkout"] = workout;
     }
+  });
+});
+
+describe("ActiveWorkoutScreen rest timer", () => {
+  async function logBenchSetAndGetRestTimer() {
+    await render(
+      <ThemeProvider>
+        <ActiveWorkoutScreen />
+      </ThemeProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText("LOG SET 2/3")).toBeOnTheScreen();
+    });
+    await fireEvent.press(screen.getByText("LOG SET 2/3"));
+    await waitFor(() => {
+      expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+    });
+    const [request] = (Notifications.scheduleNotificationAsync as jest.Mock)
+      .mock.calls[0];
+    const result = {
+      scheduledSeconds: request.trigger.seconds,
+      shownTime: screen.getByText(/^\d+:\d{2}$/).props.children,
+    };
+    // Close the timer so its interval does not outlive the test.
+    await fireEvent.press(screen.getByText("Skip Rest"));
+    return result;
+  }
+
+  it("starts the rest timer at the rest time stored on the routine exercise", async () => {
+    queryResults["workouts:getRoutineExercisesForWorkout"] = [
+      { ...routineExercises[0], restSeconds: 150 },
+      ...routineExercises.slice(1),
+    ];
+    try {
+      const { scheduledSeconds, shownTime } =
+        await logBenchSetAndGetRestTimer();
+      expect(scheduledSeconds).toBe(150);
+      expect(shownTime).toMatch(/^2:(29|30)$/);
+    } finally {
+      queryResults["workouts:getRoutineExercisesForWorkout"] = routineExercises;
+    }
+  });
+
+  it("starts a 90-second rest timer when the routine exercise has no rest time", async () => {
+    const { scheduledSeconds, shownTime } = await logBenchSetAndGetRestTimer();
+    expect(scheduledSeconds).toBe(90);
+    expect(shownTime).toMatch(/^1:(29|30)$/);
   });
 });

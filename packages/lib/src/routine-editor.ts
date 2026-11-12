@@ -4,6 +4,9 @@
 type RoutineExerciseKind = "lifting" | "cardio" | "mobility";
 type RoutineMeasurementType = "reps" | "duration";
 
+// The rest timer length for an exercise that has no stored rest time.
+export const DEFAULT_REST_SECONDS = 90;
+
 // Mirrors `routineExerciseValidator` in packages/backend/convex/routines.ts.
 // That validator rejects unknown fields, so the save payload holds only these.
 export type StoredRoutineExercise<TExerciseId = string> = {
@@ -19,6 +22,7 @@ export type StoredRoutineExercise<TExerciseId = string> = {
 	targetHoldSeconds?: number;
 	perSide?: boolean;
 	notes?: string;
+	restSeconds?: number;
 };
 
 // The editor has no control for targetRpe, notes, or targetIntensity. It
@@ -36,6 +40,7 @@ export type RoutineEditorExerciseFields<TExerciseId = string> = {
 	targetRpe?: number;
 	notes?: string;
 	targetIntensity?: number;
+	restSeconds: number;
 };
 
 export function routineExerciseToEditorFields<TExerciseId>(
@@ -62,11 +67,12 @@ export function routineExerciseToEditorFields<TExerciseId>(
 		targetRpe: exercise.targetRpe,
 		notes: exercise.notes,
 		targetIntensity: exercise.targetIntensity,
+		restSeconds: exercise.restSeconds ?? DEFAULT_REST_SECONDS,
 	};
 }
 
-// Editor state can hold client-only fields (a local id, restSeconds). This
-// picks only the fields that the backend validator accepts.
+// Editor state can hold client-only fields (a local id). This picks only the
+// fields that the backend validator accepts.
 export function editorExerciseToRoutineExercise<TExerciseId>(
 	exercise: RoutineEditorExerciseFields<TExerciseId>
 ): StoredRoutineExercise<TExerciseId> {
@@ -91,5 +97,6 @@ export function editorExerciseToRoutineExercise<TExerciseId>(
 		targetRpe: exercise.targetRpe,
 		notes: exercise.notes,
 		targetIntensity: exercise.targetIntensity,
+		restSeconds: exercise.restSeconds,
 	};
 }

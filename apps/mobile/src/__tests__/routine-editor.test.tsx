@@ -87,6 +87,7 @@ const expectedDaysPayload = [
         targetDuration: undefined,
         targetHoldSeconds: undefined,
         perSide: undefined,
+        restSeconds: 90,
       },
       {
         exerciseId: undefined,
@@ -98,6 +99,7 @@ const expectedDaysPayload = [
         targetDuration: undefined,
         targetHoldSeconds: undefined,
         perSide: undefined,
+        restSeconds: 90,
       },
     ],
   },
@@ -114,6 +116,7 @@ const expectedDaysPayload = [
         targetDuration: undefined,
         targetHoldSeconds: undefined,
         perSide: undefined,
+        restSeconds: 90,
       },
     ],
   },
@@ -169,7 +172,7 @@ describe("Routine editor", () => {
     expect(mockBack).toHaveBeenCalled();
   });
 
-  it("keeps targetRpe, notes, and targetIntensity when it saves the routine", async () => {
+  it("keeps targetRpe, notes, targetIntensity, and rest time when it saves the routine", async () => {
     // Imported and AI-generated routines carry fields the editor has no control for.
     mockQueries({
       "routines:getRoutine": {
@@ -186,6 +189,7 @@ describe("Routine editor", () => {
                 targetReps: "6-8",
                 targetRpe: 8,
                 notes: "Pause the first rep",
+                restSeconds: 150,
               },
               {
                 exerciseName: "Bike",
@@ -224,6 +228,7 @@ describe("Routine editor", () => {
             targetRpe: 8,
             notes: "Pause the first rep",
             targetIntensity: undefined,
+            restSeconds: 150,
           },
           {
             exerciseId: undefined,
@@ -238,6 +243,7 @@ describe("Routine editor", () => {
             targetRpe: undefined,
             notes: "Easy spin",
             targetIntensity: 7,
+            restSeconds: 90,
           },
         ],
       },

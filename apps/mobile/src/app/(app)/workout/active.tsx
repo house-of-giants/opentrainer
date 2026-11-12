@@ -20,6 +20,7 @@ import {
 import { getExerciseGroupKey } from "@opentrainer/lib/workout-exercise-group";
 import { effortForStorage, type EffortScale } from "@opentrainer/lib/effort";
 import type { WeightStepSetting } from "@opentrainer/lib/weight-step";
+import { DEFAULT_REST_SECONDS } from "@opentrainer/lib/routine-editor";
 import {
   buildRepLiftingUpdate,
   buildTimedLiftingUpdate,
@@ -204,6 +205,7 @@ type PendingExercise = {
   targetDurationMinutes?: number;
   measurementType?: "reps" | "duration";
   targetHoldSeconds?: number;
+  restSeconds?: number;
   equipment?: string[];
   muscleGroups?: string[];
 };
@@ -254,7 +256,9 @@ export default function ActiveWorkoutScreen() {
   const { generateClientId } = useClientId();
   const { vibrate } = useHaptic();
   const [showAddExercise, setShowAddExercise] = useState(false);
-  const [showRestTimer, setShowRestTimer] = useState(false);
+  const [restTimerSeconds, setRestTimerSeconds] = useState<number | null>(
+    null,
+  );
   const [showSaveRoutine, setShowSaveRoutine] = useState(false);
   const [pendingExercises, setPendingExercises] = useState<PendingExercise[]>(
     [],
@@ -402,6 +406,7 @@ export default function ActiveWorkoutScreen() {
           targetDurationMinutes: ex.targetDuration,
           measurementType: ex.measurementType,
           targetHoldSeconds: ex.targetHoldSeconds,
+          restSeconds: ex.restSeconds,
           equipment: exerciseWithEquipment.equipment,
         };
       });
@@ -497,6 +502,14 @@ export default function ActiveWorkoutScreen() {
     );
   }
 
+  // A routine exercise carries its own rest time; other exercises rest 90s.
+  const startRestTimer = (groupKey: string) => {
+    const pending = pendingExercises.find(
+      (exercise) => getExerciseGroupKey(exercise) === groupKey,
+    );
+    setRestTimerSeconds(pending?.restSeconds ?? DEFAULT_REST_SECONDS);
+  };
+
   const handleAddSet = async (
     exerciseName: string,
     set: {
@@ -507,13 +520,12 @@ export default function ActiveWorkoutScreen() {
       rpe?: number | null;
     },
   ) => {
-    const group = exerciseGroups.get(
-      getExerciseGroupKey({
-        name: exerciseName,
-        category: "lifting",
-        measurementType: "reps",
-      }),
-    );
+    const groupKey = getExerciseGroupKey({
+      name: exerciseName,
+      category: "lifting",
+      measurementType: "reps",
+    });
+    const group = exerciseGroups.get(groupKey);
     const existingSets = group?.entries ?? [];
     const setNumber = existingSets.length + 1;
 
@@ -540,7 +552,7 @@ export default function ActiveWorkoutScreen() {
         is_bodyweight: set.isBodyweight ?? false,
         rpe: set.rpe ?? null,
       });
-      setShowRestTimer(true);
+      startRestTimer(groupKey);
       return true;
     } catch (error) {
       toast.error("Failed to log set");
@@ -553,13 +565,12 @@ export default function ActiveWorkoutScreen() {
     exerciseName: string,
     set: { durationSeconds: number; rpe?: number | null },
   ) => {
-    const group = exerciseGroups.get(
-      getExerciseGroupKey({
-        name: exerciseName,
-        category: "lifting",
-        measurementType: "duration",
-      }),
-    );
+    const groupKey = getExerciseGroupKey({
+      name: exerciseName,
+      category: "lifting",
+      measurementType: "duration",
+    });
+    const group = exerciseGroups.get(groupKey);
     const existingSets =
       group?.entries.filter(
         (entry) =>
@@ -587,7 +598,7 @@ export default function ActiveWorkoutScreen() {
         duration_seconds: set.durationSeconds,
         rpe: set.rpe ?? null,
       });
-      setShowRestTimer(true);
+      startRestTimer(groupKey);
     } catch (error) {
       analytics.captureException(error);
       throw error;
@@ -1338,11 +1349,11 @@ export default function ActiveWorkoutScreen() {
         </DialogFooter>
       </Dialog>
 
-      {showRestTimer && (
+      {restTimerSeconds !== null && (
         <RestTimerOverlay
-          durationSeconds={90}
-          onComplete={() => setShowRestTimer(false)}
-          onSkip={() => setShowRestTimer(false)}
+          durationSeconds={restTimerSeconds}
+          onComplete={() => setRestTimerSeconds(null)}
+          onSkip={() => setRestTimerSeconds(null)}
         />
       )}
     </SafeAreaView>

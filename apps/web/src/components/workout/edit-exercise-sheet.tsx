@@ -24,7 +24,6 @@ import { toast } from "sonner";
 
 export type RoutineExercise = RoutineEditorExerciseFields<Id<"exercises">> & {
 	id: string;
-	restSeconds: number;
 };
 
 interface EditExerciseSheetProps {

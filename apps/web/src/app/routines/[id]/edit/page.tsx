@@ -66,6 +66,7 @@ import {
 import { ImportDayDialog } from "@/components/workout/import-day-dialog";
 import { normalizeExerciseName } from "@opentrainer/lib/exercise-names";
 import {
+	DEFAULT_REST_SECONDS,
 	editorExerciseToRoutineExercise,
 	routineExerciseToEditorFields,
 } from "@opentrainer/lib/routine-editor";
@@ -83,7 +84,7 @@ const DEFAULT_EXERCISE: Omit<RoutineExercise, "id" | "exerciseName"> = {
 	targetDuration: 20,
 	targetHoldSeconds: 30,
 	perSide: false,
-	restSeconds: 90,
+	restSeconds: DEFAULT_REST_SECONDS,
 };
 
 function SortableExerciseItem({
@@ -205,7 +206,6 @@ export default function EditRoutinePage() {
 					return {
 						id: crypto.randomUUID(),
 						...routineExerciseToEditorFields(ex, catalogExercise?.measurementType),
-						restSeconds: 90,
 					};
 				}),
 			}));

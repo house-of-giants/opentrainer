@@ -19,11 +19,12 @@ const VALIDATOR_FIELDS = [
 	"targetHoldSeconds",
 	"perSide",
 	"notes",
+	"restSeconds",
 ];
 
-// The editors add a local id and restSeconds to each exercise in form state.
+// The editors add a local id to each exercise in form state.
 function loadIntoEditor(stored: Parameters<typeof routineExerciseToEditorFields>[0]) {
-	return { id: "local-1", ...routineExerciseToEditorFields(stored), restSeconds: 90 };
+	return { id: "local-1", ...routineExerciseToEditorFields(stored) };
 }
 
 test("an unedited lifting exercise keeps targetRpe and notes after load and save", () => {
@@ -108,5 +109,37 @@ test("editor edits to controlled fields replace the stored values on save", () =
 		targetRpe: 7,
 		notes: undefined,
 		targetIntensity: undefined,
+		restSeconds: 90,
 	});
+});
+
+test("a stored rest time loads into the editor and saves unchanged", () => {
+	const loaded = loadIntoEditor({
+		exerciseName: "Squat",
+		kind: "lifting",
+		targetSets: 5,
+		targetReps: "5",
+		restSeconds: 180,
+	});
+
+	assert.equal(loaded.restSeconds, 180);
+	assert.equal(editorExerciseToRoutineExercise(loaded).restSeconds, 180);
+});
+
+test("an exercise with no stored rest time loads with 90 seconds", () => {
+	const loaded = loadIntoEditor({ exerciseName: "Row", kind: "lifting" });
+
+	assert.equal(loaded.restSeconds, 90);
+});
+
+test("a rest time changed in the editor replaces the stored value on save", () => {
+	const loaded = loadIntoEditor({
+		exerciseName: "Squat",
+		kind: "lifting",
+		restSeconds: 180,
+	});
+
+	const saved = editorExerciseToRoutineExercise({ ...loaded, restSeconds: 120 });
+
+	assert.equal(saved.restSeconds, 120);
 });

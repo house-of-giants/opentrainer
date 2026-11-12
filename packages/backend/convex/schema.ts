@@ -309,6 +309,8 @@ export default defineSchema({
         targetHoldSeconds: v.optional(v.number()),
         perSide: v.optional(v.boolean()),
         notes: v.optional(v.string()),
+        // Rest timer length in the active workout; absent means 90 seconds.
+        restSeconds: v.optional(v.number()),
       })),
     })),
     
