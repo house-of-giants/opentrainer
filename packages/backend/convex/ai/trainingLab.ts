@@ -8,6 +8,7 @@ import { TRAINING_LAB_FULL_PROMPT, TRAINING_LAB_SNAPSHOT_PROMPT } from "./prompt
 import type { Doc } from "../_generated/dataModel";
 import type { AggregatedWorkoutData } from "./aggregators";
 import type { TrainingLabReport, TrainingSnapshot } from "./trainingLabTypes";
+import { getTrainingLabMinimumMessage } from "./trainingLabTypes";
 import { createConvexLogger, truncateId } from "../lib/logger";
 import { getMondayWeekStartUtc } from "../lib/week";
 
@@ -191,6 +192,14 @@ export const generateReport = action({
       includeHistoricalContext: true,
     })) as AggregatedWorkoutData;
 
+    const minimumMessage = getTrainingLabMinimumMessage(
+      aggregated.historicalContext?.totalWorkouts ?? 0
+    );
+    if (minimumMessage !== null) {
+      logger.fail(new Error("Not enough completed workouts"));
+      throw new Error(minimumMessage);
+    }
+
     const workoutCount = aggregated.period.workouts;
     if (workoutCount === 0) {
       logger.fail(new Error("No workouts to analyze"));
@@ -290,12 +299,6 @@ export const generateReport = action({
 
     const result = JSON.parse(response.text) as {
       summary: string;
-      scores: {
-        volumeAdherence: number;
-        intensityManagement: number;
-        muscleBalance: number;
-        recoveryBalance: number;
-      };
       insights: Array<{
         category: "volume" | "intensity" | "balance" | "recovery" | "progression" | "technique";
         observation: string;
@@ -309,9 +312,12 @@ export const generateReport = action({
       }>;
     };
 
+    // Copy only the known fields so stray model output (such as old-style scores) is never stored.
     const report: TrainingLabReport = {
       type: "full",
-      ...result,
+      summary: result.summary,
+      insights: result.insights,
+      alerts: result.alerts,
       chartData: {
         weightUnit: aggregated.weightUnit,
         volumeByMuscle: aggregated.volumeByMuscleOverTime,
@@ -333,7 +339,6 @@ export const generateReport = action({
       subjectSubtype: "full",
       model: "google/gemini-3-flash-preview",
       summary: report.summary,
-      scores: report.scores,
       insights: report.insights,
       report,
       tokenUsage: {
@@ -348,7 +353,6 @@ export const generateReport = action({
         type: "full",
         insightsCount: result.insights.length,
         alertsCount: result.alerts.length,
-        scores: result.scores,
       },
     });
 

@@ -1,14 +1,23 @@
 import type { MuscleAnalyticsResult } from "../lib/muscleAnalytics";
 
+/** Completed workouts a user needs in total before Training Lab makes a report. */
+export const TRAINING_LAB_MIN_WORKOUTS = 4;
+
+/** Returns the CTA message when the user is below the workout minimum, or null otherwise. */
+export function getTrainingLabMinimumMessage(totalWorkouts: number): string | null {
+  const remaining = TRAINING_LAB_MIN_WORKOUTS - totalWorkouts;
+  if (remaining <= 0) return null;
+  if (totalWorkouts === 0) {
+    return `Complete ${TRAINING_LAB_MIN_WORKOUTS} workouts to unlock your analysis`;
+  }
+  return remaining === 1
+    ? "Complete 1 more workout to unlock your analysis"
+    : `Complete ${remaining} more workouts to unlock your analysis`;
+}
+
 export interface TrainingLabReport {
   type: "full";
   summary: string;
-  scores: {
-    volumeAdherence: number;
-    intensityManagement: number;
-    muscleBalance: number;
-    recoveryBalance: number;
-  };
   insights: Array<{
     category: "volume" | "intensity" | "balance" | "recovery" | "progression" | "technique";
     observation: string;

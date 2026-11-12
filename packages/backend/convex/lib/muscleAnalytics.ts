@@ -252,7 +252,7 @@ function isUsableCompletedWorkout(workout: MuscleAnalyticsWorkout, now: number):
   return true;
 }
 
-function isWorkingStrengthSet(entry: MuscleAnalyticsEntry): boolean {
+export function isWorkingStrengthSet(entry: MuscleAnalyticsEntry): boolean {
   return entry.kind === "lifting" && !!entry.lifting && entry.lifting.isWarmup !== true;
 }
 

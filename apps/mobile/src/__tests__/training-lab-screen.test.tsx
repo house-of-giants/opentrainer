@@ -141,6 +141,26 @@ describe("Training Lab screen", () => {
     expect(mockPush).toHaveBeenCalledWith("/(app)/(tabs)");
   });
 
+  it("explains how many workouts are still needed below the report minimum", async () => {
+    mockQueries({
+      "ai/trainingLabMutations:getCtaState": {
+        ...ctaStateFixture,
+        canGenerate: false,
+        hasReport: false,
+        totalWorkouts: 2,
+        workoutsSinceLastReport: 2,
+        message: "Complete 2 more workouts to unlock your analysis",
+      },
+      "ai/trainingLabMutations:getLatestReport": null,
+    });
+    await renderTrainingLab();
+
+    expect(
+      screen.getByText("Complete 2 more workouts to unlock your analysis"),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText("Generate Analysis")).toBeNull();
+  });
+
   it("generates a full 7-day report and toasts success", async () => {
     mockQueries({ "ai/trainingLabMutations:getLatestReport": null });
     await renderTrainingLab();
