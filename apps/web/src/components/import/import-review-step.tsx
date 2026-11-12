@@ -12,6 +12,8 @@ import { normalizeExerciseName } from "@opentrainer/lib/exercise-names";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -31,6 +33,11 @@ type ImportReviewStepProps = {
   exercises: MatchableExercise[];
   choices: Record<string, string>;
   onChoicesChange: (choices: Record<string, string>) => void;
+  /** Muscle groups the user can pick for a new custom exercise. */
+  muscleGroups: string[];
+  /** Chosen muscle groups per new custom exercise, keyed like `choices`. */
+  customMuscleGroups: Record<string, string[]>;
+  onCustomMuscleGroupsChange: (customMuscleGroups: Record<string, string[]>) => void;
   onBack: () => void;
   onImport: () => void;
 };
@@ -48,6 +55,9 @@ export function ImportReviewStep({
   exercises,
   choices,
   onChoicesChange,
+  muscleGroups,
+  customMuscleGroups,
+  onCustomMuscleGroupsChange,
   onBack,
   onImport,
 }: ImportReviewStepProps) {
@@ -76,6 +86,12 @@ export function ImportReviewStep({
     }
     return [...groups.entries()];
   }, [plan.skipped]);
+
+  const toggleMuscle = (key: string, muscle: string, checked: boolean) => {
+    const current = customMuscleGroups[key] ?? [];
+    const next = checked ? [...current, muscle] : current.filter((m) => m !== muscle);
+    onCustomMuscleGroupsChange({ ...customMuscleGroups, [key]: next });
+  };
 
   const createRemaining = () => {
     const next = { ...choices };
@@ -159,38 +175,74 @@ export function ImportReviewStep({
           <ul className="divide-y">
             {names.map(({ key, name, setCount, match }) => {
               const choice = choices[key];
+              const chosenMuscles = customMuscleGroups[key] ?? [];
               return (
-                <li key={key} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{name}</p>
-                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-mono tabular-nums">
-                        {setCount} {setCount === 1 ? "set" : "sets"}
-                      </span>
-                      {!choice ? (
-                        <Badge variant="destructive">Needs a choice</Badge>
-                      ) : match?.kind === "suggested" && choice === match.exerciseId ? (
-                        <Badge variant="outline">Suggested match</Badge>
-                      ) : null}
-                    </p>
+                <li key={key} className="space-y-2 py-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{name}</p>
+                      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-mono tabular-nums">
+                          {setCount} {setCount === 1 ? "set" : "sets"}
+                        </span>
+                        {!choice ? (
+                          <Badge variant="destructive">Needs a choice</Badge>
+                        ) : match?.kind === "suggested" && choice === match.exerciseId ? (
+                          <Badge variant="outline">Suggested match</Badge>
+                        ) : null}
+                      </p>
+                    </div>
+                    <Select
+                      value={choice ?? ""}
+                      onValueChange={(value) => onChoicesChange({ ...choices, [key]: value })}
+                    >
+                      <SelectTrigger aria-label={`Exercise for ${name}`} className="w-full sm:w-64">
+                        <SelectValue placeholder="Choose…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={CREATE_EXERCISE}>New custom exercise “{name}”</SelectItem>
+                        <SelectSeparator />
+                        {sortedExercises.map((exercise) => (
+                          <SelectItem key={exercise._id} value={exercise._id}>
+                            {exercise.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select
-                    value={choice ?? ""}
-                    onValueChange={(value) => onChoicesChange({ ...choices, [key]: value })}
-                  >
-                    <SelectTrigger aria-label={`Exercise for ${name}`} className="w-full sm:w-64">
-                      <SelectValue placeholder="Choose…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={CREATE_EXERCISE}>New custom exercise “{name}”</SelectItem>
-                      <SelectSeparator />
-                      {sortedExercises.map((exercise) => (
-                        <SelectItem key={exercise._id} value={exercise._id}>
-                          {exercise.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {choice === CREATE_EXERCISE && muscleGroups.length > 0 && (
+                    <details className="text-sm">
+                      <summary className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline">
+                        {chosenMuscles.length > 0 ? (
+                          <>
+                            Muscle groups:{" "}
+                            <span className="capitalize">{chosenMuscles.join(", ")}</span>
+                          </>
+                        ) : (
+                          "Add muscle groups (optional)"
+                        )}
+                      </summary>
+                      <fieldset className="mt-2 space-y-2">
+                        <legend className="sr-only">Muscle groups for {name}</legend>
+                        <p className="text-xs text-muted-foreground">
+                          The muscle map counts these sets once the exercise has muscle groups.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {muscleGroups.map((muscle) => (
+                            <Label key={muscle} className="font-normal capitalize">
+                              <Checkbox
+                                checked={chosenMuscles.includes(muscle)}
+                                onCheckedChange={(checked) =>
+                                  toggleMuscle(key, muscle, checked === true)
+                                }
+                              />
+                              {muscle}
+                            </Label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    </details>
+                  )}
                 </li>
               );
             })}
